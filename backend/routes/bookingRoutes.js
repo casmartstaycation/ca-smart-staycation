@@ -1,6 +1,14 @@
 const express = require('express');
 const router = express.Router();
 
+router.get('/test', (req, res) => {
+  console.log("TEST ROUTE HIT");
+  res.json({
+    status: "success",
+    message: "Booking routes are working"
+  });
+});
+
 const Booking = require('../models/Booking');
 console.log("✅ bookingRoutes loaded");
 
