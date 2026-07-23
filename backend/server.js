@@ -138,7 +138,8 @@ app.listen(PORT, () => {
   `);
 });
 
-// Handle unhandled promise rejections process.on('unhandledRejection', (err) => {
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
   console.error('Unhandled Rejection:', err);
   process.exit(1);
 });
