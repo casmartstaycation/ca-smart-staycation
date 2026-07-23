@@ -1,19 +1,9 @@
-/* Paste the full adminRoutes.js code here (copy exactly from the assistant's adminRoutes snippet) */
-EOFls -la backend/models
-ls -la backend/routes
+const express = require('express');
+const router = express.Router();
+
+// Example admin route
+router.get('/admin', (req, res) => {res.json({ message: 'Admin endpoint OK' });
 sed -n '1,40p' backend/models/Admin.js   # git add .
-git status
-git commit -m "Initial commit: add backend models and routes"
-git branch -M main
-git branch -vgit remote -v
-git remote remove origin 2>/dev/null || true
-git remote add origin https://github.com/<your-username>/ca-smart-staycation.git
-git remote -vgit branch -M main
-git branch -vgit remote -v
-git remote remove origin 2>/dev/null || true
-git remote add origin https://github.com/<your-username>/ca-smart-staycation.git
-git remote -vgit config --global user.name "cassbooking"git config --casmartstaycation@gmail.com"mv ~/storage/shared/CA-Smart-Staycation/backend/* ~/CA-Smart-Staycation/backend/then cd ~/CA-Smart-Staycationcd ~/storage/shared/CA-Smart-Staycation/backend
 
 # Create Admin model
-cat > models/Admin.js <<'EOF'
 [Paste the Admin.js code from above]
