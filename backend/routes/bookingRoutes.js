@@ -13,7 +13,30 @@ const Booking = require('../models/Booking');
 console.log("✅ bookingRoutes loaded");
 
 // GET all bookings
-router.get('/bookings', async (req, res) => {
+  console.log("GET /bookings called");
+
+  try {
+    console.log("Before Booking.find()");
+
+    
+console.log("After Booking.find()", bookings.length);
+
+res.json({
+  status: "success",
+  data: bookings
+console.log("Before Booking.find()");
+
+const bookings = await Booking.find().sort({ createdAt: -1 });
+
+console.log("After Booking.find()");
+console.log(bookings);
+
+return res.json({
+  status: "success",
+  count: bookings.length,
+  data: bookings
+});
+
   console.log("GET /bookings called");
 
   try {
@@ -26,7 +49,47 @@ router.get('/bookings', async (req, res) => {
     res.json({
       status: "success",
       data: bookings
+    });  console.log("GET /bookings called");
+
+  try {
+    console.log("Before Booking.find()");
+
+    const bookings = await Booking.find().sort({ createdAt: -1 });
+
+    console.log("After Booking.find()");
+    console.log(bookings);
+
+    return res.json({
+      status: "success",
+      count: bookings.length,
+      data: bookings
     });
+
+  } catch (err) {
+    console.error("Booking route error:", err);
+
+    res.status(500).json({
+      status: "error",
+      message: err.message
+    });
+  }
+router.get('/bookings', async (req, res) => {
+  console.log("GET /bookings called");
+
+  try {
+    console.log("Before Booking.find()");
+
+    const bookings = await Booking.find().sort({ createdAt: -1 });
+
+    console.log("After Booking.find()");
+    console.log(bookings);
+
+    return res.json({
+      status: "success",
+      count: bookings.length,
+      data: bookings
+    });
+
   } catch (err) {
     console.error("Booking route error:", err);
 
@@ -36,7 +99,6 @@ router.get('/bookings', async (req, res) => {
     });
   }
 });
-
 // CREATE booking
 router.post('/bookings', async (req, res) => {
   try {
