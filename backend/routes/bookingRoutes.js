@@ -6,10 +6,7 @@ const Booking = require('../models/Booking');
 // GET all bookings
 router.get('/bookings', async (req, res) => {
   try {
-    const bookings = await Booking.find()
-      .populate('guest')
-      .populate('room')
-      .sort({ createdAt: -1 });
+    const booking = await Booking.findById(req.params.id);
 
     res.json({
       status: 'success',
@@ -26,9 +23,7 @@ router.get('/bookings', async (req, res) => {
 // GET one booking
 router.get('/bookings/:id', async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id)
-      .populate('guest')
-      .populate('room');
+    const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
       return res.status(404).json({
