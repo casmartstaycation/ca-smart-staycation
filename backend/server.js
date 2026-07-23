@@ -1,14 +1,14 @@
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/bookings', require('./routes/bookingRoutes'));
-app.use('/api/guests', require('./routes/guestRoutes'));
-app.use('/api/units', require('./routes/unitRoutes'));
-app.use('/api/staff', require('./routes/staffRoutes'));
-app.use('/api/finance', require('./routes/financeRoutes'));
-app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
-app.use('/api/print', require('./routes/printRoutes'));
-app.use('/api/notifications', require('./routes/notificationRoutes'));
-app.use('/api/promotions', require('./routes/promotionRoutes'));
-app.use('/api/settings', require('./routes/settingsRoutes'));// app.use('/api/auth', require('./routes/authRoutes'));
+//app.use('/api/auth', require('./routes/authRoutes'));
+//app.use('/api/bookings', require('./routes/bookingRoutes'));
+//app.use('/api/guests', require('./routes/guestRoutes'));
+//app.use('/api/units', require('./routes/unitRoutes'));
+//app.use('/api/staff', require('./routes/staffRoutes'));
+//app.use('/api/finance', require('./routes/financeRoutes'));
+//app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
+//app.use('/api/print', require('./routes/printRoutes'));
+//app.use('/api/notifications', require('./routes/notificationRoutes'));
+//app.use('/api/promotions', require('./routes/promotionRoutes'));
+//app.use('/api/settings', require('./routes/settingsRoutes'));// app.use('/api/auth', require('./routes/authRoutes'));
 // app.use('/api/bookings', require('./routes/bookingRoutes'));
 // app.use('/api/guests', require('./routes/guestRoutes'));
 // app.use('/api/units', require('./routes/unitRoutes'));
@@ -86,17 +86,17 @@ app.get('/api/health', (req, res) => {
 });
 
 // API Routes (will be added in next phases)
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/bookings', require('./routes/bookingRoutes'));
-app.use('/api/guests', require('./routes/guestRoutes'));
-app.use('/api/units', require('./routes/unitRoutes'));
-app.use('/api/staff', require('./routes/staffRoutes'));
-app.use('/api/finance', require('./routes/financeRoutes'));
-app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
-app.use('/api/print', require('./routes/printRoutes'));
-app.use('/api/notifications', require('./routes/notificationRoutes'));
-app.use('/api/promotions', require('./routes/promotionRoutes'));
-app.use('/api/settings', require('./routes/settingsRoutes'));
+//app.use('/api/auth', require('./routes/authRoutes'));
+//app.use('/api/bookings', require('./routes/bookingRoutes'));
+//app.use('/api/guests', require('./routes/guestRoutes'));
+//app.use('/api/units', require('./routes/unitRoutes'));
+//app.use('/api/staff', require('./routes/staffRoutes'));
+//app.use('/api/finance', require('./routes/financeRoutes'));
+//app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
+//app.use('/api/print', require('./routes/printRoutes'));
+//app.use('/api/notifications', require('./routes/notificationRoutes'));
+//app.use('/api/promotions', require('./routes/promotionRoutes'));
+//app.use('/api/settings', require('./routes/settingsRoutes'));
 
 // ============================================
 // ERROR HANDLING
@@ -110,8 +110,7 @@ app.use((req, res) => {
   });
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
+// Global error handler app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(err.statusCode || 500).json({
     status: 'error',
@@ -129,34 +128,32 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`
   ╔═══════════════════════════════════════════╗
-  ║   CA SMART STAYCATION - Backend API      ║
+  ║   CA SMART STAYCATION - Backend API       ║
   ╠═══════════════════════════════════════════╣
-  ║  Server running on port ${PORT}             ║
-  ║  Environment: ${process.env.NODE_ENV}              ║
-  ║  Database: Connected                     ║
+  ║  Server running on port ${PORT}           ║
+  ║  Environment: ${process.env.NODE_ENV}     ║
+  ║  Database: Connected                      ║
   ╚═══════════════════════════════════════════╝
   `);
 });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
+// Handle unhandled promise rejections process.on('unhandledRejection', (err) => {
   console.error('Unhandled Rejection:', err);
   process.exit(1);
 });
 
 
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/bookings', require('./routes/bookingRoutes'));
-app.use('/api/guests', require('./routes/guestRoutes'));
-app.use('/api/units', require('./routes/unitRoutes'));
-app.use('/api/staff', require('./routes/staffRoutes'));
-
-app.use('/api/finance', require('./routes/financeRoutes'));
-app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
-app.use('/api/print', require('./routes/printRoutes'));
-app.use('/api/notifications', require('./routes/notificationRoutes'));
-app.use('/api/promotions', require('./routes/promotionRoutes'));
-app.use('/api/settings', require('./routes/settingsRoutes'));
+//app.use('/api/auth', require('./routes/authRoutes'));
+//app.use('/api/bookings', require('./routes/bookingRoutes'));
+//app.use('/api/guests', require('./routes/guestRoutes'));
+//app.use('/api/units', require('./routes/unitRoutes'));
+//app.use('/api/staff', require('./routes/staffRoutes'));
+//app.use('/api/finance', require('./routes/financeRoutes'));
+//app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
+//app.use('/api/print', require('./routes/printRoutes'));
+//app.use('/api/notifications', require('./routes/notificationRoutes'));
+//app.use('/api/promotions', require('./routes/promotionRoutes'));
+//app.use('/api/settings', require('./routes/settingsRoutes'));
 
 // app.use('/api/auth', require('./routes/authRoutes'));
 // app.use('/api/bookings', require('./routes/bookingRoutes'));
