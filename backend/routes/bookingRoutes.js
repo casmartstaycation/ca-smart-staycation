@@ -4,6 +4,8 @@ const router = express.Router();
 const Booking = require('../models/Booking');
 console.log("✅ bookingRoutes loaded");
 
+// GET all bookings
+router.get('/bookings', async (req, res) => {
   console.log("GET /bookings called");
 
   try {
@@ -22,32 +24,6 @@ console.log("✅ bookingRoutes loaded");
 
     res.status(500).json({
       status: "error",
-      message: err.message
-    });
-  }
-});
-
-// GET one booking
-router.get('/bookings/:id', async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id)
-      .populate('guest')
-      .populate('room');
-
-    if (!booking) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Booking not found'
-      });
-    }
-
-    res.json({
-      status: 'success',
-      data: booking
-    });
-  } catch (err) {
-    res.status(500).json({
-      status: 'error',
       message: err.message
     });
   }
