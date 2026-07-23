@@ -78,6 +78,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 app.use('/api', require('./routes/adminRoutes'));
 app.use('/api', require('./routes/roomRoutes'));
 app.use('/api', require('./routes/guestRoutes'));
+app.use('/api', require('./routes/bookingRoutes'));
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({
