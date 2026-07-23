@@ -1,3 +1,24 @@
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/bookings', require('./routes/bookingRoutes'));
+app.use('/api/guests', require('./routes/guestRoutes'));
+app.use('/api/units', require('./routes/unitRoutes'));
+app.use('/api/staff', require('./routes/staffRoutes'));
+app.use('/api/finance', require('./routes/financeRoutes'));
+app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
+app.use('/api/print', require('./routes/printRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/promotions', require('./routes/promotionRoutes'));
+app.use('/api/settings', require('./routes/settingsRoutes'));// app.use('/api/auth', require('./routes/authRoutes'));
+// app.use('/api/bookings', require('./routes/bookingRoutes'));
+// app.use('/api/guests', require('./routes/guestRoutes'));
+// app.use('/api/units', require('./routes/unitRoutes'));
+// app.use('/api/staff', require('./routes/staffRoutes'));
+// app.use('/api/finance', require('./routes/financeRoutes'));
+// app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
+// app.use('/api/print', require('./routes/printRoutes'));
+// app.use('/api/notifications', require('./routes/notificationRoutes'));
+// app.use('/api/promotions', require('./routes/promotionRoutes'));
+// app.use('/api/settings', require('./routes/settingsRoutes'));O
 // ============================================
 // CA SMART STAYCATION - MAIN SERVER
 // ============================================
@@ -122,4 +143,31 @@ process.on('unhandledRejection', (err) => {
   console.error('Unhandled Rejection:', err);
   process.exit(1);
 });
+
+
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/bookings', require('./routes/bookingRoutes'));
+app.use('/api/guests', require('./routes/guestRoutes'));
+app.use('/api/units', require('./routes/unitRoutes'));
+app.use('/api/staff', require('./routes/staffRoutes'));
+
+app.use('/api/finance', require('./routes/financeRoutes'));
+app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
+app.use('/api/print', require('./routes/printRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/promotions', require('./routes/promotionRoutes'));
+app.use('/api/settings', require('./routes/settingsRoutes'));
+
+// app.use('/api/auth', require('./routes/authRoutes'));
+// app.use('/api/bookings', require('./routes/bookingRoutes'));
+// app.use('/api/guests', require('./routes/guestRoutes'));
+// app.use('/api/units', require('./routes/unitRoutes'));
+// app.use('/api/staff', require('./routes/staffRoutes'));
+
+// app.use('/api/finance', require('./routes/financeRoutes'));
+// app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
+// app.use('/api/print', require('./routes/printRoutes'));
+// app.use('/api/notifications', require('./routes/notificationRoutes'));
+// app.use('/api/promotions', require('./routes/promotionRoutes'));
+// app.use('/api/settings', require('./routes/settingsRoutes'));
 
