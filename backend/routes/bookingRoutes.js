@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const Booking = require('../models/Booking');
+console.log("✅ bookingRoutes loaded");
 
 // GET all bookings
 router.get('/bookings', async (req, res) => {
