@@ -1,29 +1,9 @@
-//app.use('/api/auth', require('./routes/authRoutes'));
-//app.use('/api/bookings', require('./routes/bookingRoutes'));
-//app.use('/api/guests', require('./routes/guestRoutes'));
-//app.use('/api/units', require('./routes/unitRoutes'));
-//app.use('/api/staff', require('./routes/staffRoutes'));
-//app.use('/api/finance', require('./routes/financeRoutes'));
-//app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
-//app.use('/api/print', require('./routes/printRoutes'));
-//app.use('/api/notifications', require('./routes/notificationRoutes'));
-//app.use('/api/promotions', require('./routes/promotionRoutes'));
-//app.use('/api/settings', require('./routes/settingsRoutes'));// app.use('/api/auth', require('./routes/authRoutes'));
-// app.use('/api/bookings', require('./routes/bookingRoutes'));
-// app.use('/api/guests', require('./routes/guestRoutes'));
-// app.use('/api/units', require('./routes/unitRoutes'));
-// app.use('/api/staff', require('./routes/staffRoutes'));
-// app.use('/api/finance', require('./routes/financeRoutes'));
-// app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
-// app.use('/api/print', require('./routes/printRoutes'));
-// app.use('/api/notifications', require('./routes/notificationRoutes'));
-// app.use('/api/promotions', require('./routes/promotionRoutes'));
-// app.use('/api/settings', require('./routes/settingsRoutes'));O
 // ============================================
-// CA SMART STAYCATION - MAIN SERVER
+// CA SMART STAYCATION BACKEND
 // ============================================
 
 require('dotenv').config();
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -37,12 +17,10 @@ const app = express();
 // MIDDLEWARE
 // ============================================
 
-// Security headers
+// Security
 app.use(helmet());
 
-const app = express();
-
-// Enable CORS
+// CORS
 app.use(cors({
   origin: [
     "https://casmartstaycation.github.io",
@@ -51,135 +29,77 @@ app.use(cors({
   credentials: true
 }));
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-}));
-}));
-
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
 // Logging
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
+app.use(morgan('dev'));
 
-// Static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Body parser
+app.use(express.json({
+  limit: '10mb'
+}));
+
+app.use(express.urlencoded({
+  extended: true,
+  limit: '10mb'
+}));
+
+// Static uploads
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, 'uploads'))
+);
 
 // ============================================
-// DATABASE CONNECTION
+// DATABASE
 // ============================================
 
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
+mongoose.connect(process.env.MONGODB_URI)
+.then(() => {
+    console.log("✅ MongoDB Connected");
 })
-.then(() => console.log('✅ MongoDB Connected Successfully'))
 .catch(err => {
-  console.error('❌ MongoDB Connection Error:', err);
-  process.exit(1);
+    console.error("MongoDB Error:", err);
 });
-
 // ============================================
 // ROUTES
 // ============================================
-app.use('/api', require('./routes/adminRoutes'));
-app.use('/api', require('./routes/roomRoutes'));
-app.use('/api', require('./routes/guestRoutes'));
-app.use('/api', require('./routes/bookingRoutes'));
-// Health check
+
+app.get('/', (req, res) => {
+  res.json({
+    status: 'success',
+    message: 'CA Smart Staycation API is running'
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'success',
     message: 'CA Smart Staycation API is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date()
   });
 });
 
-// API Routes (will be added in next phases)
-//app.use('/api/auth', require('./routes/authRoutes'));
-//app.use('/api/bookings', require('./routes/bookingRoutes'));
-//app.use('/api/guests', require('./routes/guestRoutes'));
-//app.use('/api/units', require('./routes/unitRoutes'));
-//app.use('/api/staff', require('./routes/staffRoutes'));
-//app.use('/api/finance', require('./routes/financeRoutes'));
-//app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
-//app.use('/api/print', require('./routes/printRoutes'));
-//app.use('/api/notifications', require('./routes/notificationRoutes'));
-//app.use('/api/promotions', require('./routes/promotionRoutes'));
-//app.use('/api/settings', require('./routes/settingsRoutes'));
+// API Routes
+app.use('/api', require('./routes/adminRoutes'));
+app.use('/api', require('./routes/roomRoutes'));
+app.use('/api', require('./routes/guestRoutes'));
+app.use('/api', require('./routes/bookingRoutes'));
 
 // ============================================
-// ERROR HANDLING
+// 404
 // ============================================
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     status: 'error',
     message: 'Route not found'
   });
 });
-
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(err.statusCode || 500).json({
-    status: 'error',
-    message: err.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-});
-
 // ============================================
 // START SERVER
 // ============================================
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`
-  ╔═══════════════════════════════════════════╗
-  ║   CA SMART STAYCATION - Backend API       ║
-  ╠═══════════════════════════════════════════╣
-  ║  Server running on port ${PORT}           ║
-  ║  Environment: ${process.env.NODE_ENV}     ║
-  ║  Database: Connected                      ║
-  ╚═══════════════════════════════════════════╝
-  `);
+  console.log(`🚀 CA Smart Staycation API running on port ${PORT}`);
 });
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Rejection:', err);
-  process.exit(1);
-});
-
-
-//app.use('/api/auth', require('./routes/authRoutes'));
-//app.use('/api/bookings', require('./routes/bookingRoutes'));
-//app.use('/api/guests', require('./routes/guestRoutes'));
-//app.use('/api/units', require('./routes/unitRoutes'));
-//app.use('/api/staff', require('./routes/staffRoutes'));
-//app.use('/api/finance', require('./routes/financeRoutes'));
-//app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
-//app.use('/api/print', require('./routes/printRoutes'));
-//app.use('/api/notifications', require('./routes/notificationRoutes'));
-//app.use('/api/promotions', require('./routes/promotionRoutes'));
-//app.use('/api/settings', require('./routes/settingsRoutes'));
-
-// app.use('/api/auth', require('./routes/authRoutes'));
-// app.use('/api/bookings', require('./routes/bookingRoutes'));
-// app.use('/api/guests', require('./routes/guestRoutes'));
-// app.use('/api/units', require('./routes/unitRoutes'));
-// app.use('/api/staff', require('./routes/staffRoutes'));
-
-// app.use('/api/finance', require('./routes/financeRoutes'));
-// app.use('/api/housekeeping', require('./routes/housekeepingRoutes'));
-// app.use('/api/print', require('./routes/printRoutes'));
-// app.use('/api/notifications', require('./routes/notificationRoutes'));
-// app.use('/api/promotions', require('./routes/promotionRoutes'));
-// app.use('/api/settings', require('./routes/settingsRoutes'));
-
