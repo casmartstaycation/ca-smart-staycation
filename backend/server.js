@@ -40,18 +40,19 @@ const app = express();
 // Security headers
 app.use(helmet());
 
-// CORS configuration
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
+const app = express();
+
+// Enable CORS
 app.use(cors({
   origin: [
     "https://casmartstaycation.github.io",
     "http://localhost:3000"
   ],
   credentials: true
+}));
+
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
 }));
 }));
 
