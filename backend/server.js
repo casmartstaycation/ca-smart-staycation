@@ -1,8 +1,9 @@
-// ============================================
+console.log("MONGODB_URI =", process.env.MONGODB_URI);// ============================================
 // CA SMART STAYCATION BACKEND
 // ============================================
 
 require('dotenv').config();
+console.log("MONGODB_URI =", process.env.MONGODB_URI);
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -61,6 +62,7 @@ mongoose.connect(process.env.MONGODB_URI)
 .catch(err => {
     console.error("MongoDB Error:", err);
 });
+
 // ============================================
 // ROUTES
 // ============================================

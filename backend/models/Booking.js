@@ -61,6 +61,15 @@ const bookingSchema = new mongoose.Schema({
     default: 'Reserved'
   },
 
+  housekeepingStatus: {
+    type: String,
+    enum: [
+        'Clean',
+        'Needs Cleaning'
+    ],
+    default: 'Clean'
+},
+
   notes: {
     type: String,
     default: ''
