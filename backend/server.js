@@ -87,6 +87,7 @@ app.use('/api', require('./routes/adminRoutes'));
 app.use('/api', require('./routes/roomRoutes'));
 app.use('/api', require('./routes/guestRoutes'));
 app.use('/api', require('./routes/bookingRoutes'));
+app.use("/api", require('./routes/parkingRoutes'));
 
 // ============================================
 // 404

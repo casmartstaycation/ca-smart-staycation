@@ -16,8 +16,8 @@ const bookingSchema = new mongoose.Schema({
   room: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Room',
-    required: true
-  },
+    default: null
+},
 
   checkIn: {
     type: Date,
@@ -70,11 +70,21 @@ const bookingSchema = new mongoose.Schema({
     default: 'Clean'
 },
 
-  notes: {
+parkingOnly: {
+    type: Boolean,
+    default: false
+},
+
+parking: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Parking',
+    default: null
+},
+
+notes: {
     type: String,
     default: ''
-  }
-
+}
 }, {
   timestamps: true
 });

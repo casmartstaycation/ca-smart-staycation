@@ -1,17 +1,26 @@
 const mongoose = require('mongoose');
 
 const roomSchema = new mongoose.Schema({
-  roomNumber: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true
-  },
-  roomName: {
-    type: String,
-    required: true,
-    trim: true
-  },
+
+    unitNumber: {
+        type: String,
+        required: true,
+        unique: true,
+        uppercase: true,
+        trim: true,
+        match: /^[A-Z]{1,3}[0-9]{3,5}$/
+    },
+
+    unitName: {
+        type: String,
+        required: true,
+        trim: true
+    },
+
+    category: {
+        type: String,
+        required: true
+    },
   category: {
     type: String,
     required: true
@@ -52,3 +61,4 @@ const roomSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('Room', roomSchema);
+

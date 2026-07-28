@@ -42,6 +42,33 @@ router.get('/bookings', async (req, res) => {
 // CREATE booking
 router.post('/bookings', async (req, res) => {
   try {
+
+    const {
+      room,
+      checkIn,
+      checkOut
+    } = req.body;
+
+    const existingBooking = await Booking.findOne({
+      room: room,
+      bookingStatus: {
+        $ne: "Cancelled"
+      },
+      checkIn: {
+        $lt: new Date(checkOut)
+      },
+      checkOut: {
+        $gt: new Date(checkIn)
+      }
+    });
+
+    if (existingBooking) {
+      return res.status(400).json({
+        status: "error",
+        message: "Room is already booked for the selected dates."
+      });
+    }
+
     const booking = new Booking(req.body);
     await booking.save();
 
