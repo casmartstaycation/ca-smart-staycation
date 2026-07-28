@@ -8,7 +8,7 @@ const roomSchema = new mongoose.Schema({
         unique: true,
         uppercase: true,
         trim: true,
-        match: /^[A-Z]{1,3}[0-9]{3,5}$/
+        match: /^[A-Z ]+[0-9]+$/
     },
 
     unitName: {
