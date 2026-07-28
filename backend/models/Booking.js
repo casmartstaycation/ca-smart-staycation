@@ -50,7 +50,7 @@ const bookingSchema = new mongoose.Schema({
     default: 'Pending'
   },
 
-  bookingStatus: {
+ bookingStatus: {
     type: String,
     enum: [
       'Reserved',
@@ -59,7 +59,7 @@ const bookingSchema = new mongoose.Schema({
       'Cancelled'
     ],
     default: 'Reserved'
-  },
+},
 
   housekeepingStatus: {
     type: String,
