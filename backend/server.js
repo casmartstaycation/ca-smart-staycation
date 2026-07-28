@@ -14,6 +14,9 @@ const path = require('path');
 
 const app = express();
 
+const settingsRoutes = require("./routes/settingsRoutes");
+console.log("✅ Loaded settingsRoutes");
+
 // ============================================
 // MIDDLEWARE
 // ============================================
@@ -88,6 +91,9 @@ app.use('/api', require('./routes/roomRoutes'));
 app.use('/api', require('./routes/guestRoutes'));
 app.use('/api', require('./routes/bookingRoutes'));
 app.use("/api", require('./routes/parkingRoutes'));
+app.use("/api/settings", settingsRoutes);
+
+
 
 // ============================================
 // 404
