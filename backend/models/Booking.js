@@ -7,11 +7,30 @@ const bookingSchema = new mongoose.Schema({
     unique: true
   },
 
-  guest: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Guest',
+  firstName: {
+    type: String,
     required: true
-  },
+},
+
+lastName: {
+    type: String,
+    required: true
+},
+
+email: {
+    type: String,
+    required: true
+},
+
+mobile: {
+    type: String,
+    required: true
+},
+
+address: {
+    type: String,
+    required: true
+},
 
   room: {
     type: mongoose.Schema.Types.ObjectId,

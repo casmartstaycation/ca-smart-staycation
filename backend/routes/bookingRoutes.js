@@ -10,14 +10,10 @@ const Parking = require("../models/Parking");
 // =====================================
 
 router.get("/test", (req, res) => {
-
     res.json({
-
         status: "success",
         message: "Booking routes working"
-
     });
-
 });
 
 // =====================================
@@ -25,34 +21,25 @@ router.get("/test", (req, res) => {
 // =====================================
 
 router.get("/bookings", async (req, res) => {
-
     try {
 
         const bookings = await Booking.find()
             .sort({ createdAt: -1 });
 
         res.json({
-
             status: "success",
-
             count: bookings.length,
-
             data: bookings
-
         });
 
     } catch (err) {
 
         res.status(500).json({
-
             status: "error",
-
             message: err.message
-
         });
 
     }
-
 });
 
 // =====================================
@@ -64,19 +51,13 @@ router.post("/bookings", async (req, res) => {
     try {
 
         const {
-
             room,
-
             checkIn,
-
             checkOut,
-
             parking
-
         } = req.body;
 
-        // Room conflict
-
+        // Check room conflict
         if (room) {
 
             const roomConflict = await Booking.findOne({
@@ -84,27 +65,15 @@ router.post("/bookings", async (req, res) => {
                 room,
 
                 bookingStatus: {
-
-                    $nin: [
-
-                        "Cancelled",
-
-                        "Checked Out"
-
-                    ]
-
+                    $nin: ["Cancelled", "Checked Out"]
                 },
 
                 checkIn: {
-
                     $lt: new Date(checkOut)
-
                 },
 
                 checkOut: {
-
                     $gt: new Date(checkIn)
-
                 }
 
             });
@@ -112,19 +81,15 @@ router.post("/bookings", async (req, res) => {
             if (roomConflict) {
 
                 return res.status(400).json({
-
                     status: "error",
-
                     message: "Room already booked."
-
                 });
 
             }
 
         }
 
-        // Parking conflict
-
+        // Check parking conflict
         if (parking) {
 
             const parkingConflict = await Booking.findOne({
@@ -132,27 +97,15 @@ router.post("/bookings", async (req, res) => {
                 parking,
 
                 bookingStatus: {
-
-                    $nin: [
-
-                        "Cancelled",
-
-                        "Checked Out"
-
-                    ]
-
+                    $nin: ["Cancelled", "Checked Out"]
                 },
 
                 checkIn: {
-
                     $lt: new Date(checkOut)
-
                 },
 
                 checkOut: {
-
                     $gt: new Date(checkIn)
-
                 }
 
             });
@@ -160,11 +113,8 @@ router.post("/bookings", async (req, res) => {
             if (parkingConflict) {
 
                 return res.status(400).json({
-
                     status: "error",
-
                     message: "Parking already booked."
-
                 });
 
             }
@@ -176,23 +126,15 @@ router.post("/bookings", async (req, res) => {
         await booking.save();
 
         res.status(201).json({
-
             status: "success",
-
             data: booking
-
         });
 
-    }
-
-    catch (err) {
+    } catch (err) {
 
         res.status(400).json({
-
             status: "error",
-
             message: err.message
-
         });
 
     }
@@ -208,49 +150,30 @@ router.put("/bookings/:id", async (req, res) => {
     try {
 
         const booking = await Booking.findByIdAndUpdate(
-
             req.params.id,
-
             req.body,
-
-            {
-
-                new: true
-
-            }
-
+            { new: true }
         );
 
         if (!booking) {
 
             return res.status(404).json({
-
                 status: "error",
-
                 message: "Booking not found"
-
             });
 
         }
 
         res.json({
-
             status: "success",
-
             data: booking
-
         });
 
-    }
-
-    catch (err) {
+    } catch (err) {
 
         res.status(400).json({
-
             status: "error",
-
             message: err.message
-
         });
 
     }
@@ -265,42 +188,27 @@ router.delete("/bookings/:id", async (req, res) => {
 
     try {
 
-        const booking = await Booking.findByIdAndDelete(
-
-            req.params.id
-
-        );
+        const booking = await Booking.findByIdAndDelete(req.params.id);
 
         if (!booking) {
 
             return res.status(404).json({
-
                 status: "error",
-
                 message: "Booking not found"
-
             });
 
         }
 
         res.json({
-
             status: "success",
-
             message: "Booking deleted"
-
         });
 
-    }
-
-    catch (err) {
+    } catch (err) {
 
         res.status(500).json({
-
             status: "error",
-
             message: err.message
-
         });
 
     }
@@ -320,11 +228,8 @@ router.put("/bookings/:id/checkin", async (req, res) => {
         if (!booking) {
 
             return res.status(404).json({
-
                 status: "error",
-
                 message: "Booking not found"
-
             });
 
         }
@@ -337,15 +242,10 @@ router.put("/bookings/:id/checkin", async (req, res) => {
         if (booking.room) {
 
             await Room.findByIdAndUpdate(
-
                 booking.room,
-
                 {
-
                     status: "Occupied"
-
                 }
-
             );
 
         }
@@ -353,37 +253,24 @@ router.put("/bookings/:id/checkin", async (req, res) => {
         if (booking.parking) {
 
             await Parking.findByIdAndUpdate(
-
                 booking.parking,
-
                 {
-
                     status: "Occupied"
-
                 }
-
             );
 
         }
 
         res.json({
-
             status: "success",
-
             message: "Guest checked in."
-
         });
 
-    }
-
-    catch (err) {
+    } catch (err) {
 
         res.status(500).json({
-
             status: "error",
-
             message: err.message
-
         });
 
     }
@@ -403,11 +290,8 @@ router.put("/bookings/:id/checkout", async (req, res) => {
         if (!booking) {
 
             return res.status(404).json({
-
                 status: "error",
-
                 message: "Booking not found"
-
             });
 
         }
@@ -420,37 +304,24 @@ router.put("/bookings/:id/checkout", async (req, res) => {
         if (booking.room) {
 
             await Room.findByIdAndUpdate(
-
                 booking.room,
-
                 {
-
                     status: "Needs Cleaning"
-
                 }
-
             );
 
         }
 
         res.json({
-
             status: "success",
-
             message: "Guest checked out."
-
         });
 
-    }
-
-    catch (err) {
+    } catch (err) {
 
         res.status(500).json({
-
             status: "error",
-
             message: err.message
-
         });
 
     }
@@ -470,11 +341,8 @@ router.put("/bookings/:id/clean", async (req, res) => {
         if (!booking) {
 
             return res.status(404).json({
-
                 status: "error",
-
                 message: "Booking not found"
-
             });
 
         }
@@ -486,15 +354,10 @@ router.put("/bookings/:id/clean", async (req, res) => {
         if (booking.room) {
 
             await Room.findByIdAndUpdate(
-
                 booking.room,
-
                 {
-
                     status: "Available"
-
                 }
-
             );
 
         }
@@ -502,72 +365,17 @@ router.put("/bookings/:id/clean", async (req, res) => {
         if (booking.parking) {
 
             await Parking.findByIdAndUpdate(
-
                 booking.parking,
-
                 {
-
                     status: "Available"
-
                 }
-
             );
 
         }
 
         res.json({
-
             status: "success",
-
             message: "Room cleaned."
-
-        });
-
-    }
-
-    catch (err) {
-
-        res.status(500).json({
-
-            status: "error",
-
-            message: err.message
-
-        });
-
-    }
-
-});
-
-module.exports = router;
-
-// CHECK IN
-router.put('/bookings/:id/checkin', async (req, res) => {
-
-    try {
-
-        const booking = await Booking.findById(req.params.id);
-
-        if (!booking) {
-            return res.status(404).json({
-                status: "error",
-                message: "Booking not found"
-            });
-        }
-
-        booking.bookingStatus = "Checked In";
-        await booking.save();
-
-        await Room.findByIdAndUpdate(
-            booking.room,
-            {
-                status: "Occupied"
-            }
-        );
-
-        res.json({
-            status: "success",
-            message: "Guest checked in successfully."
         });
 
     } catch (err) {
@@ -580,91 +388,5 @@ router.put('/bookings/:id/checkin', async (req, res) => {
     }
 
 });
-
-// CHECK OUT
-router.put('/bookings/:id/checkout', async (req, res) => {
-
-    try {
-
-        const booking = await Booking.findById(req.params.id);
-
-        if (!booking) {
-            return res.status(404).json({
-                status: "error",
-                message: "Booking not found"
-            });
-        }
-
-        booking.bookingStatus = "Completed";
-        await booking.save();
-
-        await Room.findByIdAndUpdate(
-            booking.room,
-            {
-                status: "Available"
-            }
-        );
-
-        res.json({
-            status: "success",
-            message: "Guest checked out successfully."
-        });
-
-    } catch (err) {
-
-        res.status(500).json({
-            status: "error",
-            message: err.message
-        });
-
-    }
-
-});
-
-// CHECK IN
-router.put("/bookings/:id/checkin", async (req, res) => {
-
-    try {
-
-        const booking = await Booking.findById(req.params.id);
-
-        if (!booking) {
-
-            return res.status(404).json({
-                status: "error",
-                message: "Booking not found"
-            });
-
-        }
-
-        booking.bookingStatus = "Checked In";
-
-        booking.housekeepingStatus = "Clean";
-
-        await booking.save();
-
-        res.json({
-
-            status: "success",
-
-            data: booking
-
-        });
-
-    } catch (err) {
-
-        res.status(500).json({
-
-            status: "error",
-
-            message: err.message
-
-        });
-
-    }
-
-});
-
-router.put("/bookings/:id/clean", )
 
 module.exports = router;
