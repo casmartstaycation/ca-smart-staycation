@@ -104,6 +104,12 @@ notes: {
     type: String,
     default: ''
 }
+
+paymentProof: {
+    type: String,
+    default: ""
+},
+
 }, {
   timestamps: true
 });

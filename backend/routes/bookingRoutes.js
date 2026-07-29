@@ -123,12 +123,18 @@ router.post("/bookings", async (req, res) => {
 
         const booking = new Booking(req.body);
 
-        await booking.save();
+await booking.save();
 
-        res.status(201).json({
-            status: "success",
-            data: booking
-        });
+res.status(201).json({
+    success: true,
+    message: "Booking submitted successfully.",
+    data: {
+        id: booking._id,
+        bookingReference: booking.bookingReference,
+        bookingStatus: booking.bookingStatus,
+        totalAmount: booking.totalAmount
+    }
+});
 
     } catch (err) {
 
