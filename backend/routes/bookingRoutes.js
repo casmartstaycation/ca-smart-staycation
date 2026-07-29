@@ -665,6 +665,6 @@ router.put("/bookings/:id/checkin", async (req, res) => {
 
 });
 
-router.put("/bookings/:id/clean", ...)
+router.put("/bookings/:id/clean", )
 
 module.exports = router;
