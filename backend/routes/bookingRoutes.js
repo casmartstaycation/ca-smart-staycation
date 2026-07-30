@@ -60,6 +60,11 @@ router.post("/bookings", async (req, res) => {
         // Check room conflict
         if (room) {
 
+            console.log("ROOM BEING CHECKED:", room);
+            console.log("CHECK-IN:", checkIn);
+            console.log("CHECK-OUT:", checkOut);
+            console.log("BOOKING COLLECTION:", Booking.collection.name);
+
             const roomConflict = await Booking.findOne({
 
                 room,
