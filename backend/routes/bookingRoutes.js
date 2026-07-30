@@ -60,42 +60,42 @@ router.post("/bookings", async (req, res) => {
         // Check room conflict
         if (room) {
 
-            console.log("ROOM BEING CHECKED:", room);
-            console.log("CHECK-IN:", checkIn);
-            console.log("CHECK-OUT:", checkOut);
-            console.log("BOOKING COLLECTION:", Booking.collection.name);
-            console.log("BOOKING COUNT:", await Booking.countDocuments());
+    console.log("ROOM BEING CHECKED:", room);
+    console.log("CHECK-IN:", checkIn);
+    console.log("CHECK-OUT:", checkOut);
+    console.log("BOOKING COLLECTION:", Booking.collection.name);
+    console.log("BOOKING COUNT:", await Booking.countDocuments());
 
+    const roomConflict = await Booking.findOne({
 
+        room,
 
-            const roomConflict = await Booking.findOne({
+        bookingStatus: {
+            $nin: ["Cancelled", "Checked Out"]
+        },
 
-                room,
+        checkIn: {
+            $lt: new Date(checkOut)
+        },
 
-                bookingStatus: {
-                    $nin: ["Cancelled", "Checked Out"]
-                },
-
-                checkIn: {
-                    $lt: new Date(checkOut)
-                },
-
-                checkOut: {
-                    $gt: new Date(checkIn)
-                }
-
-            });
-
-            if (roomConflict) {
-
-                return res.status(400).json({
-                    status: "error",
-                    message: "Room already booked."
-                });
-
-            }
-
+        checkOut: {
+            $gt: new Date(checkIn)
         }
+
+    });
+
+    console.log("ROOM CONFLICT FOUND:", roomConflict);
+
+    if (roomConflict) {
+
+        return res.status(400).json({
+            status: "error",
+            message: "Room already booked."
+        });
+
+    }
+
+}
 
         // Check parking conflict
         if (parking) {
