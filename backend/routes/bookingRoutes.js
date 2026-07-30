@@ -64,6 +64,9 @@ router.post("/bookings", async (req, res) => {
             console.log("CHECK-IN:", checkIn);
             console.log("CHECK-OUT:", checkOut);
             console.log("BOOKING COLLECTION:", Booking.collection.name);
+            console.log("BOOKING COUNT:", await Booking.countDocuments());
+
+
 
             const roomConflict = await Booking.findOne({
 
