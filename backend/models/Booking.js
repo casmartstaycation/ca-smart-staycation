@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const bookingSchema = new mongoose.Schema({
   bookingReference: {
@@ -10,33 +10,33 @@ const bookingSchema = new mongoose.Schema({
   firstName: {
     type: String,
     required: true
-},
+  },
 
-lastName: {
+  lastName: {
     type: String,
     required: true
-},
+  },
 
-email: {
+  email: {
     type: String,
     required: true
-},
+  },
 
-mobile: {
+  mobile: {
     type: String,
     required: true
-},
+  },
 
-address: {
+  address: {
     type: String,
     required: true
-},
+  },
 
   room: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Room',
+    ref: "Room",
     default: null
-},
+  },
 
   checkIn: {
     type: Date,
@@ -65,53 +65,53 @@ address: {
 
   paymentStatus: {
     type: String,
-    enum: ['Pending', 'Partial', 'Paid', 'Refunded'],
-    default: 'Pending'
+    enum: ["Pending", "Partial", "Paid", "Refunded"],
+    default: "Pending"
   },
 
- bookingStatus: {
+  bookingStatus: {
     type: String,
     enum: [
-      'Reserved',
-      'Checked In',
-      'Checked Out',
-      'Cancelled'
+      "Reserved",
+      "Checked In",
+      "Checked Out",
+      "Cancelled"
     ],
-    default: 'Reserved'
-},
+    default: "Reserved"
+  },
 
   housekeepingStatus: {
     type: String,
     enum: [
-        'Clean',
-        'Needs Cleaning'
+      "Clean",
+      "Needs Cleaning"
     ],
-    default: 'Clean'
-},
+    default: "Clean"
+  },
 
-parkingOnly: {
+  parkingOnly: {
     type: Boolean,
     default: false
-},
+  },
 
-parking: {
+  parking: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Parking',
+    ref: "Parking",
     default: null
-},
+  },
 
-notes: {
-    type: String,
-    default: ''
-}
-
-paymentProof: {
+  notes: {
     type: String,
     default: ""
-},
+  },
+
+  paymentProof: {
+    type: String,
+    default: ""
+  }
 
 }, {
   timestamps: true
 });
 
-module.exports = mongoose.model('Booking', bookingSchema);
+module.exports = mongoose.model("Booking", bookingSchema);

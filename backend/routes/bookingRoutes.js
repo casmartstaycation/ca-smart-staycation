@@ -48,6 +48,8 @@ router.get("/bookings", async (req, res) => {
 
 router.post("/bookings", async (req, res) => {
 
+    console.log("******** POST /api/bookings REACHED ********");
+
     try {
 
         const {
