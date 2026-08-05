@@ -100,12 +100,22 @@ const bookingSchema = new mongoose.Schema({
     default: null
   },
 
-  notes: {
+    notes: {
     type: String,
     default: ""
   },
 
   paymentProof: {
+    type: String,
+    default: ""
+  },
+
+  paymentDate: {
+    type: Date,
+    default: null
+  },
+
+  paymentReference: {
     type: String,
     default: ""
   }

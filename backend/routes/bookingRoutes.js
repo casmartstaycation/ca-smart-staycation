@@ -5,15 +5,56 @@ const Booking = require("../models/Booking");
 const Room = require("../models/Room");
 const Parking = require("../models/Parking");
 
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+
+// =====================================
+// CREATE PAYMENT FOLDER
+// =====================================
+
+const uploadDir = path.join(__dirname, "../uploads/payments");
+
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// =====================================
+// MULTER CONFIG
+// =====================================
+
+const storage = multer.diskStorage({
+
+    destination(req, file, cb) {
+        cb(null, uploadDir);
+    },
+
+    filename(req, file, cb) {
+
+        const ext = path.extname(file.originalname);
+
+        cb(null, Date.now() + ext);
+
+    }
+
+});
+
+const upload = multer({ storage });
+
 // =====================================
 // TEST
 // =====================================
 
 router.get("/test", (req, res) => {
+
     res.json({
+
         status: "success",
+
         message: "Booking routes working"
+
     });
+
 });
 
 // =====================================
@@ -21,25 +62,36 @@ router.get("/test", (req, res) => {
 // =====================================
 
 router.get("/bookings", async (req, res) => {
+
     try {
 
         const bookings = await Booking.find()
+            .populate("room")
+            .populate("parking")
             .sort({ createdAt: -1 });
 
         res.json({
-            status: "success",
-            count: bookings.length,
+
+            success: true,
+
             data: bookings
-        });
 
-    } catch (err) {
-
-        res.status(500).json({
-            status: "error",
-            message: err.message
         });
 
     }
+
+    catch (err) {
+
+        res.status(500).json({
+
+            success: false,
+
+            message: err.message
+
+        });
+
+    }
+
 });
 
 // =====================================
@@ -48,58 +100,71 @@ router.get("/bookings", async (req, res) => {
 
 router.post("/bookings", async (req, res) => {
 
-    console.log("******** POST /api/bookings REACHED ********");
-
     try {
 
         const {
+
             room,
+            parking,
             checkIn,
-            checkOut,
-            parking
+            checkOut
+
         } = req.body;
 
-        // Check room conflict
+        // ============================
+        // ROOM CONFLICT
+        // ============================
+
         if (room) {
 
-    console.log("ROOM BEING CHECKED:", room);
-    console.log("CHECK-IN:", checkIn);
-    console.log("CHECK-OUT:", checkOut);
-    console.log("BOOKING COLLECTION:", Booking.collection.name);
-    console.log("BOOKING COUNT:", await Booking.countDocuments());
+            const roomConflict = await Booking.findOne({
 
-    const roomConflict = await Booking.findOne({
+                room,
 
-        room,
+                bookingStatus: {
 
-        bookingStatus: {
-            $nin: ["Cancelled", "Checked Out"]
-        },
+                    $nin: [
 
-        checkIn: {
-            $lt: new Date(checkOut)
-        },
+                        "Cancelled",
 
-        checkOut: {
-            $gt: new Date(checkIn)
+                        "Checked Out"
+
+                    ]
+
+                },
+
+                checkIn: {
+
+                    $lt: new Date(checkOut)
+
+                },
+
+                checkOut: {
+
+                    $gt: new Date(checkIn)
+
+                }
+
+            });
+
+            if (roomConflict) {
+
+                return res.status(400).json({
+
+                    success: false,
+
+                    message: "Room already booked."
+
+                });
+
+            }
+
         }
 
-    });
+        // ============================
+        // PARKING CONFLICT
+        // ============================
 
-    console.log("ROOM CONFLICT FOUND:", roomConflict);
-
-    if (roomConflict) {
-
-        return res.status(400).json({
-            status: "error",
-            message: "Room already booked."
-        });
-
-    }
-
-}
-
-        // Check parking conflict
         if (parking) {
 
             const parkingConflict = await Booking.findOne({
@@ -107,15 +172,27 @@ router.post("/bookings", async (req, res) => {
                 parking,
 
                 bookingStatus: {
-                    $nin: ["Cancelled", "Checked Out"]
+
+                    $nin: [
+
+                        "Cancelled",
+
+                        "Checked Out"
+
+                    ]
+
                 },
 
                 checkIn: {
+
                     $lt: new Date(checkOut)
+
                 },
 
                 checkOut: {
+
                     $gt: new Date(checkIn)
+
                 }
 
             });
@@ -123,34 +200,58 @@ router.post("/bookings", async (req, res) => {
             if (parkingConflict) {
 
                 return res.status(400).json({
-                    status: "error",
-                    message: "Parking already booked."
+
+                    success: false,
+
+                    message: "Parking slot already reserved."
+
                 });
 
             }
 
         }
 
-        const booking = new Booking(req.body);
+        const bookingReference =
+            "CA" +
+            new Date()
+                .toISOString()
+                .slice(2,10)
+                .replace(/-/g,"") +
+            "-" +
+            Math.floor(
+                1000 + Math.random() * 9000
+            );
 
-await booking.save();
+        const booking = new Booking({
 
-res.status(201).json({
-    success: true,
-    message: "Booking submitted successfully.",
-    data: {
-        id: booking._id,
-        bookingReference: booking.bookingReference,
-        bookingStatus: booking.bookingStatus,
-        totalAmount: booking.totalAmount
+            ...req.body,
+
+            bookingReference
+
+        });
+
+        await booking.save();
+
+        res.status(201).json({
+
+            success: true,
+
+            message: "Booking created.",
+
+            data: booking
+
+        });
+
     }
-});
 
-    } catch (err) {
+    catch(err){
 
-        res.status(400).json({
-            status: "error",
-            message: err.message
+        res.status(500).json({
+
+            success:false,
+
+            message:err.message
+
         });
 
     }
@@ -166,30 +267,45 @@ router.put("/bookings/:id", async (req, res) => {
     try {
 
         const booking = await Booking.findByIdAndUpdate(
+
             req.params.id,
+
             req.body,
+
             { new: true }
+
         );
 
         if (!booking) {
 
             return res.status(404).json({
-                status: "error",
-                message: "Booking not found"
+
+                success: false,
+
+                message: "Booking not found."
+
             });
 
         }
 
         res.json({
-            status: "success",
+
+            success: true,
+
             data: booking
+
         });
 
-    } catch (err) {
+    }
 
-        res.status(400).json({
-            status: "error",
+    catch (err) {
+
+        res.status(500).json({
+
+            success: false,
+
             message: err.message
+
         });
 
     }
@@ -209,22 +325,33 @@ router.delete("/bookings/:id", async (req, res) => {
         if (!booking) {
 
             return res.status(404).json({
-                status: "error",
-                message: "Booking not found"
+
+                success: false,
+
+                message: "Booking not found."
+
             });
 
         }
 
         res.json({
-            status: "success",
-            message: "Booking deleted"
+
+            success: true,
+
+            message: "Booking deleted."
+
         });
 
-    } catch (err) {
+    }
+
+    catch (err) {
 
         res.status(500).json({
-            status: "error",
+
+            success: false,
+
             message: err.message
+
         });
 
     }
@@ -244,13 +371,17 @@ router.put("/bookings/:id/checkin", async (req, res) => {
         if (!booking) {
 
             return res.status(404).json({
-                status: "error",
-                message: "Booking not found"
+
+                success: false,
+
+                message: "Booking not found."
+
             });
 
         }
 
         booking.bookingStatus = "Checked In";
+
         booking.housekeepingStatus = "Clean";
 
         await booking.save();
@@ -258,10 +389,15 @@ router.put("/bookings/:id/checkin", async (req, res) => {
         if (booking.room) {
 
             await Room.findByIdAndUpdate(
+
                 booking.room,
+
                 {
+
                     status: "Occupied"
+
                 }
+
             );
 
         }
@@ -269,24 +405,37 @@ router.put("/bookings/:id/checkin", async (req, res) => {
         if (booking.parking) {
 
             await Parking.findByIdAndUpdate(
+
                 booking.parking,
+
                 {
+
                     status: "Occupied"
+
                 }
+
             );
 
         }
 
         res.json({
-            status: "success",
+
+            success: true,
+
             message: "Guest checked in."
+
         });
 
-    } catch (err) {
+    }
+
+    catch (err) {
 
         res.status(500).json({
-            status: "error",
+
+            success: false,
+
             message: err.message
+
         });
 
     }
@@ -306,13 +455,17 @@ router.put("/bookings/:id/checkout", async (req, res) => {
         if (!booking) {
 
             return res.status(404).json({
-                status: "error",
-                message: "Booking not found"
+
+                success: false,
+
+                message: "Booking not found."
+
             });
 
         }
 
         booking.bookingStatus = "Checked Out";
+
         booking.housekeepingStatus = "Needs Cleaning";
 
         await booking.save();
@@ -320,24 +473,53 @@ router.put("/bookings/:id/checkout", async (req, res) => {
         if (booking.room) {
 
             await Room.findByIdAndUpdate(
+
                 booking.room,
+
                 {
+
                     status: "Needs Cleaning"
+
                 }
+
+            );
+
+        }
+
+        if (booking.parking) {
+
+            await Parking.findByIdAndUpdate(
+
+                booking.parking,
+
+                {
+
+                    status: "Available"
+
+                }
+
             );
 
         }
 
         res.json({
-            status: "success",
+
+            success: true,
+
             message: "Guest checked out."
+
         });
 
-    } catch (err) {
+    }
+
+    catch (err) {
 
         res.status(500).json({
-            status: "error",
+
+            success: false,
+
             message: err.message
+
         });
 
     }
@@ -357,8 +539,11 @@ router.put("/bookings/:id/clean", async (req, res) => {
         if (!booking) {
 
             return res.status(404).json({
-                status: "error",
-                message: "Booking not found"
+
+                success: false,
+
+                message: "Booking not found."
+
             });
 
         }
@@ -370,10 +555,15 @@ router.put("/bookings/:id/clean", async (req, res) => {
         if (booking.room) {
 
             await Room.findByIdAndUpdate(
+
                 booking.room,
+
                 {
+
                     status: "Available"
+
                 }
+
             );
 
         }
@@ -381,28 +571,125 @@ router.put("/bookings/:id/clean", async (req, res) => {
         if (booking.parking) {
 
             await Parking.findByIdAndUpdate(
+
                 booking.parking,
+
                 {
+
                     status: "Available"
+
                 }
+
             );
 
         }
 
         res.json({
-            status: "success",
+
+            success: true,
+
             message: "Room cleaned."
+
         });
 
-    } catch (err) {
+    }
+
+    catch (err) {
 
         res.status(500).json({
-            status: "error",
+
+            success: false,
+
             message: err.message
+
         });
 
     }
 
 });
+
+// =====================================
+// UPLOAD PAYMENT PROOF
+// =====================================
+
+router.post(
+    "/bookings/:id/payment",
+    upload.single("paymentProof"),
+    async (req, res) => {
+
+        try {
+
+            console.log("========== PAYMENT UPLOAD ==========");
+            console.log("Booking ID:", req.params.id);
+            console.log("File:", req.file);
+
+            const booking = await Booking.findById(req.params.id);
+
+            if (!booking) {
+
+                return res.status(404).json({
+
+                    success: false,
+
+                    message: "Booking not found."
+
+                });
+
+            }
+
+            if (!req.file) {
+
+                return res.status(400).json({
+
+                    success: false,
+
+                    message: "No payment proof uploaded."
+
+                });
+
+            }
+
+            booking.paymentProof = req.file.filename;
+
+            booking.paymentDate = new Date();
+
+            booking.bookingStatus = "Pending Payment Verification";
+
+            await booking.save();
+
+            console.log("Payment proof saved.");
+
+            res.json({
+
+                success: true,
+
+                message: "Payment proof uploaded successfully.",
+
+                data: booking
+
+            });
+
+        }
+
+        catch (err) {
+
+            console.error(err);
+
+            res.status(500).json({
+
+                success: false,
+
+                message: err.message
+
+            });
+
+        }
+
+    }
+);
+
+// =====================================
+// EXPORT ROUTER
+// =====================================
 
 module.exports = router;
