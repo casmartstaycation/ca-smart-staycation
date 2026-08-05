@@ -693,6 +693,46 @@ router.post(
 );
 
 // =====================================
+// APPROVE PAYMENT
+// =====================================
+
+router.put("/bookings/:id/approve-payment", async (req, res) => {
+
+    try {
+
+        const booking = await Booking.findById(req.params.id);
+
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: "Booking not found."
+            });
+        }
+
+        booking.paymentStatus = "Paid";
+        booking.bookingStatus = "Reserved";
+
+        await booking.save();
+
+        res.json({
+            success: true,
+            message: "Payment approved.",
+            data: booking
+        });
+
+    } catch (err) {
+
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+});
+
+
+// =====================================
 // EXPORT ROUTER
 // =====================================
 
