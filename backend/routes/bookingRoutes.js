@@ -619,7 +619,8 @@ router.post(
 
         try {
 
-            console.log("========== PAYMENT UPLOAD ==========");
+            console.log("========== PAYMENT UPLOAD V2 ==========");
+            console.log("DEBUG VERSION 12345");
             console.log("Booking ID:", req.params.id);
             console.log("File:", req.file);
 
@@ -656,6 +657,9 @@ router.post(
             booking.bookingStatus = "Pending Payment Verification";
 
             await booking.save();
+
+            console.log("===== AFTER SAVE =====");
+            console.log(await Booking.findById(req.params.id));
 
             console.log("Payment proof saved.");
 
