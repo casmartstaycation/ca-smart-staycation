@@ -70,15 +70,16 @@ const bookingSchema = new mongoose.Schema({
   },
 
   bookingStatus: {
-    type: String,
-    enum: [
-      "Reserved",
-      "Checked In",
-      "Checked Out",
-      "Cancelled"
-    ],
-    default: "Reserved"
-  },
+  type: String,
+  enum: [
+    "Reserved",
+    "Pending Payment Verification",
+    "Checked In",
+    "Checked Out",
+    "Cancelled"
+  ],
+  default: "Reserved"
+},
 
   housekeepingStatus: {
     type: String,
