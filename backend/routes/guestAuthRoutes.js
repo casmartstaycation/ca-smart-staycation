@@ -126,4 +126,35 @@ router.get("/guest-auth/me", async (req, res) => {
   } catch (err) { res.status(401).json({ success: false, message: "Session expired or invalid." }); }
 });
 
+// Guest cancellation for accidental unpaid reservations.
+// Keep the record as Cancelled for audit/history; do not hard-delete it.
+// Only Reserved + unpaid + no payment proof may be cancelled here.
+router.post("/guest-auth/bookings/:id/cancel", async (req, res) => {
+  try {
+    const payload = verifyToken(req);
+    const account = await GuestAccount.findById(payload.accountId).lean();
+    if (!account) return res.status(401).json({ success: false, message: "Account not found." });
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ success: false, message: "Booking not found." });
+
+    if (String(booking.email || "").trim().toLowerCase() !== String(account.email || "").trim().toLowerCase()) {
+      return res.status(403).json({ success: false, message: "You are not allowed to cancel this booking." });
+    }
+
+    if (booking.bookingStatus !== "Reserved" || booking.paymentStatus === "Paid" || booking.paymentProof) {
+      return res.status(409).json({ success: false, message: "This booking can no longer be cancelled from the guest account. Please contact CA Smart Staycation for assistance." });
+    }
+
+    booking.bookingStatus = "Cancelled";
+    await booking.save();
+
+    res.json({ success: true, message: "Booking cancelled successfully. The reserved dates are now released.", data: booking });
+  } catch (err) {
+    console.error("GUEST CANCEL BOOKING ERROR:", err);
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") return res.status(401).json({ success: false, message: "Session expired or invalid." });
+    res.status(500).json({ success: false, message: "Unable to cancel this booking." });
+  }
+});
+
 module.exports = router;
