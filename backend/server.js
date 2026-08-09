@@ -72,6 +72,7 @@ app.use('/api', require('./routes/adminRoutes'));
 app.use('/api', require('./routes/roomRoutes'));
 app.use('/api', require('./routes/guestRoutes'));
 app.use('/api', require('./routes/guestAuthRoutes'));
+app.use('/api', require('./routes/paymentRecoveryRoutes'));
 app.use('/api', require('./routes/bookingRoutes'));
 app.use('/api', require('./routes/parkingRoutes'));
 app.use('/api/settings', settingsRoutes);
