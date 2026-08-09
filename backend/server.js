@@ -82,11 +82,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Normalize parking references returned to the guest calendar.
-// The booking records may contain MongoDB ObjectIds from an older/local
-// database. The guest calendar only needs to know that the single parking
-// resource is reserved, so expose the current active parking record's ID.
-app.get('/api/bookings-calendar', async (req, res) => {
+// Guest calendar booking feed.
+// Normalize any booking that has a parking reference to the current
+// active parking record. This prevents local/Render MongoDB ObjectId
+// differences from making the calendar treat the same parking resource
+// as a different slot.
+app.get('/api/bookings', async (req, res) => {
   try {
     const [bookings, currentParking] = await Promise.all([
       Booking.find().populate("room").lean().sort({ createdAt: -1 }),
@@ -110,7 +111,7 @@ app.get('/api/bookings-calendar', async (req, res) => {
       data: normalizedBookings
     });
   } catch (err) {
-    console.error("Calendar bookings error:", err);
+    console.error("Guest calendar bookings error:", err);
     res.status(500).json({
       success: false,
       message: err.message
