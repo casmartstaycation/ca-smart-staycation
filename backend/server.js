@@ -14,6 +14,8 @@ const path = require('path');
 
 const app = express();
 
+const Booking = require("./models/Booking");
+const Parking = require("./models/Parking");
 const settingsRoutes = require("./routes/settingsRoutes");
 console.log("✅ Loaded settingsRoutes");
 
@@ -21,10 +23,8 @@ console.log("✅ Loaded settingsRoutes");
 // MIDDLEWARE
 // ============================================
 
-// Security
 app.use(helmet());
 
-// CORS
 app.use(cors({
   origin: [
     "https://casmartstaycation.github.io",
@@ -35,10 +35,8 @@ app.use(cors({
   credentials: true
 }));
 
-// Logging
 app.use(morgan('dev'));
 
-// Body parser
 app.use(express.json({
   limit: '10mb'
 }));
@@ -48,7 +46,6 @@ app.use(express.urlencoded({
   limit: '10mb'
 }));
 
-// Static uploads
 app.use(
   '/uploads',
   express.static(path.join(__dirname, 'uploads'))
@@ -85,6 +82,42 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Normalize parking references returned to the guest calendar.
+// The booking records may contain MongoDB ObjectIds from an older/local
+// database. The guest calendar only needs to know that the single parking
+// resource is reserved, so expose the current active parking record's ID.
+app.get('/api/bookings-calendar', async (req, res) => {
+  try {
+    const [bookings, currentParking] = await Promise.all([
+      Booking.find().populate("room").lean().sort({ createdAt: -1 }),
+      Parking.findOne({ parkingNumber: "SLOT 9" }).lean()
+        .then(slot => slot || Parking.findOne().lean())
+    ]);
+
+    const normalizedBookings = bookings.map(booking => {
+      if (booking.parking && currentParking) {
+        return {
+          ...booking,
+          parking: currentParking
+        };
+      }
+
+      return booking;
+    });
+
+    res.json({
+      success: true,
+      data: normalizedBookings
+    });
+  } catch (err) {
+    console.error("Calendar bookings error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+});
+
 // API Routes
 app.use('/api', require('./routes/adminRoutes'));
 app.use('/api', require('./routes/roomRoutes'));
@@ -92,8 +125,6 @@ app.use('/api', require('./routes/guestRoutes'));
 app.use('/api', require('./routes/bookingRoutes'));
 app.use("/api", require('./routes/parkingRoutes'));
 app.use("/api/settings", settingsRoutes);
-
-
 
 // ============================================
 // 404
@@ -105,6 +136,7 @@ app.use((req, res) => {
     message: 'Route not found'
   });
 });
+
 // ============================================
 // START SERVER
 // ============================================
