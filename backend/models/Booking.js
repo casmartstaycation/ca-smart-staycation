@@ -26,7 +26,8 @@ const bookingSchema = new mongoose.Schema({
       "Payment Rejected",
       "Checked In",
       "Checked Out",
-      "Cancelled"
+      "Cancelled",
+      "Expired"
     ],
     default: "Reserved"
   },
@@ -40,7 +41,8 @@ const bookingSchema = new mongoose.Schema({
   notes: { type: String, default: "" },
   paymentProof: { type: String, default: "" },
   paymentDate: { type: Date, default: null },
-  paymentReference: { type: String, default: "" }
+  paymentReference: { type: String, default: "" },
+  paymentDeadline: { type: Date, default: null }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Booking", bookingSchema);
