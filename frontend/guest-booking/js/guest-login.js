@@ -34,7 +34,11 @@ form.addEventListener("submit", async (e) => {
         const booking = result.bookings?.[0];
         if (booking) localStorage.setItem("guestBooking", JSON.stringify(booking));
 
-        window.location.href = "guest-dashboard.html";
+        if (result.account?.mustChangePassword) {
+            window.location.href = "change-password.html";
+        } else {
+            window.location.href = "guest-dashboard.html";
+        }
     } catch (err) {
         console.error(err);
         alert("Unable to connect to the server.");
