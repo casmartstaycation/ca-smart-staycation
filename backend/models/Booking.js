@@ -40,8 +40,14 @@ const bookingSchema = new mongoose.Schema({
   parking: { type: mongoose.Schema.Types.ObjectId, ref: "Parking", default: null },
   notes: { type: String, default: "" },
   paymentProof: { type: String, default: "" },
+  paymentProofHistory: [{
+    filename: { type: String, required: true },
+    rejectedAt: { type: Date, default: Date.now },
+    rejectionReason: { type: String, default: "" }
+  }],
   paymentDate: { type: Date, default: null },
   paymentReference: { type: String, default: "" },
+  paymentRejectionReason: { type: String, default: "" },
   paymentDeadline: { type: Date, default: null }
 }, { timestamps: true });
 
