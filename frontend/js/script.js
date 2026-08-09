@@ -42,6 +42,8 @@ let settings = {
 };
 
 let rooms = [];
+let parkingSlots = [];
+let selectedParkingId = null;
 let bookedDates = [];
 
 let currentDate = new Date();
@@ -89,6 +91,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         await loadSettings();
         await loadRooms();
+        await loadParkingSlots();
         await loadBookedDates();
 
         setupEvents();
@@ -199,6 +202,54 @@ async function loadRooms() {
     } catch (err) {
 
         console.error("loadRooms ERROR:", err);
+
+    }
+
+}
+
+/* =========================================
+   LOAD PARKING SLOTS
+========================================= */
+
+async function loadParkingSlots() {
+
+    try {
+
+        const res = await fetch(`${API}/parking`);
+        const json = await res.json();
+
+        if (!res.ok) {
+            throw new Error(json.message || "Unable to load parking slots.");
+        }
+
+        parkingSlots = Array.isArray(json.data)
+            ? json.data
+            : [];
+
+        // Prefer the existing business slot by name/number, but always
+        // use its ID from the active database instead of hardcoding an ID.
+        const preferredParking = parkingSlots.find(slot =>
+            String(slot.parkingNumber || "").trim().toUpperCase() === "SLOT 9" ||
+            String(slot.parkingName || "").trim().toUpperCase() === "BAY 4"
+        );
+
+        const parking = preferredParking || parkingSlots[0] || null;
+
+        selectedParkingId = parking?._id || null;
+
+        console.log("PARKING SLOTS:", parkingSlots);
+        console.log("SELECTED PARKING:", parking);
+
+        if (!selectedParkingId) {
+            console.warn("No parking slot is available from /api/parking.");
+        }
+
+    } catch (err) {
+
+        parkingSlots = [];
+        selectedParkingId = null;
+
+        console.error("Failed to load parking slots:", err);
 
     }
 
@@ -620,17 +671,16 @@ async function submitBooking(event) {
 
 let parking = null;
 
-// Accommodation + Parking
-if (bookingType === "both") {
+// Accommodation + Parking / Parking Only
+if (bookingType === "both" || bookingType === "parking") {
 
-    parking = "6a68d96447b7608e22fe9f0f";
+    // Use the parking ID loaded from the active database.
+    parking = selectedParkingId;
 
-}
-
-// Parking Only
-else if (bookingType === "parking") {
-
-    parking = "6a68d96447b7608e22fe9f0f";
+    if (!parking) {
+        alert("Parking is currently unavailable. Please try again shortly.");
+        return;
+    }
 
 }
 
@@ -822,8 +872,7 @@ function isDateBooked(date) {
     const selectedRoom =
         document.getElementById("room")?.value || "";
 
-    const selectedParking =
-    "6a68d96447b7608e22fe9f0f";
+    const selectedParking = selectedParkingId;
 
 
     const target = new Date(date);
@@ -895,6 +944,7 @@ const bookedParking =
         if (bookingType === "parking") {
 
             if (
+                selectedParking &&
                 bookedParking &&
                 String(bookedParking) === String(selectedParking)
             ) {
@@ -918,6 +968,7 @@ const bookedParking =
 
 
             if (
+                selectedParking &&
                 bookedParking &&
                 String(bookedParking) === String(selectedParking)
             ) {
