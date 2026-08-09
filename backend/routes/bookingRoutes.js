@@ -103,13 +103,20 @@ router.post("/bookings", async (req, res) => {
     try {
 
         const {
+    room,
+    parking,
+    parkingOnly,
+    checkIn,
+    checkOut
+} = req.body;
 
-            room,
-            parking,
-            checkIn,
-            checkOut
-
-        } = req.body;
+console.log("========== CREATE BOOKING DEBUG ==========");
+console.log("room =", room);
+console.log("parking =", parking);
+console.log("parkingOnly =", parkingOnly);
+console.log("checkIn =", checkIn);
+console.log("checkOut =", checkOut);
+console.log("==========================================");
 
         // ============================
         // ROOM CONFLICT
@@ -199,15 +206,26 @@ router.post("/bookings", async (req, res) => {
 
             if (parkingConflict) {
 
-                return res.status(400).json({
+    console.log("========== PARKING CONFLICT FOUND ==========");
+    console.log("CONFLICT BOOKING ID =", parkingConflict._id);
+    console.log("CONFLICT REFERENCE =", parkingConflict.bookingReference);
+    console.log("CONFLICT PARKING =", parkingConflict.parking);
+    console.log("CONFLICT PARKING ONLY =", parkingConflict.parkingOnly);
+    console.log("CONFLICT ROOM =", parkingConflict.room);
+    console.log("CONFLICT CHECK-IN =", parkingConflict.checkIn);
+    console.log("CONFLICT CHECK-OUT =", parkingConflict.checkOut);
+    console.log("CONFLICT STATUS =", parkingConflict.bookingStatus);
+    console.log("=============================================");
 
-                    success: false,
+    return res.status(400).json({
 
-                    message: "Parking slot already reserved."
+        success: false,
 
-                });
+        message: "Parking slot already reserved."
 
-            }
+    });
+
+}
 
         }
 
@@ -224,13 +242,25 @@ router.post("/bookings", async (req, res) => {
 
         const booking = new Booking({
 
-            ...req.body,
+    ...req.body,
 
-            bookingReference
+    bookingReference
 
-        });
+});
 
-        await booking.save();
+console.log("========== BEFORE SAVE ==========");
+console.log("REQ BODY PARKING =", req.body.parking);
+console.log("BOOKING PARKING =", booking.parking);
+console.log("BOOKING PARKING ONLY =", booking.parkingOnly);
+console.log("=================================");
+
+await booking.save();
+
+console.log("========== AFTER SAVE ==========");
+console.log("SAVED PARKING =", booking.parking);
+console.log("SAVED PARKING ONLY =", booking.parkingOnly);
+console.log("SAVED ID =", booking._id);
+console.log("================================");
 
         res.status(201).json({
 
