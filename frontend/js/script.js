@@ -14,21 +14,13 @@ const governmentIdInput = document.getElementById("governmentId");
 const governmentIdName = document.getElementById("governmentIdName");
 
 if (governmentIdInput && governmentIdName) {
-
     governmentIdInput.addEventListener("change", function () {
-
         if (this.files && this.files.length > 0) {
-
             governmentIdName.textContent = this.files[0].name;
-
         } else {
-
             governmentIdName.textContent = "No file selected";
-
         }
-
     });
-
 }
 
 /* =========================================
@@ -44,6 +36,7 @@ let settings = {
 let rooms = [];
 let parkingSlots = [];
 let selectedParkingId = null;
+let selectedParkingNumber = null;
 let bookedDates = [];
 
 let currentDate = new Date();
@@ -58,25 +51,18 @@ let selectedCheckOut = null;
 ========================================= */
 
 function setMinimumDates() {
-
-    const checkIn =
-        document.getElementById("checkIn");
-
-    const checkOut =
-        document.getElementById("checkOut");
+    const checkIn = document.getElementById("checkIn");
+    const checkOut = document.getElementById("checkOut");
 
     if (!checkIn || !checkOut) return;
 
     const today = new Date();
-
     today.setHours(0, 0, 0, 0);
 
-    const minDate =
-        today.toISOString().split("T")[0];
+    const minDate = today.toISOString().split("T")[0];
 
     checkIn.min = minDate;
     checkOut.min = minDate;
-
 }
 
 /* =========================================
@@ -84,9 +70,7 @@ function setMinimumDates() {
 ========================================= */
 
 document.addEventListener("DOMContentLoaded", async () => {
-
     try {
-
         setMinimumDates();
 
         await loadSettings();
@@ -96,24 +80,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         setupEvents();
 
-    const form = document.getElementById("guestBookingForm");
-
-    if (form) {
-    form.addEventListener("submit", submitBooking);
-}    
-
+        const form = document.getElementById("guestBookingForm");
+        if (form) {
+            form.addEventListener("submit", submitBooking);
+        }
     } catch (err) {
-
         console.error(err);
-
     }
-
 });
 
 window.addEventListener("load", () => {
-
     renderCalendar();
-
 });
 
 /* =========================================
@@ -121,28 +98,19 @@ window.addEventListener("load", () => {
 ========================================= */
 
 async function loadSettings() {
-
     try {
-
         const res = await fetch(`${API}/settings`);
-
         const json = await res.json();
 
         if (res.ok && json.data) {
-
             settings = {
                 ...settings,
                 ...json.data
             };
-
         }
-
     } catch (err) {
-
         console.warn("Unable to load settings. Using defaults.");
-
     }
-
 }
 
 /* =========================================
@@ -150,45 +118,21 @@ async function loadSettings() {
 ========================================= */
 
 async function loadRooms() {
-
-    console.log("1. loadRooms started");
-
     try {
-
-        console.log("2. fetching...");
-
         const res = await fetch(`${API}/rooms`);
-
-        console.log("3. response received");
-
         const json = await res.json();
-
-        console.log("4. json", json);
 
         rooms = json.data || [];
 
-        console.log("5. rooms", rooms);
-
         const roomSelect = document.getElementById("room");
-
-        console.log("6. select", roomSelect);
+        if (!roomSelect) return;
 
         roomSelect.innerHTML =
             '<option value="">Select Accommodation</option>';
 
         rooms.forEach(room => {
-
-            console.log("Adding room:", room);
-
-            const number =
-                room.unitNumber ||
-                room.roomNumber ||
-                "";
-
-            const name =
-                room.unitName ||
-                room.roomName ||
-                "Room";
+            const number = room.unitNumber || room.roomNumber || "";
+            const name = room.unitName || room.roomName || "Room";
 
             roomSelect.innerHTML += `
                 <option value="${room._id}">
@@ -196,15 +140,9 @@ async function loadRooms() {
                 </option>
             `;
         });
-
-        console.log("7. Finished");
-
     } catch (err) {
-
         console.error("loadRooms ERROR:", err);
-
     }
-
 }
 
 /* =========================================
@@ -212,9 +150,7 @@ async function loadRooms() {
 ========================================= */
 
 async function loadParkingSlots() {
-
     try {
-
         const res = await fetch(`${API}/parking`);
         const json = await res.json();
 
@@ -222,12 +158,9 @@ async function loadParkingSlots() {
             throw new Error(json.message || "Unable to load parking slots.");
         }
 
-        parkingSlots = Array.isArray(json.data)
-            ? json.data
-            : [];
+        parkingSlots = Array.isArray(json.data) ? json.data : [];
 
-        // Prefer the existing business slot by name/number, but always
-        // use its ID from the active database instead of hardcoding an ID.
+        // Use the active database record. Never hardcode a MongoDB _id.
         const preferredParking = parkingSlots.find(slot =>
             String(slot.parkingNumber || "").trim().toUpperCase() === "SLOT 9" ||
             String(slot.parkingName || "").trim().toUpperCase() === "BAY 4"
@@ -236,23 +169,16 @@ async function loadParkingSlots() {
         const parking = preferredParking || parkingSlots[0] || null;
 
         selectedParkingId = parking?._id || null;
+        selectedParkingNumber = parking?.parkingNumber || null;
 
         console.log("PARKING SLOTS:", parkingSlots);
         console.log("SELECTED PARKING:", parking);
-
-        if (!selectedParkingId) {
-            console.warn("No parking slot is available from /api/parking.");
-        }
-
     } catch (err) {
-
         parkingSlots = [];
         selectedParkingId = null;
-
+        selectedParkingNumber = null;
         console.error("Failed to load parking slots:", err);
-
     }
-
 }
 
 /* =========================================
@@ -260,58 +186,30 @@ async function loadParkingSlots() {
 ========================================= */
 
 async function loadBookedDates() {
-
     try {
-
         const res = await fetch(`${API}/bookings`);
         const json = await res.json();
 
-        if (res.ok) {
-            bookedDates = json.data || [];
-        } else {
-            bookedDates = [];
-        }
+        bookedDates = res.ok ? (json.data || []) : [];
 
         console.log("BOOKINGS:", bookedDates);
 
-        console.log(
-    "SEPTEMBER 13-14 ALL BOOKINGS:",
-    bookedDates.filter(b =>
-        b.checkIn?.startsWith("2026-09-13") ||
-        b.checkOut?.startsWith("2026-09-14") ||
-        (
-            b.checkIn &&
-            b.checkOut &&
-            new Date(b.checkIn) <= new Date("2026-09-13") &&
-            new Date(b.checkOut) > new Date("2026-09-13")
-        )
-    )
-);
-
         console.table(bookedDates.map(b => ({
-    ref: b.bookingReference,
-    parking: b.parking,
-    parkingOnly: b.parkingOnly,
-    room: b.room,
-    checkIn: b.checkIn,
-    checkOut: b.checkOut
-})));
+            ref: b.bookingReference,
+            parking: b.parking,
+            parkingOnly: b.parkingOnly,
+            room: b.room,
+            checkIn: b.checkIn,
+            checkOut: b.checkOut,
+            status: b.bookingStatus
+        })));
 
-
-        // Re-render AFTER bookings are loaded
         renderCalendar();
-
     } catch (err) {
-
         console.error("Failed to load booked dates:", err);
-
         bookedDates = [];
-
-        // Still render an empty calendar
         renderCalendar();
-
     }
-
 }
 
 /* =========================================
@@ -319,7 +217,6 @@ async function loadBookedDates() {
 ========================================= */
 
 function setupEvents() {
-
     const room = document.getElementById("room");
     const guests = document.getElementById("guests");
     const parking = document.getElementById("parking");
@@ -343,7 +240,6 @@ function setupEvents() {
     if (bookingType) {
         bookingType.addEventListener("change", bookingTypeChanged);
     }
-
 }
 
 /* =========================================
@@ -351,18 +247,14 @@ function setupEvents() {
 ========================================= */
 
 function bookingTypeChanged() {
-
     const bookingType = document.getElementById("bookingType").value;
-
     const room = document.getElementById("room");
     const guests = document.getElementById("guests");
     const children = document.getElementById("children");
-
     const vehicleSection = document.getElementById("vehicleSection");
     const bookingNotes = document.getElementById("bookingNotes");
 
     if (bookingType === "parking") {
-
         room.value = "";
         room.disabled = true;
 
@@ -376,49 +268,22 @@ function bookingTypeChanged() {
             children.disabled = true;
         }
 
-        if (vehicleSection)
-            vehicleSection.style.display = "block";
-
-        if (bookingNotes)
-            bookingNotes.style.display = "none";
-
-    }
-    else if (bookingType === "both") {
-
+        if (vehicleSection) vehicleSection.style.display = "block";
+        if (bookingNotes) bookingNotes.style.display = "none";
+    } else if (bookingType === "both") {
         room.disabled = false;
-
-        if (guests)
-            guests.disabled = false;
-
-        if (children)
-            children.disabled = false;
-
-        if (vehicleSection)
-            vehicleSection.style.display = "block";
-
-        if (bookingNotes)
-            bookingNotes.style.display = "block";
-
-    }
-    else { // Accommodation Only
-
+        if (guests) guests.disabled = false;
+        if (children) children.disabled = false;
+        if (vehicleSection) vehicleSection.style.display = "block";
+        if (bookingNotes) bookingNotes.style.display = "block";
+    } else {
         room.disabled = false;
-
-        if (guests)
-            guests.disabled = false;
-
-        if (children)
-            children.disabled = false;
-
-        if (vehicleSection)
-            vehicleSection.style.display = "none";
-
-        if (bookingNotes)
-            bookingNotes.style.display = "block";
-
+        if (guests) guests.disabled = false;
+        if (children) children.disabled = false;
+        if (vehicleSection) vehicleSection.style.display = "none";
+        if (bookingNotes) bookingNotes.style.display = "block";
     }
 
-    // Clear selected dates
     selectedCheckIn = null;
     selectedCheckOut = null;
 
@@ -426,9 +291,7 @@ function bookingTypeChanged() {
     document.getElementById("checkOut").value = "";
 
     calculateTotal();
-
     loadBookedDates();
-
 }
 
 /* =========================================
@@ -436,135 +299,73 @@ function bookingTypeChanged() {
 ========================================= */
 
 function calculateTotal() {
-
-    const bookingType =
-        document.getElementById("bookingType").value;
-
-    const roomId =
-        document.getElementById("room")?.value;
-
-    const checkIn =
-        document.getElementById("checkIn")?.value;
-
-    const checkOut =
-        document.getElementById("checkOut")?.value;
+    const bookingType = document.getElementById("bookingType").value;
+    const roomId = document.getElementById("room")?.value;
+    const checkIn = document.getElementById("checkIn")?.value;
+    const checkOut = document.getElementById("checkOut")?.value;
 
     if (!checkIn || !checkOut) {
-
-        updateSummary(0,0,0,0,0);
-        return;
-
-    }
-
-    // PARKING ONLY
-    if (bookingType === "parking") {
-
-        const start = new Date(checkIn);
-        const end = new Date(checkOut);
-
-        const nights =
-            Math.ceil(
-                (end - start) /
-                (1000 * 60 * 60 * 24)
-            );
-
-        if (nights <= 0) {
-
-            updateSummary(0,0,0,0,0);
-            return;
-
-        }
-
-        const parkingTotal =
-            Number(settings.parkingRate) * nights;
-
-        updateSummary(
-            0,
-            0,
-            parkingTotal,
-            0,
-            parkingTotal
-        );
-
-        return;
-    }
-
-    // From this point onward,
-    // room is REQUIRED.
-    if (!roomId) {
-
-        updateSummary(0,0,0,0,0);
-        return;
-
-    }
-
-
-
-    const room =
-        rooms.find(r => r._id === roomId);
-
-    if (!room) return;
-
-    const start =
-        new Date(checkIn);
-
-    const end =
-        new Date(checkOut);
-
-    const nights =
-        Math.ceil(
-            (end - start) /
-            (1000 * 60 * 60 * 24)
-        );
-
-    if (nights <= 0) {
-
         updateSummary(0, 0, 0, 0, 0);
         return;
-
     }
 
-    let roomTotal =
-        nights * Number(room.price || 0);
+    if (bookingType === "parking") {
+        const start = new Date(checkIn);
+        const end = new Date(checkOut);
+        const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
+        if (nights <= 0) {
+            updateSummary(0, 0, 0, 0, 0);
+            return;
+        }
+
+        const parkingTotal = Number(settings.parkingRate) * nights;
+        updateSummary(0, 0, parkingTotal, 0, parkingTotal);
+        return;
+    }
+
+    if (!roomId) {
+        updateSummary(0, 0, 0, 0, 0);
+        return;
+    }
+
+    const room = rooms.find(r => r._id === roomId);
+    if (!room) return;
+
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+    if (nights <= 0) {
+        updateSummary(0, 0, 0, 0, 0);
+        return;
+    }
+
+    const roomTotal = nights * Number(room.price || 0);
     let extraAdultTotal = 0;
 
-    const guests =
-        Number(
-            document.getElementById("guests")?.value || 1
-        );
+    const guests = Number(document.getElementById("guests")?.value || 1);
 
     if (guests > Number(room.capacity || 2)) {
-
         extraAdultTotal =
             (guests - room.capacity) *
             settings.extraAdultFee *
             nights;
-
     }
 
-  let parkingTotal = 0;
+    let parkingTotal = 0;
 
-if (
-    bookingType === "parking" ||
-    bookingType === "both"
-) {
+    if (bookingType === "both") {
+        parkingTotal = Number(settings.parkingRate || 0) * nights;
+    }
 
-    parkingTotal =
-        Number(settings.parkingRate || 0) * nights;
+    const securityDeposit = Number(settings.securityDeposit || 0);
 
-}
-
-    const securityDeposit =
-    bookingType === "parking"
-        ? 0
-        : Number(settings.securityDeposit || 0);
-
-const total =
-    roomTotal +
-    extraAdultTotal +
-    parkingTotal +
-    securityDeposit;
+    const total =
+        roomTotal +
+        extraAdultTotal +
+        parkingTotal +
+        securityDeposit;
 
     updateSummary(
         roomTotal,
@@ -573,57 +374,24 @@ const total =
         securityDeposit,
         total
     );
-    
-
 }
-
 
 /* =========================================
    UPDATE SUMMARY
 ========================================= */
 
-function updateSummary(
-    roomTotal,
-    extraAdultTotal,
-    parkingTotal,
-    securityDeposit,
-    total
-) {
+function updateSummary(roomTotal, extraAdultTotal, parkingTotal, securityDeposit, total) {
+    const roomAmount = document.getElementById("roomAmount");
+    const extraAmount = document.getElementById("extraGuestAmount");
+    const parkingAmount = document.getElementById("parkingAmount");
+    const securityDepositAmount = document.getElementById("securityDepositAmount");
+    const totalAmount = document.getElementById("totalAmount");
 
-    const roomAmount =
-        document.getElementById("roomAmount");
-
-    const extraAmount =
-        document.getElementById("extraGuestAmount");
-
-    const parkingAmount =
-        document.getElementById("parkingAmount");
-
-    const securityDepositAmount =
-        document.getElementById("securityDepositAmount");
-
-    const totalAmount =
-        document.getElementById("totalAmount");
-
-    if (roomAmount)
-        roomAmount.innerText =
-            "₱" + Number(roomTotal).toLocaleString();
-
-    if (extraAmount)
-        extraAmount.innerText =
-            "₱" + Number(extraAdultTotal).toLocaleString();
-
-    if (parkingAmount)
-        parkingAmount.innerText =
-            "₱" + Number(parkingTotal).toLocaleString();
-
-    if (securityDepositAmount)
-        securityDepositAmount.innerText =
-            "₱" + Number(securityDeposit).toLocaleString();
-
-    if (totalAmount)
-        totalAmount.innerText =
-            "₱" + Number(total).toLocaleString();
+    if (roomAmount) roomAmount.innerText = "₱" + Number(roomTotal).toLocaleString();
+    if (extraAmount) extraAmount.innerText = "₱" + Number(extraAdultTotal).toLocaleString();
+    if (parkingAmount) parkingAmount.innerText = "₱" + Number(parkingTotal).toLocaleString();
+    if (securityDepositAmount) securityDepositAmount.innerText = "₱" + Number(securityDeposit).toLocaleString();
+    if (totalAmount) totalAmount.innerText = "₱" + Number(total).toLocaleString();
 }
 
 /* =========================================
@@ -631,232 +399,153 @@ function updateSummary(
 ========================================= */
 
 async function submitBooking(event) {
-
-      console.log("submitBooking() called");
-
-      console.log("BOOKING TYPE =", document.getElementById("bookingType").value);
-
     event.preventDefault();
 
     try {
+        const room = document.getElementById("room").value;
+        const checkIn = document.getElementById("checkIn").value;
+        const checkOut = document.getElementById("checkOut").value;
+        const guests = Number(document.getElementById("guests").value);
+        const firstName = document.getElementById("firstName").value.trim();
+        const lastName = document.getElementById("lastName").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const mobile = document.getElementById("mobile").value.trim();
+        const bookingType = document.getElementById("bookingType").value;
 
-        const room =
-            document.getElementById("room").value;
+        let parking = null;
 
-        const checkIn =
-            document.getElementById("checkIn").value;
+        if (bookingType === "both" || bookingType === "parking") {
+            // Always use the ID returned by /api/parking.
+            parking = selectedParkingId;
 
-        const checkOut =
-            document.getElementById("checkOut").value;
+            if (!parking) {
+                alert("Parking is currently unavailable. Please try again shortly.");
+                return;
+            }
+        }
 
-        const guests =
-            Number(document.getElementById("guests").value);
+        if (!checkIn || !checkOut || !firstName || !lastName || !email || !mobile) {
+            alert("Please complete all required fields.");
+            return;
+        }
 
-        const firstName =
-            document.getElementById("firstName").value.trim();
+        if (bookingType !== "parking" && !room) {
+            alert("Please select an accommodation.");
+            return;
+        }
 
-        const lastName =
-            document.getElementById("lastName").value.trim();
+        if (bookingType === "parking" || bookingType === "both") {
+            if (
+                !document.getElementById("vehicleBrand").value.trim() ||
+                !document.getElementById("vehicleModel").value.trim() ||
+                !document.getElementById("vehicleColor").value.trim() ||
+                !document.getElementById("plateNumber").value.trim()
+            ) {
+                alert("Please complete all vehicle information.");
+                return;
+            }
+        }
 
-        const email =
-            document.getElementById("email").value.trim();
+        // Final client-side availability check immediately before POST.
+        // This keeps the calendar and submit behavior consistent.
+        const checkStart = new Date(`${checkIn}T00:00:00`);
+        const checkEnd = new Date(`${checkOut}T00:00:00`);
 
-        const mobile =
-        document.getElementById("mobile").value.trim();
+        const parkingUnavailable =
+            (bookingType === "parking" || bookingType === "both") &&
+            bookedDates.some(booking => {
+                if (
+                    booking.bookingStatus === "Cancelled" ||
+                    booking.bookingStatus === "Checked Out" ||
+                    !booking.parking
+                ) {
+                    return false;
+                }
 
-        const bookingType =
-    document.getElementById("bookingType").value;
+                const existingStart = new Date(booking.checkIn);
+                const existingEnd = new Date(booking.checkOut);
 
-    console.log("BOOKING TYPE:", bookingType);
+                existingStart.setHours(0, 0, 0, 0);
+                existingEnd.setHours(0, 0, 0, 0);
 
-let parking = null;
+                return checkStart < existingEnd && checkEnd > existingStart;
+            });
 
-// Accommodation + Parking / Parking Only
-if (bookingType === "both" || bookingType === "parking") {
+        if (parkingUnavailable) {
+            alert("Parking slot is already reserved for the selected dates.");
+            renderCalendar();
+            return;
+        }
 
-    // Use the parking ID loaded from the active database.
-    parking = selectedParkingId;
-
-    if (!parking) {
-        alert("Parking is currently unavailable. Please try again shortly.");
-        return;
-    }
-
-}
-
-        if (
-    !checkIn ||
-    !checkOut ||
-    !firstName ||
-    !lastName ||
-    !email ||
-    !mobile
-) {
-    alert("Please complete all required fields.");
-    return;
-}
-
-if (bookingType !== "parking" && !room) {
-    alert("Please select an accommodation.");
-    return;
-}
-
-if (
-    bookingType === "parking" ||
-    bookingType === "both"
-) {
-
-    if (
-        !document.getElementById("vehicleBrand").value.trim() ||
-        !document.getElementById("vehicleModel").value.trim() ||
-        !document.getElementById("vehicleColor").value.trim() ||
-        !document.getElementById("plateNumber").value.trim()
-    ) {
-
-        alert("Please complete all vehicle information.");
-
-        return;
-
-    }
-
-}
-
-const bookingData = {
-
-    vehicleBrand:
-    document.getElementById("vehicleBrand")?.value || "",
-
-vehicleModel:
-    document.getElementById("vehicleModel")?.value || "",
-
-vehicleColor:
-    document.getElementById("vehicleColor")?.value || "",
-
-plateNumber:
-    document.getElementById("plateNumber")?.value || "",
-
-    firstName,
-    lastName,
-    email,
-    mobile,
-
-    address:
-        document.getElementById("address").value.trim(),
-
-    bookingReference:
-        "BK" + Date.now(),
-
-    room:
-        bookingType === "parking"
-            ? null
-            : room,
-
-    checkIn,
-    checkOut,
-
-    guests,
-
-    parking,
-
-    parkingOnly:
-        bookingType === "parking",
-
-    totalAmount:
-        parseFloat(
-            document
-                .getElementById("totalAmount")
-                .innerText
-                .replace("₱", "")
-                .replace(/,/g, "")
-
-                
-        )
-        
-
-};
-
-
+        const bookingData = {
+            vehicleBrand: document.getElementById("vehicleBrand")?.value || "",
+            vehicleModel: document.getElementById("vehicleModel")?.value || "",
+            vehicleColor: document.getElementById("vehicleColor")?.value || "",
+            plateNumber: document.getElementById("plateNumber")?.value || "",
+            firstName,
+            lastName,
+            email,
+            mobile,
+            address: document.getElementById("address").value.trim(),
+            bookingReference: "BK" + Date.now(),
+            room: bookingType === "parking" ? null : room,
+            checkIn,
+            checkOut,
+            guests,
+            parking,
+            parkingOnly: bookingType === "parking",
+            totalAmount: parseFloat(
+                document
+                    .getElementById("totalAmount")
+                    .innerText
+                    .replace("₱", "")
+                    .replace(/,/g, "")
+            )
+        };
 
         console.log("SENDING BOOKING:", bookingData);
 
         const res = await fetch(`${API}/bookings`, {
-
             method: "POST",
-
             headers: {
                 "Content-Type": "application/json"
             },
-
             body: JSON.stringify(bookingData)
-
         });
 
         const json = await res.json();
 
         if (!res.ok) {
-
             alert(json.message || "Booking failed.");
-
             console.error(json);
-
             return;
-
         }
 
         console.log("Booking Success:", json);
 
         const booking = {
+            ...(json.data || {}),
+            firstName,
+            lastName,
+            room,
+            parking,
+            parkingOnly: bookingType === "parking",
+            bookingType,
+            checkIn,
+            checkOut,
+            guests,
+            children: Number(document.getElementById("children").value) || 0,
+            totalAmount: bookingData.totalAmount
+        };
 
-    ...(json.data || {}),
+        localStorage.setItem("guestBooking", JSON.stringify(booking));
+        localStorage.setItem("bookingReference", booking.bookingReference || "");
 
-firstName,
-lastName,
-
-room,
-
-parking,
-
-parkingOnly: bookingType === "parking",
-
-    bookingType,
-
-    checkIn,
-    checkOut,
-
-    guests,
-
-    children:
-        Number(document.getElementById("children").value) || 0,
-
-    totalAmount: bookingData.totalAmount
-
-};
-
-localStorage.setItem(
-    "guestBooking",
-    JSON.stringify(booking)
-);
-
-        localStorage.setItem(
-            "bookingReference",
-            booking.bookingReference || ""
-        );
-
-        window.location.href =
-        "guest-booking/booking-success.html";
-
-    }
-
-    catch (err) {
-
+        window.location.href = "guest-booking/booking-success.html";
+    } catch (err) {
         console.error(err);
-
         alert("Unable to connect to server.");
-
     }
-
-    
-
 }
 
 /* =========================================
@@ -864,24 +553,13 @@ localStorage.setItem(
 ========================================= */
 
 function isDateBooked(date) {
-    
-
-    const bookingType =
-        document.getElementById("bookingType")?.value;
-
-    const selectedRoom =
-        document.getElementById("room")?.value || "";
-
-    const selectedParking = selectedParkingId;
-
+    const bookingType = document.getElementById("bookingType")?.value;
+    const selectedRoom = document.getElementById("room")?.value || "";
 
     const target = new Date(date);
-    target.setHours(0,0,0,0);
-
+    target.setHours(0, 0, 0, 0);
 
     for (const booking of bookedDates) {
-
-
         if (
             booking.bookingStatus === "Cancelled" ||
             booking.bookingStatus === "Checked Out"
@@ -889,76 +567,44 @@ function isDateBooked(date) {
             continue;
         }
 
+        const checkIn = new Date(booking.checkIn);
+        const checkOut = new Date(booking.checkOut);
 
-        const checkIn =
-            new Date(booking.checkIn);
+        checkIn.setHours(0, 0, 0, 0);
+        checkOut.setHours(0, 0, 0, 0);
 
-        const checkOut =
-            new Date(booking.checkOut);
-
-
-        checkIn.setHours(0,0,0,0);
-        checkOut.setHours(0,0,0,0);
-
-
-        const overlaps =
-            target >= checkIn &&
-            target < checkOut;
-
-
-        if (!overlaps) {
-            continue;
-        }
-
+        const overlaps = target >= checkIn && target < checkOut;
+        if (!overlaps) continue;
 
         const bookedRoom =
             booking.room?._id ||
             booking.room ||
             null;
 
-
-        console.log("booking.parking =", booking.parking);
-
-const bookedParking =
-    booking.parking?._id ||
-    booking.parking ||
-    null;
-
-
+        const hasParking = Boolean(booking.parking);
 
         // ACCOMMODATION ONLY
         if (bookingType === "unit") {
-
             if (
                 bookedRoom &&
                 String(bookedRoom) === String(selectedRoom)
             ) {
                 return true;
             }
-
         }
-
-
 
         // PARKING ONLY
+        // Do NOT compare MongoDB _id values here. A parking booking from
+        // another database can have a different _id while representing
+        // the exact same physical SLOT 9 / Bay 4.
         if (bookingType === "parking") {
-
-            if (
-                selectedParking &&
-                bookedParking &&
-                String(bookedParking) === String(selectedParking)
-            ) {
+            if (hasParking) {
                 return true;
             }
-
         }
-
-
 
         // ACCOMMODATION + PARKING
         if (bookingType === "both") {
-
-
             if (
                 bookedRoom &&
                 String(bookedRoom) === String(selectedRoom)
@@ -966,23 +612,13 @@ const bookedParking =
                 return true;
             }
 
-
-            if (
-                selectedParking &&
-                bookedParking &&
-                String(bookedParking) === String(selectedParking)
-            ) {
+            if (hasParking) {
                 return true;
             }
-
         }
-
-
     }
 
-
     return false;
-
 }
 
 /* =========================================
@@ -990,202 +626,106 @@ const bookedParking =
 ========================================= */
 
 function renderCalendar() {
-
-    const grid =
-        document.getElementById("calendarGrid");
-
-    const title =
-        document.getElementById("calendarTitle");
+    const grid = document.getElementById("calendarGrid");
+    const title = document.getElementById("calendarTitle");
 
     if (!grid || !title) return;
 
     grid.innerHTML = "";
 
-    const firstDay =
-        new Date(currentYear, currentMonth, 1);
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
 
-    const lastDay =
-        new Date(currentYear, currentMonth + 1, 0);
+    title.textContent = firstDay.toLocaleString("en-US", {
+        month: "long",
+        year: "numeric"
+    });
 
-
-    title.textContent =
-        firstDay.toLocaleString("en-US", {
-            month: "long",
-            year: "numeric"
-        });
-
-    const startDay =
-        firstDay.getDay();
+    const startDay = firstDay.getDay();
 
     for (let i = 0; i < startDay; i++) {
-
-        const empty =
-            document.createElement("div");
-
-        empty.className =
-            "calendar-day empty";
-
+        const empty = document.createElement("div");
+        empty.className = "calendar-day empty";
         grid.appendChild(empty);
-
     }
 
-    const today =
-        new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    today.setHours(0,0,0,0);
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+        const date = new Date(currentYear, currentMonth, day);
+        date.setHours(0, 0, 0, 0);
 
-    for (
-        let day = 1;
-        day <= lastDay.getDate();
-        day++
-    ) {
-
-
-        const date =
-            new Date(currentYear, currentMonth, day);
-
-        date.setHours(0,0,0,0);
-
-        const cell =
-            document.createElement("div");
-
-        cell.className =
-            "calendar-day";
-
+        const cell = document.createElement("div");
+        cell.className = "calendar-day";
         cell.textContent = day;
 
         if (date < today) {
-
             cell.classList.add("disabled");
-
-        }
-
-        else if (isDateBooked(date)) {
-
-    console.log("BOOKED DATE RENDERED:", date);
-
-    cell.classList.add("booked");
-
-    cell.title =
-        "Already booked";
-
-}
-
-        else {
-
+        } else if (isDateBooked(date)) {
+            cell.classList.add("booked");
+            cell.title = "Already booked";
+        } else {
             cell.addEventListener("click", () => {
-
-                if (
-                    !selectedCheckIn ||
-                    selectedCheckOut
-                ) {
-
-                    selectedCheckIn =
-                        new Date(date);
-
-                    selectedCheckOut =
-                        null;
-
-                }
-
-                else {
-
+                if (!selectedCheckIn || selectedCheckOut) {
+                    selectedCheckIn = new Date(date);
+                    selectedCheckOut = null;
+                } else {
                     if (date > selectedCheckIn) {
-
                         let blocked = false;
-
-                        const temp =
-                            new Date(selectedCheckIn);
-
-                        temp.setDate(
-                            temp.getDate() + 1
-                        );
+                        const temp = new Date(selectedCheckIn);
+                        temp.setDate(temp.getDate() + 1);
 
                         while (temp < date) {
-
                             if (isDateBooked(temp)) {
-
                                 blocked = true;
                                 break;
-
                             }
-
-                            temp.setDate(
-                                temp.getDate() + 1
-                            );
-
+                            temp.setDate(temp.getDate() + 1);
                         }
 
                         if (blocked) {
-
                             alert("Your selected stay contains booked dates.");
-
                             selectedCheckIn = null;
                             selectedCheckOut = null;
-
                             document.getElementById("checkIn").value = "";
                             document.getElementById("checkOut").value = "";
-
                             renderCalendar();
-
                             return;
                         }
 
-                            selectedCheckOut =
-                            new Date(date);
-
+                        selectedCheckOut = new Date(date);
+                    } else {
+                        selectedCheckIn = new Date(date);
+                        selectedCheckOut = null;
                     }
-
-                    else {
-
-                        selectedCheckIn =
-                            new Date(date);
-
-                        selectedCheckOut =
-                            null;
-
-                    }
-
                 }
 
                 document.getElementById("checkIn").value =
-                    selectedCheckIn
-                        .toISOString()
-                        .split("T")[0];
+                    selectedCheckIn.toISOString().split("T")[0];
 
                 document.getElementById("checkOut").value =
                     selectedCheckOut
-                        ? selectedCheckOut
-                              .toISOString()
-                              .split("T")[0]
+                        ? selectedCheckOut.toISOString().split("T")[0]
                         : "";
 
                 calculateTotal();
-
                 renderCalendar();
-
             });
-
         }
 
         if (
             selectedCheckIn &&
-            date.getTime() ===
-            selectedCheckIn.getTime()
+            date.getTime() === selectedCheckIn.getTime()
         ) {
-
             cell.classList.add("checkin");
-
         }
 
         if (
             selectedCheckOut &&
-            date.getTime() ===
-            selectedCheckOut.getTime()
+            date.getTime() === selectedCheckOut.getTime()
         ) {
-
             cell.classList.add("checkout");
-
         }
 
         if (
@@ -1194,64 +734,37 @@ function renderCalendar() {
             date > selectedCheckIn &&
             date < selectedCheckOut
         ) {
-
             cell.classList.add("selected-range");
-
         }
 
-        if (
-            date.getTime() ===
-            today.getTime()
-        ) {
-
+        if (date.getTime() === today.getTime()) {
             cell.classList.add("today");
-
         }
-
 
         grid.appendChild(cell);
-
     }
-
-    console.log("Finished rendering:",
-    document.getElementById("calendarGrid").children.length);
-
 }
-
-
 
 /* =========================================
    MONTH NAVIGATION
 ========================================= */
 
 function previousMonth() {
-
     currentMonth--;
-
     if (currentMonth < 0) {
-
         currentMonth = 11;
         currentYear--;
-
     }
-
     renderCalendar();
-
 }
 
 function nextMonth() {
-
     currentMonth++;
-
     if (currentMonth > 11) {
-
         currentMonth = 0;
         currentYear++;
-
     }
-
     renderCalendar();
-
 }
 
 /* =========================================
@@ -1261,37 +774,25 @@ function nextMonth() {
 const prevBtn = document.getElementById("prevMonth");
 const nextBtn = document.getElementById("nextMonth");
 
-if (prevBtn) {
-    prevBtn.addEventListener("click", previousMonth);
-}
-
-if (nextBtn) {
-    nextBtn.addEventListener("click", nextMonth);
-}
+if (prevBtn) prevBtn.addEventListener("click", previousMonth);
+if (nextBtn) nextBtn.addEventListener("click", nextMonth);
 
 /* =========================================
    RESET BOOKING
 ========================================= */
 
 function clearBookingSelection() {
-
     selectedCheckIn = null;
     selectedCheckOut = null;
 
-    const checkIn =
-        document.getElementById("checkIn");
-
-    const checkOut =
-        document.getElementById("checkOut");
+    const checkIn = document.getElementById("checkIn");
+    const checkOut = document.getElementById("checkOut");
 
     if (checkIn) checkIn.value = "";
-
     if (checkOut) checkOut.value = "";
 
     calculateTotal();
-
     renderCalendar();
-
 }
 
 /* =========================================
@@ -1299,23 +800,13 @@ function clearBookingSelection() {
 ========================================= */
 
 function saveBookingReference(booking) {
-
     if (!booking) return;
 
-    localStorage.setItem(
-        "guestBooking",
-        JSON.stringify(booking)
-    );
+    localStorage.setItem("guestBooking", JSON.stringify(booking));
 
     if (booking.bookingReference) {
-
-        localStorage.setItem(
-            "bookingReference",
-            booking.bookingReference
-        );
-
+        localStorage.setItem("bookingReference", booking.bookingReference);
     }
-
 }
 
 /* =========================================
@@ -1323,33 +814,18 @@ function saveBookingReference(booking) {
 ========================================= */
 
 function loadBookingReference() {
+    const booking = JSON.parse(
+        localStorage.getItem("guestBooking")
+    );
 
-    const booking =
-        JSON.parse(
-            localStorage.getItem("guestBooking")
-        );
-
-    const reference =
-        document.getElementById("bookingReference");
-
+    const reference = document.getElementById("bookingReference");
     if (!reference) return;
 
-    if (
-        booking &&
-        booking.bookingReference
-    ) {
-
-        reference.innerText =
-            booking.bookingReference;
-
-    }
-
-    else {
-
+    if (booking && booking.bookingReference) {
+        reference.innerText = booking.bookingReference;
+    } else {
         reference.innerText = "N/A";
-
     }
-
 }
 
 /* =========================================
@@ -1357,17 +833,10 @@ function loadBookingReference() {
 ========================================= */
 
 function peso(value) {
-
-    return "₱" +
-        Number(value || 0)
-            .toLocaleString(
-                "en-PH",
-                {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                }
-            );
-
+    return "₱" + Number(value || 0).toLocaleString("en-PH", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 }
 
 /* =========================================
@@ -1375,13 +844,7 @@ function peso(value) {
 ========================================= */
 
 window.addEventListener("load", () => {
-
-    if (
-        document.getElementById("bookingReference")
-    ) {
-
+    if (document.getElementById("bookingReference")) {
         loadBookingReference();
-
     }
-
 });
