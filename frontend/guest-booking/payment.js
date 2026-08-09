@@ -1,4 +1,19 @@
 const uploadButton = document.getElementById("uploadPayment");
+const fileInput = document.getElementById("paymentProof");
+
+function resetUploadButton() {
+    if (!uploadButton) return;
+    uploadButton.disabled = false;
+    uploadButton.innerHTML = "Submit Payment <span>→</span>";
+}
+
+if (fileInput) {
+    fileInput.addEventListener("change", () => {
+        const file = fileInput.files?.[0];
+        const existing = document.getElementById("paymentProofSelected");
+        if (existing) existing.textContent = file ? `Selected: ${file.name}` : "";
+    });
+}
 
 if (uploadButton) {
     uploadButton.addEventListener("click", async (e) => {
@@ -9,48 +24,52 @@ if (uploadButton) {
         const booking = JSON.parse(localStorage.getItem("guestBooking"));
         if (!booking) {
             alert("Booking information not found. Please start a new booking.");
-            uploadButton.disabled = false;
-            uploadButton.innerHTML = "Submit Payment <span>→</span>";
+            resetUploadButton();
             return;
         }
 
-        if (booking.paymentDeadline && Date.now() >= new Date(booking.paymentDeadline).getTime()) {
+        // A rejected proof can be replaced. For a normal unpaid booking,
+        // the original one-hour deadline still applies.
+        const isRejected = booking.bookingStatus === "Payment Rejected";
+        if (!isRejected && booking.paymentDeadline && Date.now() >= new Date(booking.paymentDeadline).getTime()) {
             alert("This booking has expired because payment was not settled within 1 hour. Please create a new booking.");
-            uploadButton.disabled = false;
-            uploadButton.innerHTML = "Submit Payment <span>→</span>";
+            resetUploadButton();
             return;
         }
 
         const bookingId = booking._id || booking.id;
-        const fileInput = document.getElementById("paymentProof");
         const file = fileInput?.files?.[0];
 
         if (!bookingId) {
             alert("Booking ID is missing. Please start a new booking.");
-            uploadButton.disabled = false;
-            uploadButton.innerHTML = "Submit Payment <span>→</span>";
+            resetUploadButton();
             return;
         }
 
         if (!file) {
             alert("Please select your payment proof.");
-            uploadButton.disabled = false;
-            uploadButton.innerHTML = "Submit Payment <span>→</span>";
+            resetUploadButton();
             return;
         }
 
         const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
         if (!allowedTypes.includes(file.type)) {
             alert("Payment proof must be JPG, PNG, WEBP, or PDF.");
-            uploadButton.disabled = false;
-            uploadButton.innerHTML = "Submit Payment <span>→</span>";
+            resetUploadButton();
             return;
         }
 
         if (file.size > 10 * 1024 * 1024) {
             alert("Payment proof is too large. Please upload a file smaller than 10 MB.");
-            uploadButton.disabled = false;
-            uploadButton.innerHTML = "Submit Payment <span>→</span>";
+            resetUploadButton();
+            return;
+        }
+
+        const confirmUpload = window.confirm(
+            `Please confirm this is the correct payment proof for booking ${booking.bookingReference}.\n\nFile: ${file.name}\n\nIf this is the wrong receipt, you can submit a replacement after admin rejects it.`
+        );
+        if (!confirmUpload) {
+            resetUploadButton();
             return;
         }
 
@@ -79,8 +98,7 @@ if (uploadButton) {
 
             if (!response.ok) {
                 alert(result.message || "Payment upload failed. Please try again.");
-                uploadButton.disabled = false;
-                uploadButton.innerHTML = "Submit Payment <span>→</span>";
+                resetUploadButton();
                 return;
             }
 
@@ -101,8 +119,7 @@ if (uploadButton) {
             } else {
                 alert("Upload failed. Please try again.");
             }
-            uploadButton.disabled = false;
-            uploadButton.innerHTML = "Submit Payment <span>→</span>";
+            resetUploadButton();
         }
     });
 }
