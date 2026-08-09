@@ -1,23 +1,10 @@
 const API = "https://ca-smart-staycation-muqd.onrender.com/api";
 let bookings = [];
-
 const $ = id => document.getElementById(id);
-
-function escapeHtml(value){
-    return String(value ?? "")
-        .replace(/&/g,"&amp;")
-        .replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;")
-        .replace(/'/g,"&#039;");
-}
-
-function formatDate(value){
-    if(!value) return "—";
-    const d = new Date(value);
-    if(Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString("en-PH",{year:"numeric",month:"short",day:"numeric"});
-}
+const esc = value => String(value ?? "").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const formatDate = value => { if(!value) return "—"; const d=new Date(value); return Number.isNaN(d.getTime())?"—":d.toLocaleDateString("en-PH",{year:"numeric",month:"short",day:"numeric"}); };
+const formatDateTime = value => { if(!value) return "—"; const d=new Date(value); return Number.isNaN(d.getTime())?"—":d.toLocaleString("en-PH",{year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}); };
+const money = value => `₱${Number(value||0).toLocaleString("en-PH")}`;
 
 function statusClass(status){
     if(status === "Pending Payment Verification") return "pending";
@@ -30,147 +17,89 @@ function statusClass(status){
 function renderStats(){
     $("totalCount").textContent = bookings.length;
     $("reservedCount").textContent = bookings.filter(b=>b.bookingStatus === "Reserved").length;
-    $("pendingCount").textContent = bookings.filter(b=>b.bookingStatus === "Pending Payment Verification").length;
+    $("pendingCount").textContent = bookings.filter(b=>b.paymentStatus === "Pending").length;
     $("checkedInCount").textContent = bookings.filter(b=>b.bookingStatus === "Checked In").length;
 }
 
 function filteredBookings(){
-    const search = $("searchInput").value.trim().toLowerCase();
-    const status = $("statusFilter").value;
-    const payment = $("paymentFilter").value;
-
+    const search=$("searchInput").value.trim().toLowerCase();
+    const status=$("statusFilter").value;
+    const payment=$("paymentFilter").value;
     return bookings.filter(b=>{
-        const guest = `${b.firstName || ""} ${b.lastName || ""}`.toLowerCase();
-        const matchesSearch = !search ||
-            String(b.bookingReference || "").toLowerCase().includes(search) ||
-            guest.includes(search);
-        return matchesSearch &&
-            (!status || b.bookingStatus === status) &&
-            (!payment || b.paymentStatus === payment);
+        const guest=`${b.firstName||""} ${b.lastName||""}`.toLowerCase();
+        const haystack=`${b.bookingReference||""} ${guest} ${b.mobile||""} ${b.email||""}`.toLowerCase();
+        return (!search || haystack.includes(search)) && (!status || b.bookingStatus===status) && (!payment || b.paymentStatus===payment);
     });
 }
 
 function actionButtons(booking){
-    const id = escapeHtml(booking._id);
-    const actions = [];
-
-    if(booking.bookingStatus === "Pending Payment Verification"){
-        actions.push(`<button class="approve" onclick="approvePayment('${id}')">Approve Payment</button>`);
-    }
-    if(booking.bookingStatus === "Reserved"){
-        actions.push(`<button class="checkin" onclick="checkIn('${id}')">Check In</button>`);
-        actions.push(`<button class="cancel" onclick="cancelBooking('${id}')">Cancel</button>`);
-    }
-    if(booking.bookingStatus === "Checked In"){
-        actions.push(`<button class="checkout" onclick="checkOut('${id}')">Check Out</button>`);
-    }
-    return actions.join("") || `<span class="muted">No action</span>`;
+    const id=esc(booking._id); const actions=[`<button class="view" onclick="viewBooking('${id}')">View</button>`];
+    if(booking.bookingStatus === "Pending Payment Verification") actions.push(`<button class="approve" onclick="approvePayment('${id}')">Approve Payment</button>`);
+    if(booking.bookingStatus === "Reserved") { actions.push(`<button class="checkin" onclick="checkIn('${id}')">Check In</button>`); actions.push(`<button class="cancel" onclick="cancelBooking('${id}')">Cancel</button>`); }
+    if(booking.bookingStatus === "Checked In") actions.push(`<button class="checkout" onclick="checkOut('${id}')">Check Out</button>`);
+    if(booking.bookingStatus === "Checked Out" && booking.housekeepingStatus !== "Clean") actions.push(`<button class="clean" onclick="markClean('${id}')">Mark Clean</button>`);
+    return actions.join("");
 }
 
 function renderBookings(){
-    const tbody = document.querySelector("#bookingTable tbody");
-    const rows = filteredBookings();
-    tbody.innerHTML = "";
-
-    $("emptyState").hidden = rows.length !== 0;
-
+    const tbody=document.querySelector("#bookingTable tbody"); const rows=filteredBookings(); tbody.innerHTML=""; $("emptyState").hidden=rows.length!==0;
     rows.forEach(booking=>{
-        const guest = `${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)}`.trim() || "Guest";
-        const room = booking.room
-            ? `${escapeHtml(booking.room.unitNumber || booking.room.roomNumber || "Room")}<div class="muted">${escapeHtml(booking.room.unitName || booking.room.roomName || "")}</div>`
-            : "—";
-        const parking = booking.parking
-            ? escapeHtml(booking.parking.parkingNumber || booking.parking.parkingName || "Reserved")
-            : "—";
-        const proof = booking.paymentProof
-            ? `<a class="proof" target="_blank" rel="noopener" href="https://ca-smart-staycation-muqd.onrender.com/uploads/payments/${encodeURIComponent(booking.paymentProof)}">View proof</a>`
-            : `<span class="muted">No upload</span>`;
-
-        tbody.innerHTML += `
-        <tr>
-            <td><div class="ref">${escapeHtml(booking.bookingReference || "—")}</div><div class="muted">${escapeHtml(booking._id || "")}</div></td>
-            <td>${guest}<div class="muted">${escapeHtml(booking.mobile || booking.email || "")}</div></td>
-            <td>${formatDate(booking.checkIn)}<div class="muted">to ${formatDate(booking.checkOut)}</div></td>
-            <td>${room}</td>
-            <td>${parking}</td>
-            <td class="money">₱${Number(booking.totalAmount || 0).toLocaleString("en-PH")}</td>
-            <td>${escapeHtml(booking.paymentStatus || "Pending")}</td>
-            <td><span class="badge ${statusClass(booking.bookingStatus)}">${escapeHtml(booking.bookingStatus || "Reserved")}</span></td>
-            <td>${proof}</td>
-            <td><div class="actions">${actionButtons(booking)}</div></td>
+        const guest=`${esc(booking.firstName)} ${esc(booking.lastName)}`.trim()||"Guest";
+        const room=booking.room?`${esc(booking.room.unitNumber||booking.room.roomNumber||"Room")}<div class="muted">${esc(booking.room.unitName||booking.room.roomName||"")}</div>`:"—";
+        const parking=booking.parking?`${esc(booking.parking.parkingNumber||booking.parking.parkingName||"Reserved")}<div class="muted">${esc(booking.parking.parkingName||"")}</div>`:(booking.parkingOnly?"Reserved":"—");
+        const proof=booking.paymentProof?`<a class="proof" target="_blank" rel="noopener" href="${API}/uploads/payments/${encodeURIComponent(booking.paymentProof)}">View proof</a>`:`<span class="muted">No upload</span>`;
+        tbody.innerHTML += `<tr>
+          <td><div class="ref">${esc(booking.bookingReference||"—")}</div><div class="muted">${esc(booking._id||"")}</div></td>
+          <td>${guest}<div class="muted">${esc(booking.mobile||booking.email||"")}</div></td>
+          <td>${formatDate(booking.checkIn)}<div class="muted">to ${formatDate(booking.checkOut)}</div></td>
+          <td>${room}</td><td>${parking}</td><td class="money">${money(booking.totalAmount)}</td>
+          <td>${esc(booking.paymentStatus||"Pending")}</td>
+          <td><span class="badge ${statusClass(booking.bookingStatus)}">${esc(booking.bookingStatus||"Reserved")}</span><div class="muted">${esc(booking.housekeepingStatus||"")}</div></td>
+          <td>${proof}</td><td><div class="actions">${actionButtons(booking)}</div></td>
         </tr>`;
     });
 }
 
+function viewBooking(id){
+    const booking=bookings.find(b=>String(b._id)===String(id)); if(!booking) return;
+    $("modalTitle").textContent=booking.bookingReference||"Booking Details";
+    const guest=`${booking.firstName||""} ${booking.lastName||""}`.trim()||"Guest";
+    const room=booking.room?`${booking.room.unitNumber||booking.room.roomNumber||"Room"} — ${booking.room.unitName||booking.room.roomName||""}`:"Parking Only";
+    const parking=booking.parking?`${booking.parking.parkingNumber||"Parking"} — ${booking.parking.parkingName||""}`:(booking.parkingOnly?"Parking reserved":"None");
+    $("bookingDetails").innerHTML=`
+      <div class="detail-grid">
+        <div><span>Guest</span><strong>${esc(guest)}</strong></div><div><span>Mobile</span><strong>${esc(booking.mobile||"—")}</strong></div>
+        <div><span>Email</span><strong>${esc(booking.email||"—")}</strong></div><div><span>Booking Status</span><strong>${esc(booking.bookingStatus||"—")}</strong></div>
+        <div><span>Check-in</span><strong>${formatDate(booking.checkIn)}</strong></div><div><span>Check-out</span><strong>${formatDate(booking.checkOut)}</strong></div>
+        <div><span>Accommodation</span><strong>${esc(room)}</strong></div><div><span>Parking</span><strong>${esc(parking)}</strong></div>
+        <div><span>Guests</span><strong>${esc(booking.adults ?? booking.guests ?? 0)} adults · ${esc(booking.children||0)} children</strong></div><div><span>Payment</span><strong>${esc(booking.paymentStatus||"Pending")}</strong></div>
+        <div><span>Total</span><strong>${money(booking.totalAmount)}</strong></div><div><span>Housekeeping</span><strong>${esc(booking.housekeepingStatus||"—")}</strong></div>
+        <div><span>Payment Date</span><strong>${formatDateTime(booking.paymentDate)}</strong></div><div><span>Created</span><strong>${formatDateTime(booking.createdAt)}</strong></div>
+      </div>
+      <div class="notes"><span>Notes</span><p>${esc(booking.notes||"No notes.")}</p></div>`;
+    const actions=[]; const eid=esc(id);
+    if(booking.bookingStatus==="Pending Payment Verification") actions.push(`<button class="approve" onclick="approvePayment('${eid}');closeModal()">Approve Payment</button>`);
+    if(booking.bookingStatus==="Reserved") actions.push(`<button class="checkin" onclick="checkIn('${eid}');closeModal()">Check In</button>`);
+    if(booking.bookingStatus==="Checked In") actions.push(`<button class="checkout" onclick="checkOut('${eid}');closeModal()">Check Out</button>`);
+    if(booking.bookingStatus==="Checked Out" && booking.housekeepingStatus!=="Clean") actions.push(`<button class="clean" onclick="markClean('${eid}');closeModal()">Mark Clean</button>`);
+    if(["Reserved","Pending Payment Verification"].includes(booking.bookingStatus)) actions.push(`<button class="cancel" onclick="cancelBooking('${eid}');closeModal()">Cancel Booking</button>`);
+    $("modalActions").innerHTML=actions.join(""); $("bookingModal").hidden=false;
+}
+function closeModal(){ $("bookingModal").hidden=true; }
+
 async function loadBookings(){
-    try{
-        const res = await fetch(`${API}/bookings`);
-        const json = await res.json();
-        if(!res.ok) throw new Error(json.message || "Unable to load bookings.");
-        bookings = Array.isArray(json.data) ? json.data : [];
-        renderStats();
-        renderBookings();
-    }catch(err){
-        console.error(err);
-        alert("Unable to load bookings. Please check the API connection.");
-    }
+    try{ const res=await fetch(`${API}/bookings`); const json=await res.json(); if(!res.ok) throw new Error(json.message||"Unable to load bookings."); bookings=Array.isArray(json.data)?json.data:[]; renderStats(); renderBookings(); }
+    catch(err){ console.error(err); alert("Unable to load bookings. Please check the API connection."); }
 }
-
-async function updateBooking(id, body, successMessage){
-    try{
-        const res = await fetch(`${API}/bookings/${encodeURIComponent(id)}`,{
-            method:"PUT",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify(body)
-        });
-        const json = await res.json();
-        if(!res.ok) throw new Error(json.message || "Update failed.");
-        alert(successMessage || json.message || "Booking updated.");
-        await loadBookings();
-    }catch(err){
-        console.error(err);
-        alert(err.message || "Unable to update booking.");
-    }
+async function updateBooking(id,body,successMessage){
+    try{ const res=await fetch(`${API}/bookings/${encodeURIComponent(id)}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); const json=await res.json(); if(!res.ok) throw new Error(json.message||"Update failed."); alert(successMessage||json.message||"Booking updated."); await loadBookings(); }
+    catch(err){ console.error(err); alert(err.message||"Unable to update booking."); }
 }
+async function approvePayment(id){ try{const res=await fetch(`${API}/bookings/${encodeURIComponent(id)}/approve-payment`,{method:"PUT"});const json=await res.json();if(!res.ok)throw new Error(json.message||"Payment approval failed.");alert(json.message||"Payment approved.");await loadBookings();}catch(err){alert(err.message);} }
+async function checkIn(id){ try{const res=await fetch(`${API}/bookings/${encodeURIComponent(id)}/checkin`,{method:"PUT"});const json=await res.json();if(!res.ok)throw new Error(json.message||"Check-in failed.");alert(json.message||"Guest checked in.");await loadBookings();}catch(err){alert(err.message);} }
+async function checkOut(id){ try{const res=await fetch(`${API}/bookings/${encodeURIComponent(id)}/checkout`,{method:"PUT"});const json=await res.json();if(!res.ok)throw new Error(json.message||"Check-out failed.");alert(json.message||"Guest checked out.");await loadBookings();}catch(err){alert(err.message);} }
+async function markClean(id){ try{const res=await fetch(`${API}/bookings/${encodeURIComponent(id)}/clean`,{method:"PUT"});const json=await res.json();if(!res.ok)throw new Error(json.message||"Cleaning update failed.");alert(json.message||"Room marked clean.");await loadBookings();}catch(err){alert(err.message);} }
+async function cancelBooking(id){ if(!confirm("Cancel this booking? It will no longer block availability.")) return; await updateBooking(id,{bookingStatus:"Cancelled"},"Booking cancelled."); }
 
-async function approvePayment(id){
-    try{
-        const res = await fetch(`${API}/bookings/${encodeURIComponent(id)}/approve-payment`,{method:"PUT"});
-        const json = await res.json();
-        if(!res.ok) throw new Error(json.message || "Payment approval failed.");
-        alert(json.message || "Payment approved.");
-        await loadBookings();
-    }catch(err){ alert(err.message); }
-}
-
-async function checkIn(id){
-    try{
-        const res = await fetch(`${API}/bookings/${encodeURIComponent(id)}/checkin`,{method:"PUT"});
-        const json = await res.json();
-        if(!res.ok) throw new Error(json.message || "Check-in failed.");
-        alert(json.message || "Guest checked in.");
-        await loadBookings();
-    }catch(err){ alert(err.message); }
-}
-
-async function checkOut(id){
-    try{
-        const res = await fetch(`${API}/bookings/${encodeURIComponent(id)}/checkout`,{method:"PUT"});
-        const json = await res.json();
-        if(!res.ok) throw new Error(json.message || "Check-out failed.");
-        alert(json.message || "Guest checked out.");
-        await loadBookings();
-    }catch(err){ alert(err.message); }
-}
-
-async function cancelBooking(id){
-    if(!confirm("Cancel this booking? It will no longer block availability.")) return;
-    await updateBooking(id,{bookingStatus:"Cancelled"},"Booking cancelled.");
-}
-
-$("refreshBtn").addEventListener("click",loadBookings);
-$("searchInput").addEventListener("input",renderBookings);
-$("statusFilter").addEventListener("change",renderBookings);
-$("paymentFilter").addEventListener("change",renderBookings);
-
+$("refreshBtn").addEventListener("click",loadBookings); $("searchInput").addEventListener("input",renderBookings); $("statusFilter").addEventListener("change",renderBookings); $("paymentFilter").addEventListener("change",renderBookings); $("closeModal").addEventListener("click",closeModal); $("bookingModal").addEventListener("click",e=>{if(e.target.id==="bookingModal")closeModal();});
 loadBookings();
