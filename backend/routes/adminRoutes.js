@@ -1,15 +1,26 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const router = express.Router();
 
+// Admin authentication is intentionally simple: Render only needs ADMIN_PASSWORD.
+// The admin email is fixed for this application, and the JWT signing secret is
+// derived from the configured password so a separate ADMIN_JWT_SECRET variable
+// is not required.
+const DEFAULT_ADMIN_EMAIL = 'markryantamayo@gmail.com';
+
 function getAdminConfig() {
-  return {
-    email: String(process.env.ADMIN_EMAIL || process.env.EMAIL_USER || '').trim().toLowerCase(),
-    password: String(process.env.ADMIN_PASSWORD || ''),
-    jwtSecret: String(process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || '')
-  };
+  const password = String(process.env.ADMIN_PASSWORD || '');
+  const email = String(process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL).trim().toLowerCase();
+  const jwtSecret = String(
+    process.env.ADMIN_JWT_SECRET ||
+    process.env.JWT_SECRET ||
+    (password ? crypto.createHash('sha256').update(`ca-smart-admin:${password}`).digest('hex') : '')
+  );
+
+  return { email, password, jwtSecret };
 }
 
 router.get('/admin', (req, res) => {
@@ -24,11 +35,12 @@ router.get('/admin-auth/status', (req, res) => {
   const config = getAdminConfig();
   res.json({
     success: true,
-    configured: Boolean(config.email && config.password && config.jwtSecret),
+    configured: Boolean(config.password && config.jwtSecret),
     emailConfigured: Boolean(config.email),
     passwordConfigured: Boolean(config.password),
     jwtConfigured: Boolean(config.jwtSecret),
-    adminEmail: config.email || null
+    adminEmail: config.email || null,
+    configurationMode: 'ADMIN_PASSWORD_ONLY'
   });
 });
 
@@ -39,11 +51,11 @@ router.post('/admin-auth/login', async (req, res) => {
     // Do not trim passwords: spaces can legitimately be part of a password.
     const password = String(req.body?.password ?? '');
 
-    if (!config.email || !config.password || !config.jwtSecret) {
+    if (!config.password || !config.jwtSecret) {
       return res.status(503).json({
         success: false,
         code: 'ADMIN_AUTH_NOT_CONFIGURED',
-        message: 'Admin authentication is not fully configured on the server. Set ADMIN_EMAIL, ADMIN_PASSWORD and ADMIN_JWT_SECRET in Render, then redeploy.'
+        message: 'Admin authentication is not configured on the server. Set ADMIN_PASSWORD in Render, then redeploy.'
       });
     }
 
