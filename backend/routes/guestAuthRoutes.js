@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const GuestAccount = require("../models/GuestAccount");
 const Booking = require("../models/Booking");
+const sendEmail = require("../mail/sendEmail");
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "ca-smart-staycation-guest-secret";
@@ -27,6 +28,15 @@ function publicAccount(account) {
     bookingReference: account.bookingReference,
     mustChangePassword: account.defaultPassword === true
   };
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 router.post("/guest-auth/login", async (req, res) => {
@@ -87,17 +97,48 @@ router.post("/guest-auth/forgot-password", async (req, res) => {
     if (!email) return res.status(400).json({ success: false, message: "Email address is required." });
 
     const account = await GuestAccount.findOne({ email }).sort({ createdAt: -1 });
-    // Do not reveal whether an account exists.
-    if (!account) return res.json({ success: true, message: "If an account exists for this email, a password reset email will be sent." });
+
+    // Always return the same response so the endpoint does not reveal whether
+    // a guest account exists for an email address.
+    const genericMessage = "If an account exists for this email, a password reset email will be sent shortly.";
+    if (!account) return res.json({ success: true, message: genericMessage });
 
     const rawToken = crypto.randomBytes(32).toString("hex");
     account.resetPasswordTokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
     account.resetPasswordExpiresAt = new Date(Date.now() + RESET_MINUTES * 60 * 1000);
     await account.save();
 
-    // The email service should consume these values. Keep the raw token out of the database.
-    const resetUrl = `${process.env.GUEST_RESET_URL || "https://casmartstaycation.github.io/cassbooking/guest-booking/reset-password.html"}?token=${rawToken}`;
-    res.json({ success: true, message: "If an account exists for this email, a password reset email will be sent.", resetUrl: process.env.NODE_ENV === "production" ? undefined : resetUrl });
+    const resetPage = process.env.GUEST_RESET_URL || "https://casmartstaycation.github.io/cassbooking/guest-booking/reset-password.html";
+    const resetUrl = `${resetPage}?token=${encodeURIComponent(rawToken)}`;
+    const guestName = escapeHtml(account.email.split("@")[0] || "Guest");
+    const bookingReference = escapeHtml(account.bookingReference);
+
+    const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#333;line-height:1.6;max-width:620px;margin:auto;padding:24px">
+      <h2 style="color:#0b5d4d">CA Smart Staycation</h2>
+      <p>Dear ${guestName},</p>
+      <p>We received a request to reset the password for your guest account.</p>
+      <p><strong>Booking Reference:</strong> ${bookingReference}</p>
+      <p>This password reset link is valid for <strong>${RESET_MINUTES} minutes</strong> and can only be used once.</p>
+      <p><a href="${escapeHtml(resetUrl)}" style="display:inline-block;background:#0b5d4d;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px">Reset My Password</a></p>
+      <p>If the button does not work, copy and paste this address into your browser:</p>
+      <p style="word-break:break-all;font-size:13px">${escapeHtml(resetUrl)}</p>
+      <p>If you did not request this, you can safely ignore this email. Your current password will remain unchanged.</p>
+      <p>CA Smart Staycation</p>
+    </body></html>`;
+
+    try {
+      await sendEmail(account.email, "Reset Your CA Smart Staycation Password", html);
+    } catch (emailErr) {
+      console.error("GUEST PASSWORD RESET EMAIL ERROR:", emailErr);
+      // Do not expose SMTP details to the guest. Remove the token so a failed
+      // email cannot leave a usable reset credential in the database.
+      account.resetPasswordTokenHash = null;
+      account.resetPasswordExpiresAt = null;
+      await account.save();
+      return res.status(503).json({ success: false, message: "We could not send the password reset email right now. Please try again later." });
+    }
+
+    res.json({ success: true, message: genericMessage });
   } catch (err) {
     console.error("GUEST FORGOT PASSWORD ERROR:", err);
     res.status(500).json({ success: false, message: "Unable to process password reset." });
