@@ -9,17 +9,11 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-// =====================================
-// CREATE PAYMENT FOLDER
-// =====================================
 const uploadDir = path.join(__dirname, "../uploads/payments");
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// =====================================
-// MULTER CONFIG
-// =====================================
 const storage = multer.diskStorage({
     destination(req, file, cb) {
         cb(null, uploadDir);
@@ -32,9 +26,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// =====================================
-// TEST
-// =====================================
 router.get("/test", (req, res) => {
     res.json({
         status: "success",
@@ -42,9 +33,6 @@ router.get("/test", (req, res) => {
     });
 });
 
-// =====================================
-// GET BOOKINGS
-// =====================================
 router.get("/bookings", async (req, res) => {
     try {
         const bookings = await Booking.find()
@@ -64,9 +52,6 @@ router.get("/bookings", async (req, res) => {
     }
 });
 
-// =====================================
-// CREATE BOOKING
-// =====================================
 router.post("/bookings", async (req, res) => {
     try {
         const {
@@ -87,6 +72,20 @@ router.post("/bookings", async (req, res) => {
 
         const startDate = new Date(checkIn);
         const endDate = new Date(checkOut);
+
+        // Reject malformed dates and zero/negative-length stays before any
+        // conflict query. MongoDB conflict checks must only run on a valid
+        // half-open interval [checkIn, checkOut).
+        if (
+            Number.isNaN(startDate.getTime()) ||
+            Number.isNaN(endDate.getTime()) ||
+            endDate <= startDate
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid booking dates. Check-out must be after check-in."
+            });
+        }
 
         // ============================
         // ROOM CONFLICT
@@ -116,14 +115,10 @@ router.post("/bookings", async (req, res) => {
         // ============================
         // PARKING CONFLICT
         // ============================
-        // IMPORTANT:
-        // Do NOT compare MongoDB parking _id values directly.
-        // A local database and the Render database can have different
-        // ObjectIds for the same physical parking slot.
-        //
-        // The guest website currently uses the single active parking
-        // resource (SLOT 9 / Bay 4), so any active booking containing a
-        // parking reservation blocks that same physical slot.
+        // Parking is treated as a physical resource, not as a MongoDB _id.
+        // IDs can differ between databases. The current guest flow has one
+        // selectable parking resource (SLOT 9 / Bay 4), so every overlapping
+        // active booking containing a parking reservation blocks that slot.
         if (parking) {
             const overlappingParkingBookings = await Booking.find({
                 parking: { $ne: null },
@@ -140,17 +135,15 @@ router.post("/bookings", async (req, res) => {
                 .populate("parking")
                 .lean();
 
-            // Resolve the requested parking record when possible.
             const requestedParking = await Parking.findById(parking).lean();
 
-            // With the current guest booking flow there is one selectable
-            // parking resource. Therefore any overlapping active parking
-            // booking is a conflict, regardless of which database generated
-            // its historical MongoDB ObjectId.
             const parkingConflict = overlappingParkingBookings.find(booking => {
-                if (!booking.parking) return false;
+                if (!booking.parking) {
+                    // Keep historical reservations blocking when the old
+                    // parking document no longer exists in this database.
+                    return true;
+                }
 
-                // Prefer the stable business identity when available.
                 if (
                     requestedParking?.parkingNumber &&
                     booking.parking?.parkingNumber
@@ -167,9 +160,6 @@ router.post("/bookings", async (req, res) => {
                         String(requestedParking.parkingName).trim().toUpperCase();
                 }
 
-                // If the historical parking document cannot be resolved,
-                // it still represents a parking reservation in this
-                // single-slot booking system, so treat it as occupied.
                 return true;
             });
 
@@ -235,9 +225,6 @@ router.post("/bookings", async (req, res) => {
     }
 });
 
-// =====================================
-// UPDATE BOOKING
-// =====================================
 router.put("/bookings/:id", async (req, res) => {
     try {
         const booking = await Booking.findByIdAndUpdate(
@@ -265,9 +252,6 @@ router.put("/bookings/:id", async (req, res) => {
     }
 });
 
-// =====================================
-// DELETE BOOKING
-// =====================================
 router.delete("/bookings/:id", async (req, res) => {
     try {
         const booking = await Booking.findByIdAndDelete(req.params.id);
@@ -291,9 +275,6 @@ router.delete("/bookings/:id", async (req, res) => {
     }
 });
 
-// =====================================
-// CHECK IN
-// =====================================
 router.put("/bookings/:id/checkin", async (req, res) => {
     try {
         const booking = await Booking.findById(req.params.id);
@@ -335,9 +316,6 @@ router.put("/bookings/:id/checkin", async (req, res) => {
     }
 });
 
-// =====================================
-// CHECK OUT
-// =====================================
 router.put("/bookings/:id/checkout", async (req, res) => {
     try {
         const booking = await Booking.findById(req.params.id);
@@ -379,9 +357,6 @@ router.put("/bookings/:id/checkout", async (req, res) => {
     }
 });
 
-// =====================================
-// MARK ROOM CLEAN
-// =====================================
 router.put("/bookings/:id/clean", async (req, res) => {
     try {
         const booking = await Booking.findById(req.params.id);
@@ -422,9 +397,6 @@ router.put("/bookings/:id/clean", async (req, res) => {
     }
 });
 
-// =====================================
-// UPLOAD PAYMENT PROOF
-// =====================================
 router.post(
     "/bookings/:id/payment",
     upload.single("paymentProof"),
@@ -476,9 +448,6 @@ router.post(
     }
 );
 
-// =====================================
-// APPROVE PAYMENT
-// =====================================
 router.put("/bookings/:id/approve-payment", async (req, res) => {
     try {
         const booking = await Booking.findById(req.params.id);
