@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Booking | CA Smart Staycation</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#333}.container{max-width:760px;margin:40px auto;background:#fff;padding:30px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,.12)}h1{color:#0b5d4d;text-align:center;margin-bottom:5px}.subtitle{text-align:center;color:#666;margin-bottom:25px}.reference{font-size:28px;font-weight:bold;color:#c9a44c;text-align:center;margin:18px 0 28px}.section-title{font-size:18px;font-weight:bold;color:#0b5d4d;margin-top:25px;margin-bottom:12px;border-bottom:1px solid #ddd;padding-bottom:8px}.row{display:flex;justify-content:space-between;gap:20px;margin:10px 0}.label{font-weight:bold}.status{padding:14px;border-radius:8px;text-align:center;font-weight:bold;background:#fff8e8;border-left:5px solid #c9a44c}.note{background:#f7faf9;padding:15px;border-left:5px solid #0b5d4d;line-height:1.6;margin-top:18px}button{width:100%;margin-top:20px;padding:13px;border:none;background:#0b5d4d;color:#fff;border-radius:8px;cursor:pointer;font-size:16px}.logout{background:#777}.error{text-align:center;color:#b42318;padding:20px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>My Booking</h1>
+<p class="subtitle">CA Smart Staycation Guest Account</p>
+<div class="reference" id="reference">Loading...</div>
+<div class="status" id="status">Loading booking status...</div>
+<div class="section-title">Reservation Details</div>
+<div class="row"><span class="label">Guest</span><span id="guest">—</span></div>
+<div class="row"><span class="label">Check-in</span><span id="checkIn">—</span></div>
+<div class="row"><span class="label">Check-out</span><span id="checkOut">—</span></div>
+<div class="row"><span class="label">Guests</span><span id="guests">—</span></div>
+<div class="row"><span class="label">Payment</span><span id="payment">—</span></div>
+<div class="row"><span class="label">Total Amount</span><strong id="total">₱0</strong></div>
+<div class="note" id="message">Your booking status will automatically reflect the latest information from CA Smart Staycation.</div>
+<button onclick="location.href='../index.html'">Return Home</button>
+<button class="logout" id="logout">Logout</button>
+</div>
+<script>
+const API="https://ca-smart-staycation-muqd.onrender.com/api";
+function textStatus(status){
+ if(status==="Pending Payment Verification") return "Payment received — waiting for admin verification";
+ if(status==="Reserved") return "Booking Confirmed";
+ if(status==="Checked In") return "Checked In";
+ if(status==="Checked Out") return "Checked Out";
+ if(status==="Cancelled") return "Booking Cancelled";
+ return status||"Pending";
+}
+function render(b){
+ document.getElementById("reference").textContent=b.bookingReference||"N/A";
+ document.getElementById("status").textContent=textStatus(b.bookingStatus);
+ document.getElementById("guest").textContent=`${b.firstName||""} ${b.lastName||""}`.trim()||"—";
+ document.getElementById("checkIn").textContent=(b.checkIn||"").substring(0,10)||"—";
+ document.getElementById("checkOut").textContent=(b.checkOut||"").substring(0,10)||"—";
+ document.getElementById("guests").textContent=`${b.adults||0} adult(s), ${b.children||0} child(ren)`;
+ document.getElementById("payment").textContent=b.paymentStatus||"Pending";
+ document.getElementById("total").textContent="₱"+Number(b.totalAmount||0).toLocaleString();
+ document.getElementById("message").textContent=b.bookingStatus==="Pending Payment Verification"?"Your payment proof has been received. Please wait while our administrator verifies your payment.":b.bookingStatus==="Reserved"?"Your payment has been verified and your reservation is confirmed.":"Your booking status is shown above.";
+}
+async function load(){
+ const token=localStorage.getItem("guestAuthToken");
+ if(!token){location.href="guest-login.html";return;}
+ try{
+  const r=await fetch(`${API}/guest-auth/me`,{headers:{Authorization:`Bearer ${token}`}});
+  const data=await r.json();
+  if(!r.ok){localStorage.removeItem("guestAuthToken");location.href="guest-login.html";return;}
+  if(!data.bookings?.length){document.getElementById("status").textContent="No booking found";return;}
+  render(data.bookings[0]);
+ }catch(e){console.error(e);document.getElementById("status").textContent="Unable to load booking status";}
+}
+document.getElementById("logout").onclick=()=>{localStorage.removeItem("guestAuthToken");localStorage.removeItem("guestAccount");location.href="guest-login.html"};
+load();
+</script>
+</body>
+</html>
