@@ -6,6 +6,7 @@ const Parking = require("../models/Parking");
 const GuestAccount = require("../models/GuestAccount");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const sendEmail = require("../mail/sendEmail");
 const multer = require("multer");
 const path = require("path");
@@ -15,9 +16,11 @@ const uploadDir = path.join(__dirname, "../uploads/payments");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 const storage = multer.diskStorage({ destination(req, file, cb) { cb(null, uploadDir); }, filename(req, file, cb) { cb(null, Date.now() + path.extname(file.originalname).toLowerCase()); } });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 }, fileFilter(req, file, cb) { const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"]; if (!allowed.includes(file.mimetype)) return cb(new Error("Payment proof must be JPG, PNG, WEBP, or PDF.")); cb(null, true); } });
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "markryantamayo@gmail.com";
 const API_PUBLIC_URL = process.env.API_PUBLIC_URL || "https://ca-smart-staycation-muqd.onrender.com/api";
-const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET;
+// Keep admin authentication compatible with the simplified ADMIN_PASSWORD-only setup.
+const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "");
+const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || (ADMIN_PASSWORD ? crypto.createHash("sha256").update(`ca-smart-admin:${ADMIN_PASSWORD}`).digest("hex") : "");
 const PAYMENT_WINDOW_MS = 60 * 60 * 1000;
 const TERMINAL_BOOKING_STATUSES = ["Cancelled", "Checked Out", "Expired"];
 function money(value) { return `₱${Number(value || 0).toLocaleString("en-PH")}`; }
