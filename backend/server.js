@@ -36,8 +36,26 @@ mongoose.connect(process.env.MONGODB_URI)
 app.get('/', (req, res) => res.json({ status: 'success', message: 'CA Smart Staycation API is running' }));
 app.get('/api/health', (req, res) => res.json({ status: 'success', message: 'CA Smart Staycation API is running', timestamp: new Date() }));
 
+async function expireUnpaidBookings() {
+  try {
+    const result = await Booking.updateMany(
+      {
+        paymentDeadline: { $ne: null, $lte: new Date() },
+        paymentProof: { $in: [null, ""] },
+        paymentStatus: { $ne: "Paid" },
+        bookingStatus: { $in: ["Reserved", "Payment Rejected"] }
+      },
+      { $set: { bookingStatus: "Expired" } }
+    );
+    if (result.modifiedCount) console.log(`⏰ Auto-expired ${result.modifiedCount} unpaid booking(s).`);
+  } catch (err) {
+    console.error("BOOKING EXPIRATION ERROR:", err);
+  }
+}
+
 app.get('/api/bookings', async (req, res) => {
   try {
+    await expireUnpaidBookings();
     const [bookings, currentParking] = await Promise.all([
       Booking.find().populate("room").lean().sort({ createdAt: -1 }),
       Parking.findOne({ parkingNumber: "SLOT 9" }).lean().then(slot => slot || Parking.findOne().lean())
@@ -61,4 +79,8 @@ app.use('/api/settings', settingsRoutes);
 app.use((req, res) => res.status(404).json({ status: 'error', message: 'Route not found' }));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 CA Smart Staycation API running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 CA Smart Staycation API running on port ${PORT}`);
+  setInterval(expireUnpaidBookings, 60 * 1000);
+  expireUnpaidBookings();
+});
