@@ -6,6 +6,7 @@ const Room = require("../models/Room");
 const Parking = require("../models/Parking");
 const GuestAccount = require("../models/GuestAccount");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const sendEmail = require("../mail/sendEmail");
 const multer = require("multer");
 const path = require("path");
@@ -20,9 +21,26 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
 const API_PUBLIC_URL = process.env.API_PUBLIC_URL || "https://ca-smart-staycation-muqd.onrender.com/api";
+const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET;
 
 function money(value) { return `₱${Number(value || 0).toLocaleString("en-PH")}`; }
 function dateText(value) { if (!value) return "—"; const date = new Date(value); return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" }); }
+
+function requireAdmin(req, res, next) {
+    const header = req.headers.authorization || "";
+    const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+    if (!token || !ADMIN_JWT_SECRET) return res.status(401).json({ success: false, message: "Admin authentication required." });
+    try {
+        const payload = jwt.verify(token, ADMIN_JWT_SECRET);
+        if (payload.role !== "admin" || (ADMIN_EMAIL && String(payload.email || "").toLowerCase() !== String(ADMIN_EMAIL).toLowerCase())) {
+            return res.status(403).json({ success: false, message: "Admin access required." });
+        }
+        req.admin = payload;
+        next();
+    } catch (err) {
+        return res.status(401).json({ success: false, message: "Admin session expired or invalid." });
+    }
+}
 
 async function ensureGuestAccount(booking) {
     if (!booking.email || !booking.bookingReference) return null;
@@ -124,7 +142,7 @@ router.post("/bookings/:id/payment", upload.single("paymentProof"), async (req, 
     } catch (err) { console.error("PAYMENT UPLOAD ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.put("/bookings/:id/approve-payment", async (req, res) => {
+router.put("/bookings/:id/approve-payment", requireAdmin, async (req, res) => {
     try {
         const booking = await Booking.findById(req.params.id);
         if (!booking) return res.status(404).json({ success: false, message: "Booking not found." });
@@ -137,7 +155,7 @@ router.put("/bookings/:id/approve-payment", async (req, res) => {
     } catch (err) { console.error("APPROVE PAYMENT ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
 });
 
-router.put("/bookings/:id/reject-payment", async (req, res) => {
+router.put("/bookings/:id/reject-payment", requireAdmin, async (req, res) => {
     try {
         const booking = await Booking.findById(req.params.id);
         if (!booking) return res.status(404).json({ success: false, message: "Booking not found." });
