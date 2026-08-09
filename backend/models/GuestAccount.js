@@ -6,12 +6,18 @@ const guestAccountSchema = new mongoose.Schema({
     ref: "Guest",
     default: null
   },
-  email: {
+  bookingReference: {
     type: String,
     required: true,
     unique: true,
+    index: true
+  },
+  email: {
+    type: String,
+    required: true,
     lowercase: true,
-    trim: true
+    trim: true,
+    index: true
   },
   passwordHash: {
     type: String,
