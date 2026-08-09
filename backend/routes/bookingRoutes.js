@@ -45,17 +45,29 @@ function requireAdmin(req, res, next) {
 async function ensureGuestAccount(booking) {
     if (!booking.email || !booking.bookingReference) return null;
     const email = String(booking.email).trim().toLowerCase();
-    const defaultPassword = String(booking.bookingReference).trim();
-    const passwordHash = await bcrypt.hash(defaultPassword, 12);
     let account = await GuestAccount.findOne({ bookingReference: booking.bookingReference });
+
+    // Create the account only when it does not already exist. A guest who has
+    // completed the required first-login password change must keep that password
+    // even if payment proof is rejected and uploaded again.
     if (!account) {
-        account = await GuestAccount.create({ guest: null, bookingReference: booking.bookingReference, email, passwordHash, defaultPassword: true });
-    } else {
+        const defaultPassword = String(booking.bookingReference).trim();
+        const passwordHash = await bcrypt.hash(defaultPassword, 12);
+        account = await GuestAccount.create({
+            guest: null,
+            bookingReference: booking.bookingReference,
+            email,
+            passwordHash,
+            defaultPassword: true
+        });
+        return account;
+    }
+
+    if (account.email !== email) {
         account.email = email;
-        account.passwordHash = passwordHash;
-        account.defaultPassword = true;
         await account.save();
     }
+
     return account;
 }
 
@@ -64,7 +76,10 @@ async function notifyBookingPaymentSubmitted(booking, account) {
     const subject = `Payment Proof Received — ${booking.bookingReference}`;
     const proofUrl = booking.paymentProof ? `${API_PUBLIC_URL}/uploads/payments/${encodeURIComponent(booking.paymentProof)}` : "";
     const loginUrl = process.env.GUEST_LOGIN_URL || "https://casmartstaycation.github.io/cassbooking/guest-booking/guest-login.html";
-    const guestHtml = `<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>We received your payment proof for booking <strong>${booking.bookingReference}</strong>.</p><p>Your booking is now <strong>Pending Payment Verification</strong>. Our admin will review your uploaded proof.</p><h3>Your Guest Account</h3><p>An account has automatically been created for you.</p><p><strong>Login email:</strong> ${account?.email || booking.email}<br><strong>Default password:</strong> ${booking.bookingReference}</p><p>Use your booking reference as your default password to log in to the CA Smart Staycation web/app.</p><p><a href="${loginUrl}">Login to CA Smart Staycation</a></p><p><strong>Booking Reference:</strong> ${booking.bookingReference}<br><strong>Check-in:</strong> ${dateText(booking.checkIn)}<br><strong>Check-out:</strong> ${dateText(booking.checkOut)}<br><strong>Total:</strong> ${money(booking.totalAmount)}</p><p>You will receive another email when your payment has been verified and your booking is confirmed.</p><p>CA Smart Staycation</p>`;
+    const credentialsHtml = account?.defaultPassword
+        ? `<p><strong>Login email:</strong> ${account.email || booking.email}<br><strong>Default password:</strong> ${booking.bookingReference}</p><p>Use your booking reference as your temporary password. You will be required to change it after your first login.</p>`
+        : `<p>Your existing guest account remains active. Your password was not changed when this payment proof was resubmitted.</p>`;
+    const guestHtml = `<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>We received your payment proof for booking <strong>${booking.bookingReference}</strong>.</p><p>Your booking is now <strong>Pending Payment Verification</strong>. Our admin will review your uploaded proof.</p><h3>Your Guest Account</h3><p>An account is associated with this booking.</p>${credentialsHtml}<p><a href="${loginUrl}">Login to CA Smart Staycation</a></p><p><strong>Booking Reference:</strong> ${booking.bookingReference}<br><strong>Check-in:</strong> ${dateText(booking.checkIn)}<br><strong>Check-out:</strong> ${dateText(booking.checkOut)}<br><strong>Total:</strong> ${money(booking.totalAmount)}</p><p>You will receive another email when your payment has been verified and your booking is confirmed.</p><p>CA Smart Staycation</p>`;
     const adminHtml = `<h2>New Payment Proof Requires Verification</h2><p>A guest has uploaded payment proof and the booking is waiting for admin verification.</p><p><strong>Booking Reference:</strong> ${booking.bookingReference}<br><strong>Guest:</strong> ${guestName}<br><strong>Email:</strong> ${booking.email}<br><strong>Mobile:</strong> ${booking.mobile}<br><strong>Check-in:</strong> ${dateText(booking.checkIn)}<br><strong>Check-out:</strong> ${dateText(booking.checkOut)}<br><strong>Total:</strong> ${money(booking.totalAmount)}</p>${proofUrl ? `<p><a href="${proofUrl}">View uploaded payment proof</a></p>` : ""}<p><strong>Action required:</strong> Review the proof in the admin booking panel and approve or reject the payment.</p>`;
     const jobs = [];
     if (booking.email) jobs.push(sendEmail(booking.email, subject, guestHtml));
@@ -76,7 +91,7 @@ async function notifyBookingConfirmed(booking) {
     if (!booking.email) return;
     const guestName = `${booking.firstName || ""} ${booking.lastName || ""}`.trim() || "Guest";
     const loginUrl = process.env.GUEST_LOGIN_URL || "https://casmartstaycation.github.io/cassbooking/guest-booking/guest-login.html";
-    const html = `<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>Your payment has been <strong>verified</strong> and your booking is now <strong>Confirmed</strong>.</p><p><strong>Booking Reference:</strong> ${booking.bookingReference}<br><strong>Check-in:</strong> ${dateText(booking.checkIn)}<br><strong>Check-out:</strong> ${dateText(booking.checkOut)}<br><strong>Total:</strong> ${money(booking.totalAmount)}</p><p>You can log in using your booking email and booking reference as the default password.</p><p><a href="${loginUrl}">Login to your guest account</a></p><p>Thank you for choosing CA Smart Staycation.</p>`;
+    const html = `<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>Your payment has been <strong>verified</strong> and your booking is now <strong>Confirmed</strong>.</p><p><strong>Booking Reference:</strong> ${booking.bookingReference}<br><strong>Check-in:</strong> ${dateText(booking.checkIn)}<br><strong>Check-out:</strong> ${dateText(booking.checkOut)}<br><strong>Total:</strong> ${money(booking.totalAmount)}</p><p>You can log in using your booking email and your guest account password.</p><p><a href="${loginUrl}">Login to your guest account</a></p><p>Thank you for choosing CA Smart Staycation.</p>`;
     await sendEmail(booking.email, `Booking Confirmed — ${booking.bookingReference}`, html);
 }
 
@@ -84,7 +99,7 @@ async function notifyPaymentRejected(booking) {
     if (!booking.email) return;
     const guestName = `${booking.firstName || ""} ${booking.lastName || ""}`.trim() || "Guest";
     const loginUrl = process.env.GUEST_LOGIN_URL || "https://casmartstaycation.github.io/cassbooking/guest-booking/guest-login.html";
-    const html = `<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>The payment proof submitted for booking <strong>${booking.bookingReference}</strong> could not be verified.</p><p>Your booking is currently marked <strong>Payment Rejected</strong>. Please log in to your guest account and submit a new valid payment proof.</p><p><strong>Login email:</strong> ${booking.email}<br><strong>Default password:</strong> ${booking.bookingReference}</p><p><a href="${loginUrl}">Login to your guest account</a></p><p>Your reservation dates remain held while payment is being corrected. A new proof submission will return the booking to payment verification.</p>`;
+    const html = `<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>The payment proof submitted for booking <strong>${booking.bookingReference}</strong> could not be verified.</p><p>Your booking is currently marked <strong>Payment Rejected</strong>. Please log in to your guest account and submit a new valid payment proof.</p><p><strong>Login email:</strong> ${booking.email}</p><p><a href="${loginUrl}">Login to your guest account</a></p><p>Your reservation dates remain held while payment is being corrected. A new proof submission will return the booking to payment verification.</p>`;
     await sendEmail(booking.email, `Payment Verification Update — ${booking.bookingReference}`, html);
 }
 
@@ -138,7 +153,7 @@ router.post("/bookings/:id/payment", upload.single("paymentProof"), async (req, 
         let account = null;
         try { account = await ensureGuestAccount(booking); } catch (accountErr) { console.error("GUEST ACCOUNT CREATION ERROR:", accountErr); }
         try { await notifyBookingPaymentSubmitted(booking, account); } catch (emailErr) { console.error("PAYMENT NOTIFICATION EMAIL ERROR:", emailErr); }
-        res.json({ success: true, message: "Payment proof uploaded successfully. Guest account created and booking is waiting for admin verification.", data: booking, guestAccountCreated: Boolean(account) });
+        res.json({ success: true, message: "Payment proof uploaded successfully. Guest account is ready and the booking is waiting for admin verification.", data: booking, guestAccountCreated: Boolean(account) });
     } catch (err) { console.error("PAYMENT UPLOAD ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
 });
 
