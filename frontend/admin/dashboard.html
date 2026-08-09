@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CA Smart Staycation — Dashboard</title>
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<div class="page">
+<header class="topbar">
+  <div>
+    <p class="eyebrow">CA SMART STAYCATION</p>
+    <h1>Operations Dashboard</h1>
+    <p class="subtitle">A live overview of reservations, accommodation and parking.</p>
+  </div>
+  <div class="top-actions">
+    <span id="lastUpdated">Not loaded</span>
+    <button id="refreshBtn">Refresh</button>
+  </div>
+</header>
+
+<section class="stats">
+  <div class="stat"><span>Today's Check-ins</span><strong id="todayCheckins">0</strong></div>
+  <div class="stat"><span>Today's Check-outs</span><strong id="todayCheckouts">0</strong></div>
+  <div class="stat"><span>Active Stays</span><strong id="activeStays">0</strong></div>
+  <div class="stat"><span>Pending Payments</span><strong id="pendingPayments">0</strong></div>
+  <div class="stat"><span>Revenue (Bookings)</span><strong id="revenue">₱0</strong></div>
+</section>
+
+<div class="grid">
+<section class="card">
+  <div class="card-head"><h2>Accommodation</h2><span id="roomSummary">0 units</span></div>
+  <div id="rooms" class="resource-list"><div class="loading">Loading…</div></div>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Parking</h2><span id="parkingSummary">0 slots</span></div>
+  <div id="parking" class="resource-list"><div class="loading">Loading…</div></div>
+</section>
+
+<section class="card wide">
+  <div class="card-head"><h2>Today's Activity</h2><a href="bookings.html">Manage bookings</a></div>
+  <div id="activity" class="activity"><div class="loading">Loading…</div></div>
+</section>
+</div>
+</div>
+<script src="dashboard.js"></script>
+</body>
+</html>
