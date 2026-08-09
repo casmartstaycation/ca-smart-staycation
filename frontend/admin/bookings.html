@@ -8,60 +8,12 @@
 </head>
 <body>
 <div class="page">
-  <header class="topbar">
-    <div>
-      <p class="eyebrow">CA SMART STAYCATION</p>
-      <h1>Booking Management</h1>
-      <p class="subtitle">Review reservations, payments, check-ins and check-outs.</p>
-    </div>
-    <button class="refresh" id="refreshBtn">Refresh</button>
-  </header>
-
-  <section class="stats" aria-label="Booking summary">
-    <div class="stat"><span>Total</span><strong id="totalCount">0</strong></div>
-    <div class="stat"><span>Reserved</span><strong id="reservedCount">0</strong></div>
-    <div class="stat"><span>Pending Payment</span><strong id="pendingCount">0</strong></div>
-    <div class="stat"><span>Checked In</span><strong id="checkedInCount">0</strong></div>
-  </section>
-
-  <section class="toolbar">
-    <input id="searchInput" type="search" placeholder="Search reference, guest, mobile or email">
-    <select id="statusFilter">
-      <option value="">All statuses</option>
-      <option>Reserved</option>
-      <option>Pending Payment Verification</option>
-      <option>Checked In</option>
-      <option>Checked Out</option>
-      <option>Cancelled</option>
-    </select>
-    <select id="paymentFilter">
-      <option value="">All payments</option>
-      <option>Paid</option>
-      <option>Pending</option>
-    </select>
-  </section>
-
-  <div class="table-wrap">
-    <table id="bookingTable">
-      <thead>
-        <tr>
-          <th>Reference</th><th>Guest</th><th>Stay</th><th>Accommodation</th><th>Parking</th>
-          <th>Total</th><th>Payment</th><th>Status</th><th>Proof</th><th>Action</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <div id="emptyState" class="empty" hidden>No bookings match the current filters.</div>
-  </div>
+  <header class="topbar"><div><p class="eyebrow">CA SMART STAYCATION</p><h1>Booking Management</h1><p class="subtitle">Review reservations, payments, check-ins and check-outs.</p></div><button class="refresh" id="refreshBtn">Refresh</button></header>
+  <section class="stats" aria-label="Booking summary"><div class="stat"><span>Total</span><strong id="totalCount">0</strong></div><div class="stat"><span>Reserved</span><strong id="reservedCount">0</strong></div><div class="stat"><span>Pending Payment</span><strong id="pendingCount">0</strong></div><div class="stat"><span>Checked In</span><strong id="checkedInCount">0</strong></div></section>
+  <section class="toolbar"><input id="searchInput" type="search" placeholder="Search reference, guest, mobile or email"><select id="statusFilter"><option value="">All statuses</option><option>Reserved</option><option>Pending Payment Verification</option><option>Payment Rejected</option><option>Checked In</option><option>Checked Out</option><option>Cancelled</option></select><select id="paymentFilter"><option value="">All payments</option><option>Paid</option><option>Pending</option></select></section>
+  <div class="table-wrap"><table id="bookingTable"><thead><tr><th>Reference</th><th>Guest</th><th>Stay</th><th>Accommodation</th><th>Parking</th><th>Total</th><th>Payment</th><th>Status</th><th>Proof</th><th>Action</th></tr></thead><tbody></tbody></table><div id="emptyState" class="empty" hidden>No bookings match the current filters.</div></div>
 </div>
-
-<div id="bookingModal" class="modal" hidden>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal-head"><div><p class="eyebrow">BOOKING DETAILS</p><h2 id="modalTitle">Booking</h2></div><button id="closeModal" class="close">×</button></div>
-    <div id="bookingDetails" class="details"></div>
-    <div id="modalActions" class="modal-actions"></div>
-  </div>
-</div>
+<div id="bookingModal" class="modal" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><div><p class="eyebrow">BOOKING DETAILS</p><h2 id="modalTitle">Booking</h2></div><button id="closeModal" class="close">×</button></div><div id="bookingDetails" class="details"></div><div id="modalActions" class="modal-actions"></div></div></div>
 <script src="bookings.js"></script>
 </body>
 </html>
