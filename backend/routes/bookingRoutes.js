@@ -16,15 +16,39 @@ const uploadDir = path.join(__dirname, "../uploads/payments");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 const storage = multer.diskStorage({
     destination(req, file, cb) { cb(null, uploadDir); },
-    filename(req, file, cb) { cb(null, Date.now() + path.extname(file.originalname)); }
+    filename(req, file, cb) { cb(null, Date.now() + path.extname(file.originalname).toLowerCase()); }
 });
-const upload = multer({ storage });
+const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter(req, file, cb) {
+        const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+        if (!allowed.includes(file.mimetype)) return cb(new Error("Payment proof must be JPG, PNG, WEBP, or PDF."));
+        cb(null, true);
+    }
+});
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
 const API_PUBLIC_URL = process.env.API_PUBLIC_URL || "https://ca-smart-staycation-muqd.onrender.com/api";
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET;
+const PAYMENT_WINDOW_MS = 60 * 60 * 1000;
 
 function money(value) { return `₱${Number(value || 0).toLocaleString("en-PH")}`; }
 function dateText(value) { if (!value) return "—"; const date = new Date(value); return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" }); }
+
+async function expireUnpaidBookings() {
+    const now = new Date();
+    const result = await Booking.updateMany(
+        {
+            paymentDeadline: { $ne: null, $lte: now },
+            paymentProof: { $in: [null, ""] },
+            paymentStatus: { $ne: "Paid" },
+            bookingStatus: { $in: ["Reserved", "Payment Rejected"] }
+        },
+        { $set: { bookingStatus: "Expired" } }
+    );
+    if (result.modifiedCount) console.log(`⏰ Expired ${result.modifiedCount} unpaid booking(s).`);
+    return result.modifiedCount;
+}
 
 function requireAdmin(req, res, next) {
     const header = req.headers.authorization || "";
@@ -46,28 +70,13 @@ async function ensureGuestAccount(booking) {
     if (!booking.email || !booking.bookingReference) return null;
     const email = String(booking.email).trim().toLowerCase();
     let account = await GuestAccount.findOne({ bookingReference: booking.bookingReference });
-
-    // Create the account only when it does not already exist. A guest who has
-    // completed the required first-login password change must keep that password
-    // even if payment proof is rejected and uploaded again.
     if (!account) {
         const defaultPassword = String(booking.bookingReference).trim();
         const passwordHash = await bcrypt.hash(defaultPassword, 12);
-        account = await GuestAccount.create({
-            guest: null,
-            bookingReference: booking.bookingReference,
-            email,
-            passwordHash,
-            defaultPassword: true
-        });
+        account = await GuestAccount.create({ guest: null, bookingReference: booking.bookingReference, email, passwordHash, defaultPassword: true });
         return account;
     }
-
-    if (account.email !== email) {
-        account.email = email;
-        await account.save();
-    }
-
+    if (account.email !== email) { account.email = email; await account.save(); }
     return account;
 }
 
@@ -104,19 +113,23 @@ async function notifyPaymentRejected(booking) {
 }
 
 router.get("/test", (req, res) => res.json({ status: "success", message: "Booking routes working" }));
-router.get("/bookings", async (req, res) => { try { const bookings = await Booking.find().populate("room").populate("parking").sort({ createdAt: -1 }); res.json({ success: true, data: bookings }); } catch (err) { res.status(500).json({ success: false, message: err.message }); } });
+router.get("/bookings", async (req, res) => {
+    try { await expireUnpaidBookings(); const bookings = await Booking.find().populate("room").populate("parking").sort({ createdAt: -1 }); res.json({ success: true, data: bookings }); }
+    catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
 
 router.post("/bookings", async (req, res) => {
     try {
+        await expireUnpaidBookings();
         const { room, parking, checkIn, checkOut } = req.body;
         const startDate = new Date(checkIn), endDate = new Date(checkOut);
         if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) return res.status(400).json({ success: false, message: "Invalid booking dates. Check-out must be after check-in." });
         if (room) {
-            const roomConflict = await Booking.findOne({ room, bookingStatus: { $nin: ["Cancelled", "Checked Out"] }, checkIn: { $lt: endDate }, checkOut: { $gt: startDate } });
+            const roomConflict = await Booking.findOne({ room, bookingStatus: { $nin: ["Cancelled", "Checked Out", "Expired"] }, checkIn: { $lt: endDate }, checkOut: { $gt: startDate } });
             if (roomConflict) return res.status(400).json({ success: false, message: "Room already booked." });
         }
         if (parking) {
-            const overlappingParkingBookings = await Booking.find({ parking: { $ne: null }, bookingStatus: { $nin: ["Cancelled", "Checked Out"] }, checkIn: { $lt: endDate }, checkOut: { $gt: startDate } }).populate("parking").lean();
+            const overlappingParkingBookings = await Booking.find({ parking: { $ne: null }, bookingStatus: { $nin: ["Cancelled", "Checked Out", "Expired"] }, checkIn: { $lt: endDate }, checkOut: { $gt: startDate } }).populate("parking").lean();
             const requestedParking = await Parking.findById(parking).lean();
             const parkingConflict = overlappingParkingBookings.find(booking => {
                 if (!booking.parking) return true;
@@ -127,9 +140,9 @@ router.post("/bookings", async (req, res) => {
             if (parkingConflict) return res.status(400).json({ success: false, message: "Parking slot already reserved." });
         }
         const bookingReference = "CA" + new Date().toISOString().slice(2, 10).replace(/-/g, "") + "-" + Math.floor(1000 + Math.random() * 9000);
-        const booking = new Booking({ ...req.body, bookingReference });
+        const booking = new Booking({ ...req.body, bookingReference, paymentDeadline: new Date(Date.now() + PAYMENT_WINDOW_MS) });
         await booking.save();
-        res.status(201).json({ success: true, message: "Booking created.", data: booking });
+        res.status(201).json({ success: true, message: "Booking created. Payment must be settled within 1 hour.", data: booking });
     } catch (err) { console.error("CREATE BOOKING ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
 });
 
@@ -140,21 +153,29 @@ router.put("/bookings/:id/checkin", async (req, res) => { try { const booking = 
 router.put("/bookings/:id/checkout", async (req, res) => { try { const booking = await Booking.findById(req.params.id); if (!booking) return res.status(404).json({ success: false, message: "Booking not found." }); booking.bookingStatus = "Checked Out"; booking.housekeepingStatus = "Needs Cleaning"; await booking.save(); if (booking.room) await Room.findByIdAndUpdate(booking.room, { status: "Needs Cleaning" }); if (booking.parking) await Parking.findByIdAndUpdate(booking.parking, { status: "Available" }); res.json({ success: true, message: "Guest checked out." }); } catch (err) { res.status(500).json({ success: false, message: err.message }); } });
 router.put("/bookings/:id/clean", async (req, res) => { try { const booking = await Booking.findById(req.params.id); if (!booking) return res.status(404).json({ success: false, message: "Booking not found." }); booking.housekeepingStatus = "Clean"; await booking.save(); if (booking.room) await Room.findByIdAndUpdate(booking.room, { status: "Available" }); if (booking.parking) await Parking.findByIdAndUpdate(booking.parking, { status: "Available" }); res.json({ success: true, message: "Room cleaned." }); } catch (err) { res.status(500).json({ success: false, message: err.message }); } });
 
-router.post("/bookings/:id/payment", upload.single("paymentProof"), async (req, res) => {
-    try {
-        const booking = await Booking.findById(req.params.id);
-        if (!booking) return res.status(404).json({ success: false, message: "Booking not found." });
-        if (!req.file) return res.status(400).json({ success: false, message: "No payment proof uploaded." });
-        booking.paymentProof = req.file.filename;
-        booking.paymentDate = new Date();
-        booking.paymentStatus = "Pending";
-        booking.bookingStatus = "Pending Payment Verification";
-        await booking.save();
-        let account = null;
-        try { account = await ensureGuestAccount(booking); } catch (accountErr) { console.error("GUEST ACCOUNT CREATION ERROR:", accountErr); }
-        try { await notifyBookingPaymentSubmitted(booking, account); } catch (emailErr) { console.error("PAYMENT NOTIFICATION EMAIL ERROR:", emailErr); }
-        res.json({ success: true, message: "Payment proof uploaded successfully. Guest account is ready and the booking is waiting for admin verification.", data: booking, guestAccountCreated: Boolean(account) });
-    } catch (err) { console.error("PAYMENT UPLOAD ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
+router.post("/bookings/:id/payment", (req, res, next) => {
+    upload.single("paymentProof")(req, res, async (uploadErr) => {
+        if (uploadErr) {
+            console.error("PAYMENT FILE UPLOAD ERROR:", uploadErr);
+            return res.status(400).json({ success: false, message: uploadErr.message || "Payment proof upload failed." });
+        }
+        try {
+            await expireUnpaidBookings();
+            const booking = await Booking.findById(req.params.id);
+            if (!booking) return res.status(404).json({ success: false, message: "Booking not found." });
+            if (booking.bookingStatus === "Expired") return res.status(410).json({ success: false, message: "This booking has expired because payment was not settled within 1 hour. Please create a new booking." });
+            if (!req.file) return res.status(400).json({ success: false, message: "No payment proof uploaded." });
+            booking.paymentProof = req.file.filename;
+            booking.paymentDate = new Date();
+            booking.paymentStatus = "Pending";
+            booking.bookingStatus = "Pending Payment Verification";
+            await booking.save();
+            let account = null;
+            try { account = await ensureGuestAccount(booking); } catch (accountErr) { console.error("GUEST ACCOUNT CREATION ERROR:", accountErr); }
+            try { await notifyBookingPaymentSubmitted(booking, account); } catch (emailErr) { console.error("PAYMENT NOTIFICATION EMAIL ERROR:", emailErr); }
+            res.json({ success: true, message: "Payment proof uploaded successfully. Guest account is ready and the booking is waiting for admin verification.", data: booking, guestAccountCreated: Boolean(account) });
+        } catch (err) { console.error("PAYMENT UPLOAD ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
+    });
 });
 
 router.put("/bookings/:id/approve-payment", requireAdmin, async (req, res) => {
@@ -164,6 +185,7 @@ router.put("/bookings/:id/approve-payment", requireAdmin, async (req, res) => {
         if (!booking.paymentProof) return res.status(400).json({ success: false, message: "Cannot confirm booking without payment proof." });
         booking.paymentStatus = "Paid";
         booking.bookingStatus = "Reserved";
+        booking.paymentDeadline = null;
         await booking.save();
         try { await notifyBookingConfirmed(booking); } catch (emailErr) { console.error("BOOKING CONFIRMATION EMAIL ERROR:", emailErr); }
         res.json({ success: true, message: "Payment approved and booking confirmed.", data: booking });
@@ -176,9 +198,10 @@ router.put("/bookings/:id/reject-payment", requireAdmin, async (req, res) => {
         if (!booking) return res.status(404).json({ success: false, message: "Booking not found." });
         booking.paymentStatus = "Pending";
         booking.bookingStatus = "Payment Rejected";
+        booking.paymentDeadline = new Date(Date.now() + PAYMENT_WINDOW_MS);
         await booking.save();
         try { await notifyPaymentRejected(booking); } catch (emailErr) { console.error("PAYMENT REJECTION EMAIL ERROR:", emailErr); }
-        res.json({ success: true, message: "Payment proof rejected. Guest has been notified and may submit a new proof.", data: booking });
+        res.json({ success: true, message: "Payment proof rejected. Guest has been notified and has 1 hour to submit a new proof.", data: booking });
     } catch (err) { console.error("REJECT PAYMENT ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
 });
 
