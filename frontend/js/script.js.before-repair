@@ -3,6 +3,7 @@
    GUEST BOOKING WEBSITE
 ========================================= */
 
+
 // Backend API
 const API = "https://ca-smart-staycation-muqd.onrender.com/api";
 
@@ -332,7 +333,318 @@ function bookingTypeChanged() {
             bookingNotes.style.display = "none";
 
     }
-    else if (bookingType === "both") {
+    else Yes — we found the immediate cause of “Loading rooms.” The JavaScript file has an unclosed {, (, or similar structure. Unexpected end of input means JavaScript reached the end of the file while still expecting something to be closed.
+
+Do not change the parking IDs.
+
+Next step — find exactly what is unclosed
+
+Run this command:
+
+Get-Content .\frontend\js\script.js | Select-Object -Skip 1250 -First 150
+
+Send me the entire output.
+
+We need to inspect the bottom of script.js, especially around line 1383, because your error points to the end of the file.
+
+Once you send that output, I'll point to the exact missing } / ) / ] and tell you exactly what to add. Don't make another change yet.
+
+PS C:\Users\admin\Documents\CA-Smart-Staycation> Get-Content .\frontend\js\script.js | Select-Object -Skip 1250 -First 150
+
+/* =========================================
+CALENDAR BUTTONS
+========================================= */
+
+const prevBtn = document.getElementById("prevMonth");
+const nextBtn = document.getElementById("nextMonth");
+
+if (prevBtn) {
+prevBtn.addEventListener("click", previousMonth);
+}
+
+if (nextBtn) {
+nextBtn.addEventListener("click", nextMonth);
+}
+
+/* =========================================
+RESET BOOKING
+========================================= */
+
+function clearBookingSelection() {
+
+selectedCheckIn = null;
+selectedCheckOut = null;
+
+const checkIn =
+    document.getElementById("checkIn");
+
+const checkOut =
+    document.getElementById("checkOut");
+
+if (checkIn) checkIn.value = "";
+
+if (checkOut) checkOut.value = "";
+
+calculateTotal();
+
+renderCalendar();
+
+
+}
+
+/* =========================================
+BOOKING SUCCESS
+========================================= */
+
+function saveBookingReference(booking) {
+
+if (!booking) return;
+
+localStorage.setItem(
+    "guestBooking",
+    JSON.stringify(booking)
+);
+
+if (booking.bookingReference) {
+
+    localStorage.setItem(
+        "bookingReference",
+        booking.bookingReference
+    );
+
+}
+
+
+}
+
+/* =========================================
+LOAD BOOKING SUCCESS PAGE
+========================================= */
+
+function loadBookingReference() {
+
+const booking =
+    JSON.parse(
+        localStorage.getItem("guestBooking")
+    );
+
+const reference =
+    document.getElementById("bookingReference");
+
+if (!reference) return;
+
+if (
+    booking &&
+    booking.bookingReference
+) {
+
+    reference.innerText =
+        booking.bookingReference;
+
+}
+
+else {
+
+    reference.innerText = "N/A";
+
+}
+
+
+}
+
+/* =========================================
+FORMAT CURRENCY
+========================================= */
+
+function peso(value) {
+
+return "â‚±" +
+    Number(value || 0)
+        .toLocaleString(
+            "en-PH",
+            {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }
+        );
+
+
+}
+
+/* =========================================
+PAGE INITIALIZATION
+========================================= */
+
+window.addEventListener("load", () => {
+
+if (
+    document.getElementById("bookingReference")
+) {
+
+    loadBookingReference();
+
+}
+
+
+});
+PS C:\Users\admin\Documents\CA-Smart-Staycation>
+
+Good — this confirms the bottom of the file is properly closed. The syntax error is therefore almost certainly above line 1250, most likely in the isDateBooked() section we just edited.
+
+We need to inspect the exact area where we changed the code.
+
+Next step — run this exact command
+Get-Content .\frontend\js\script.js | Select-Object -Skip 900 -First 110
+
+Send me the complete output.
+
+Don't change anything yet.
+
+I'm specifically checking the closing braces around:
+
+PARKING ONLY
+
+and
+
+ACCOMMODATION + PARKING
+
+because one missing } there would produce exactly:
+
+SyntaxError: Unexpected end of input
+
+Once you send lines ~900–1010, I'll give you the exact corrected block.
+
+PS C:\Users\admin\Documents\CA-Smart-Staycation> Get-Content .\frontend\js\script.js | Select-Object -Skip 900 -First 110
+
+    console.log(
+        "Checking calendar date:",
+        target.toISOString().split("T")[0],
+        "Booking:",
+        booking.bookingReference,
+        "Room:",
+        bookedRoom,
+        "Parking:",
+        bookedParking
+    );
+
+
+    // =========================================
+    // ACCOMMODATION ONLY
+    // =========================================
+
+    if (
+        bookingType !== "parking" &&
+        bookingType !== "both"
+    ) {
+
+        if (
+            bookedRoom &&
+            String(bookedRoom) === String(selectedRoom)
+        ) {
+
+            console.log(
+                "ROOM DATE BLOCKED:",
+                target.toISOString().split("T")[0]
+            );
+
+            return true;
+        }
+    }
+
+
+    // =========================================
+    // PARKING ONLY
+    // =========================================
+
+    if (bookingType === "parking") {
+
+        if (
+            bookedParking &&
+            String(bookedParking) === String(selectedParking)
+        ) {
+
+            console.log(
+                "PARKING DATE BLOCKED:",
+                target.toISOString().split("T")[0]
+            );
+
+            return true;
+        }
+    }
+
+
+    // =========================================
+
+
+// ACCOMMODATION + PARKING
+// =========================================
+
+if (bookingType === "both") {
+
+// For calendar parking availability,
+// use the SAME parking availability rule
+// as Parking Only.
+
+if (
+    bookedParking &&
+    String(bookedParking) === String(selectedParking)
+) {
+
+    console.log(
+        "PARKING CONFLICT:",
+        target.toISOString().split("T")[0]
+    );
+
+    return true;
+}
+
+
+}
+/* =========================================
+RENDER CALENDAR
+========================================= */
+
+function renderCalendar() {
+
+const grid =
+    document.getElementById("calendarGrid");
+
+const title =
+    document.getElementById("calendarTitle");
+
+if (!grid || !title) return;
+
+grid.innerHTML = "";
+
+const firstDay =
+    new Date(currentYear, currentMonth, 1);
+
+const lastDay =
+    new Date(currentYear, currentMonth + 1, 0);
+
+
+title.textContent =
+    firstDay.toLocaleString("en-US", {
+        month: "long",
+        year: "numeric"
+    });
+
+
+PS C:\Users\admin\Documents\CA-Smart-Staycation>
+
+Yes. We found the exact problem. Your edit accidentally removed the closing brace for the for (const booking of bookedDates) loop.
+
+That is why Node reports:
+
+SyntaxError: Unexpected end of input
+
+And that is also why the page got stuck on Loading rooms.
+
+Fix this exact section
+
+You currently have:
+
+if (bookingType === "both") {
 
         room.disabled = false;
 
@@ -814,7 +1126,6 @@ localStorage.setItem(
 ========================================= */
 
 function isDateBooked(date) {
-    
 
     const bookingType =
         document.getElementById("bookingType")?.value;
@@ -823,16 +1134,34 @@ function isDateBooked(date) {
         document.getElementById("room")?.value || "";
 
     const selectedParking =
-    "6a68d96447b7608e22fe9f0f";
+        "6a68d96447b7608e22fe9f0f";
 
 
-    const target = new Date(date);
-    target.setHours(0,0,0,0);
+    // Normalize a date to local midnight
+    function normalizeDate(value) {
+
+        const d = new Date(value);
+
+        if (isNaN(d.getTime())) {
+            return null;
+        }
+
+        d.setHours(0, 0, 0, 0);
+
+        return d;
+    }
+
+
+    const target = normalizeDate(date);
+
+    if (!target) {
+        return false;
+    }
 
 
     for (const booking of bookedDates) {
 
-
+        // Ignore cancelled / completed bookings
         if (
             booking.bookingStatus === "Cancelled" ||
             booking.bookingStatus === "Checked Out"
@@ -842,16 +1171,24 @@ function isDateBooked(date) {
 
 
         const checkIn =
-            new Date(booking.checkIn);
+            normalizeDate(booking.checkIn);
 
         const checkOut =
-            new Date(booking.checkOut);
+            normalizeDate(booking.checkOut);
 
 
-        checkIn.setHours(0,0,0,0);
-        checkOut.setHours(0,0,0,0);
+        if (!checkIn || !checkOut) {
+            continue;
+        }
 
 
+        /*
+         * A booking from Sept 12 to Sept 13
+         * occupies Sept 12 only.
+         *
+         * Sept 13 is the checkout date and
+         * can therefore be selected by another guest.
+         */
         const overlaps =
             target >= checkIn &&
             target < checkOut;
@@ -868,71 +1205,100 @@ function isDateBooked(date) {
             null;
 
 
-        console.log("booking.parking =", booking.parking);
-
-const bookedParking =
-    booking.parking?._id ||
-    booking.parking ||
-    null;
+        const bookedParking =
+            booking.parking?._id ||
+            booking.parking ||
+            null;
 
 
+        console.log(
+            "Checking calendar date:",
+            target.toISOString().split("T")[0],
+            "Booking:",
+            booking.bookingReference,
+            "Room:",
+            bookedRoom,
+            "Parking:",
+            bookedParking
+        );
 
+
+        // =========================================
         // ACCOMMODATION ONLY
-        if (bookingType === "unit") {
+        // =========================================
+
+        if (
+            bookingType !== "parking" &&
+            bookingType !== "both"
+        ) {
 
             if (
                 bookedRoom &&
                 String(bookedRoom) === String(selectedRoom)
             ) {
+
+                console.log(
+                    "ROOM DATE BLOCKED:",
+                    target.toISOString().split("T")[0]
+                );
+
                 return true;
             }
-
         }
 
 
-
+        // =========================================
         // PARKING ONLY
+        // =========================================
+
         if (bookingType === "parking") {
 
             if (
                 bookedParking &&
                 String(bookedParking) === String(selectedParking)
             ) {
+
+                console.log(
+                    "PARKING DATE BLOCKED:",
+                    target.toISOString().split("T")[0]
+                );
+
                 return true;
             }
-
         }
 
 
+        // =========================================
+// ACCOMMODATION + PARKING
+// =========================================
 
-        // ACCOMMODATION + PARKING
-        if (bookingType === "both") {
+if (bookingType === "both") {
 
+    // For calendar parking availability,
+    // use the SAME parking availability rule
+    // as Parking Only.
 
-            if (
-                bookedRoom &&
-                String(bookedRoom) === String(selectedRoom)
-            ) {
-                return true;
-            }
+    if (
+        bookedParking &&
+        String(bookedParking) === String(selectedParking)
+    ) {
 
+        console.log(
+            "PARKING CONFLICT:",
+            target.toISOString().split("T")[0]
+        );
 
-            if (
-                bookedParking &&
-                String(bookedParking) === String(selectedParking)
-            ) {
-                return true;
-            }
-
-        }
-
-
+        return true;
     }
-
-
-    return false;
-
 }
+
+}   // closes: for (const booking of bookedDates)
+
+return false;
+
+}   // closes: function isDateBooked(date)
+
+
 
 /* =========================================
    RENDER CALENDAR

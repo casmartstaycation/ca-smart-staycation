@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guest Login</title>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="booking-container">
+
+    <div class="form-card">
+
+        <h2>Guest Login</h2>
+
+        <p>
+            Enter your Booking Reference and Email Address to view your booking.
+        </p>
+
+        <form id="guestLoginForm">
+
+            <div class="form-group">
+                <label>Booking Reference</label>
+                <input
+                    type="text"
+                    id="bookingReference"
+                    placeholder="CA260730-6263"
+                    required>
+            </div>
+
+            <div class="form-group">
+                <label>Email Address</label>
+                <input
+                    type="email"
+                    id="email"
+                    placeholder="example@email.com"
+                    required>
+            </div>
+
+            <br>
+
+            <button
+                type="submit"
+                class="continue-button">
+                Login
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+<script src="js/guest-login.js"></script>
+
+</body>
+</html>
