@@ -6,10 +6,37 @@ const formatDate = value => { if(!value) return "—"; const d=new Date(value); 
 const formatDateTime = value => { if(!value) return "—"; const d=new Date(value); return Number.isNaN(d.getTime())?"—":d.toLocaleString("en-PH",{year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}); };
 const money = value => `₱${Number(value||0).toLocaleString("en-PH")}`;
 const TOKEN_KEY = "caSmartAdminToken";
+const ADMIN_EMAIL = "markryantamayo@gmail.com";
 const getAdminToken = () => sessionStorage.getItem(TOKEN_KEY) || "";
 function setAdminToken(token){ if(token) sessionStorage.setItem(TOKEN_KEY, token); else sessionStorage.removeItem(TOKEN_KEY); }
 function showAdminShell(){ $("adminAuth").hidden=true; $("adminShell").hidden=false; }
 function showAdminLogin(message=""){ setAdminToken(""); $("adminShell").hidden=true; $("adminAuth").hidden=false; $("adminAuthError").textContent=message; }
+
+async function checkAdminAuthConfiguration(){
+  try{
+    const res=await fetch(`${API}/admin-auth/status`,{cache:"no-store"});
+    const json=await res.json();
+    if(!res.ok || !json.success) throw new Error(json.message||"Unable to check admin authentication.");
+    if(!json.configured){
+      const missing=[];
+      if(!json.emailConfigured) missing.push("ADMIN_EMAIL");
+      if(!json.passwordConfigured) missing.push("ADMIN_PASSWORD");
+      if(!json.jwtConfigured) missing.push("ADMIN_JWT_SECRET");
+      $("adminAuthError").textContent=`Server admin login is not fully configured. Missing: ${missing.join(", ")}. Configure these in Render and redeploy.`;
+      return false;
+    }
+    if(json.adminEmail && json.adminEmail !== ADMIN_EMAIL){
+      $("adminAuthError").textContent=`Render is configured with a different admin email (${json.adminEmail}).`;
+      return false;
+    }
+    return true;
+  }catch(err){
+    console.error("ADMIN AUTH STATUS ERROR:",err);
+    $("adminAuthError").textContent="Cannot check admin authentication configuration. Please confirm the Render API is running.";
+    return false;
+  }
+}
+
 async function adminLogin(event){
   event.preventDefault();
   const email=$("adminEmail").value.trim();
@@ -19,11 +46,15 @@ async function adminLogin(event){
     const res=await fetch(`${API}/admin-auth/login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password})});
     const json=await res.json();
     if(!res.ok) throw new Error(json.message||"Admin login failed.");
+    if(!json.token) throw new Error("Admin login succeeded but the server did not return an authentication token.");
     setAdminToken(json.token);
     $("adminPassword").value="";
     showAdminShell();
     await loadBookings();
-  }catch(err){ $("adminAuthError").textContent=err.message||"Unable to sign in."; }
+  }catch(err){
+    console.error("ADMIN LOGIN ERROR:",err);
+    $("adminAuthError").textContent=err.message||"Unable to sign in.";
+  }
 }
 function authHeaders(json=false){ const headers={}; if(json) headers["Content-Type"]="application/json"; const token=getAdminToken(); if(token) headers.Authorization=`Bearer ${token}`; return headers; }
 function statusClass(status){ if(status === "Pending Payment Verification") return "pending"; if(status === "Payment Rejected") return "cancelled"; if(status === "Checked In") return "checked"; if(status === "Checked Out") return "out"; if(status === "Cancelled") return "cancelled"; return "reserved"; }
@@ -53,6 +84,7 @@ $("paymentFilter").addEventListener("change",renderBookings);
 $("reviewPaymentsBtn").addEventListener("click",reviewPendingPayments);
 $("closeModal").addEventListener("click",closeModal);
 $("bookingModal").addEventListener("click",e=>{if(e.target.id==="bookingModal")closeModal();});
-if(getAdminToken()){showAdminShell();loadBookings();}else{showAdminLogin("");}
+$("adminEmail").value=ADMIN_EMAIL;
+if(getAdminToken()){showAdminShell();loadBookings();}else{showAdminLogin("");checkAdminAuthConfiguration();}
 setInterval(()=>{if(getAdminToken()&&!document.hidden)loadBookings(true);},30000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&getAdminToken())loadBookings(true);});
