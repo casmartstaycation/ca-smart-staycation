@@ -1,8 +1,9 @@
 const Booking = require("../models/Booking");
 const Notification = require("../models/Notification");
+const Setting = require("../models/Setting");
 const sendEmail = require("../mail/sendEmail");
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "markryantamayo@gmail.com";
+const FALLBACK_ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "markryantamayo@gmail.com";
 const LOGIN_URL = process.env.GUEST_LOGIN_URL || "https://casmartstaycation.github.io/cassbooking/guest-booking/guest-login.html";
 
 function statusKey(booking) {
@@ -21,7 +22,18 @@ function statusMessage(booking) {
   return { title: "Booking Status Updated", message: `Booking ${booking.bookingReference} status changed to ${status}. Payment status: ${payment}.`, type: "booking-status" };
 }
 
+async function getAdminNotificationEmail() {
+  try {
+    const settings = await Setting.findOne().select("adminNotificationEmail").lean();
+    return String(settings?.adminNotificationEmail || FALLBACK_ADMIN_EMAIL).trim().toLowerCase();
+  } catch (err) {
+    console.error("ADMIN NOTIFICATION EMAIL LOOKUP ERROR:", err);
+    return FALLBACK_ADMIN_EMAIL;
+  }
+}
+
 async function processBookingStatusNotifications() {
+  const adminEmail = await getAdminNotificationEmail();
   const bookings = await Booking.find().select("bookingReference firstName lastName email bookingStatus paymentStatus refundStatus checkIn checkOut totalAmount lastStatusNotificationKey").lean();
   for (const booking of bookings) {
     const key = statusKey(booking);
@@ -38,12 +50,20 @@ async function processBookingStatusNotifications() {
 
     if (guestEmail) {
       await Notification.create({ recipientType: "guest", recipientEmail: guestEmail, booking: booking._id, title: info.title, message: info.message, type: info.type });
-      await sendEmail(guestEmail, `${info.title} — ${booking.bookingReference}`, `<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>${info.message}</p><p><strong>Booking Reference:</strong> ${booking.bookingReference}<br><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString("en-PH")}<br><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString("en-PH")}<br><strong>Total:</strong> ₱${Number(booking.totalAmount || 0).toLocaleString("en-PH")}</p><p><a href="${LOGIN_URL}">Open Guest Account</a></p>`);
+      try {
+        await sendEmail(guestEmail, `${info.title} — ${booking.bookingReference}`, `<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>${info.message}</p><p><strong>Booking Reference:</strong> ${booking.bookingReference}<br><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString("en-PH")}<br><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString("en-PH")}<br><strong>Total:</strong> ₱${Number(booking.totalAmount || 0).toLocaleString("en-PH")}</p><p><a href="${LOGIN_URL}">Open Guest Account</a></p>`);
+      } catch (err) {
+        console.error(`GUEST STATUS EMAIL FAILED (${guestEmail}, ${booking.bookingReference}):`, err.message);
+      }
     }
 
-    if (ADMIN_EMAIL) {
-      await Notification.create({ recipientType: "admin", recipientEmail: ADMIN_EMAIL, booking: booking._id, title: `Booking Update — ${booking.bookingReference}`, message: adminMessage, type: info.type });
-      await sendEmail(ADMIN_EMAIL, `Booking Status Update — ${booking.bookingReference}`, `<h2>CA Smart Staycation Admin Notification</h2><p>${adminMessage}</p><p><strong>Booking Status:</strong> ${booking.bookingStatus}<br><strong>Payment Status:</strong> ${booking.paymentStatus}<br><strong>Refund Status:</strong> ${booking.refundStatus || "Not Requested"}</p>`);
+    if (adminEmail) {
+      await Notification.create({ recipientType: "admin", recipientEmail: adminEmail, booking: booking._id, title: `Booking Update — ${booking.bookingReference}`, message: adminMessage, type: info.type });
+      try {
+        await sendEmail(adminEmail, `Booking Status Update — ${booking.bookingReference}`, `<h2>CA Smart Staycation Admin Notification</h2><p>${adminMessage}</p><p><strong>Booking Status:</strong> ${booking.bookingStatus}<br><strong>Payment Status:</strong> ${booking.paymentStatus}<br><strong>Refund Status:</strong> ${booking.refundStatus || "Not Requested"}</p>`);
+      } catch (err) {
+        console.error(`ADMIN STATUS EMAIL FAILED (${adminEmail}, ${booking.bookingReference}):`, err.message);
+      }
     }
 
     await Booking.updateOne({ _id: booking._id }, { $set: { lastStatusNotificationKey: key } });
