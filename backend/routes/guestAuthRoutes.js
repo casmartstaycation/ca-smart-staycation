@@ -9,6 +9,7 @@ const sendEmail = require("../mail/sendEmail");
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "ca-smart-staycation-guest-secret";
 const RESET_MINUTES = 30;
+const ACTIVE_STATUSES = ["Reserved", "Pending Payment Verification", "Payment Rejected"];
 
 function getToken(req) {
   const header = req.headers.authorization || "";
@@ -27,6 +28,15 @@ function escapeHtml(value) {
 }
 async function bookingsForEmail(email) {
   return Booking.find({ email: String(email || "").trim().toLowerCase() }).populate("room").populate("parking").sort({ createdAt: -1 }).lean();
+}
+function dateOnly(value) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+function overlaps(startA, endA, startB, endB) {
+  return startA < endB && endA > startB;
 }
 
 router.post("/guest-auth/login", async (req, res) => {
@@ -126,34 +136,84 @@ router.get("/guest-auth/me", async (req, res) => {
   } catch (err) { res.status(401).json({ success: false, message: "Session expired or invalid." }); }
 });
 
-// Guest cancellation for accidental unpaid reservations.
-// Keep the record as Cancelled for audit/history; do not hard-delete it.
-// Only Reserved + unpaid + no payment proof may be cancelled here.
+// Guest cancellation. Paid bookings become a refund request; unpaid bookings are cancelled immediately.
 router.post("/guest-auth/bookings/:id/cancel", async (req, res) => {
   try {
     const payload = verifyToken(req);
     const account = await GuestAccount.findById(payload.accountId).lean();
     if (!account) return res.status(401).json({ success: false, message: "Account not found." });
-
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ success: false, message: "Booking not found." });
+    if (String(booking.email || "").trim().toLowerCase() !== String(account.email || "").trim().toLowerCase()) return res.status(403).json({ success: false, message: "You are not allowed to cancel this booking." });
+    if (!ACTIVE_STATUSES.includes(booking.bookingStatus)) return res.status(409).json({ success: false, message: "This booking can no longer be cancelled from the guest account." });
+    if (new Date(booking.checkIn).getTime() <= Date.now()) return res.status(409).json({ success: false, message: "A booking that has reached its check-in date can no longer be cancelled online." });
+    if (booking.refundStatus === "Requested" || booking.refundStatus === "Processing" || booking.refundStatus === "Refunded") return res.status(409).json({ success: false, message: "A refund request has already been submitted for this booking." });
 
-    if (String(booking.email || "").trim().toLowerCase() !== String(account.email || "").trim().toLowerCase()) {
-      return res.status(403).json({ success: false, message: "You are not allowed to cancel this booking." });
-    }
-
-    if (booking.bookingStatus !== "Reserved" || booking.paymentStatus === "Paid" || booking.paymentProof) {
-      return res.status(409).json({ success: false, message: "This booking can no longer be cancelled from the guest account. Please contact CA Smart Staycation for assistance." });
-    }
-
+    const reason = String(req.body.reason || "Guest requested cancellation").trim().slice(0, 500);
+    const hasPayment = booking.paymentStatus === "Paid" || Boolean(booking.paymentProof);
     booking.bookingStatus = "Cancelled";
+    booking.cancellationRequestedAt = new Date();
+    booking.cancellationReason = reason;
+    if (hasPayment) {
+      booking.refundRequested = true;
+      booking.refundRequestedAt = new Date();
+      booking.refundAmount = Number(booking.totalAmount || 0);
+      booking.refundStatus = "Requested";
+    }
     await booking.save();
 
-    res.json({ success: true, message: "Booking cancelled successfully. The reserved dates are now released.", data: booking });
+    res.json({ success: true, refundRequested: hasPayment, refundAmount: hasPayment ? booking.refundAmount : 0, message: hasPayment ? "Booking cancelled. Your refund request has been submitted for admin processing." : "Booking cancelled successfully. No payment was recorded, so no refund is required.", data: booking });
   } catch (err) {
     console.error("GUEST CANCEL BOOKING ERROR:", err);
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") return res.status(401).json({ success: false, message: "Session expired or invalid." });
     res.status(500).json({ success: false, message: "Unable to cancel this booking." });
+  }
+});
+
+// Guest date change. The requested dates must be free for the same accommodation and parking resource.
+router.post("/guest-auth/bookings/:id/reschedule", async (req, res) => {
+  try {
+    const payload = verifyToken(req);
+    const account = await GuestAccount.findById(payload.accountId).lean();
+    if (!account) return res.status(401).json({ success: false, message: "Account not found." });
+    const booking = await Booking.findById(req.params.id).populate("room").populate("parking");
+    if (!booking) return res.status(404).json({ success: false, message: "Booking not found." });
+    if (String(booking.email || "").trim().toLowerCase() !== String(account.email || "").trim().toLowerCase()) return res.status(403).json({ success: false, message: "You are not allowed to change this booking." });
+    if (!ACTIVE_STATUSES.includes(booking.bookingStatus)) return res.status(409).json({ success: false, message: "Only active bookings can be rescheduled." });
+    if (new Date(booking.checkIn).getTime() <= Date.now()) return res.status(409).json({ success: false, message: "A booking that has reached its check-in date can no longer be rescheduled online." });
+
+    const newCheckIn = dateOnly(req.body.checkIn);
+    const newCheckOut = dateOnly(req.body.checkOut);
+    const today = dateOnly(new Date());
+    if (!newCheckIn || !newCheckOut || newCheckOut <= newCheckIn) return res.status(400).json({ success: false, message: "Please choose valid check-in and check-out dates." });
+    if (newCheckIn < today) return res.status(400).json({ success: false, message: "The new check-in date cannot be in the past." });
+
+    const candidates = await Booking.find({
+      _id: { $ne: booking._id },
+      bookingStatus: { $in: ACTIVE_STATUSES },
+      $or: [
+        ...(booking.room ? [{ room: booking.room._id }] : []),
+        ...(booking.parking ? [{ parking: booking.parking._id }] : [])
+      ]
+    }).lean();
+
+    const roomConflict = Boolean(booking.room) && candidates.some(other => other.room && String(other.room) === String(booking.room._id) && overlaps(newCheckIn, newCheckOut, new Date(other.checkIn), new Date(other.checkOut)));
+    const parkingConflict = Boolean(booking.parking) && candidates.some(other => other.parking && String(other.parking) === String(booking.parking._id) && overlaps(newCheckIn, newCheckOut, new Date(other.checkIn), new Date(other.checkOut)));
+    if (roomConflict || parkingConflict) return res.status(409).json({ success: false, message: roomConflict && parkingConflict ? "The accommodation and parking are already booked for the selected dates." : roomConflict ? "The accommodation is already booked for the selected dates." : "The parking is already booked for the selected dates." });
+
+    const previousCheckIn = booking.checkIn;
+    const previousCheckOut = booking.checkOut;
+    booking.checkIn = newCheckIn;
+    booking.checkOut = newCheckOut;
+    booking.rescheduleHistory = booking.rescheduleHistory || [];
+    booking.rescheduleHistory.push({ previousCheckIn, previousCheckOut, newCheckIn, newCheckOut, changedAt: new Date() });
+    await booking.save();
+
+    res.json({ success: true, message: "Booking dates changed successfully.", data: booking });
+  } catch (err) {
+    console.error("GUEST RESCHEDULE ERROR:", err);
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") return res.status(401).json({ success: false, message: "Session expired or invalid." });
+    res.status(500).json({ success: false, message: "Unable to change the booking dates." });
   }
 });
 
