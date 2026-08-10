@@ -109,4 +109,7 @@ router.post('/admin-auth/login', async (req, res) => {
   }
 });
 
+// Authenticated admin-only guest booking creation.
+router.use(require('./adminBookingRoutes'));
+
 module.exports = router;
