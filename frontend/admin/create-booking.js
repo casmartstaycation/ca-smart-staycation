@@ -1,7 +1,7 @@
 const ADMIN_BOOKING_API = "https://ca-smart-staycation-muqd.onrender.com/api";
 const AB_ROOM_RATE_FALLBACK = 2800;
 const AB_EXTRA_GUEST_FEE = 300;
-const AB_PARKING_RATE = 500;
+const AB_PARKING_RATE_FALLBACK = 500;
 const AB_SECURITY_DEPOSIT = 1000;
 let adminRooms = [];
 let adminParking = [];
@@ -24,23 +24,32 @@ function nights(){
 }
 function selectedRoom(){ return adminRooms.find(r=>String(r._id)===ab("abRoom").value) || null; }
 function selectedParking(){ return adminParking.find(p=>String(p._id)===ab("abParking").value) || null; }
+function roomRateForDate(room,dateValue){
+  const base=Number(room?.price||AB_ROOM_RATE_FALLBACK);
+  if(!dateValue) return base;
+  const d=new Date(`${dateValue}T00:00:00`);
+  const day=d.getDay();
+  if((day===0||day===6)&&Number(room?.weekendPrice)>0) return Number(room.weekendPrice);
+  return base;
+}
 function adminBookingTotal(){
   const n=nights();
   const adults=Math.max(1,Number(ab("abAdults").value||1));
   const parkingOnly=ab("abParkingOnly").value==="true";
   const room=selectedRoom();
   const parking=selectedParking();
-  const roomRate=Number(room?.price||AB_ROOM_RATE_FALLBACK);
+  const roomRate=roomRateForDate(room,ab("abCheckIn").value);
   const extraAdults=Math.max(0,adults-2);
   const roomCharge=parkingOnly?0:roomRate*n;
   const extraCharge=parkingOnly?0:extraAdults*AB_EXTRA_GUEST_FEE*n;
-  const parkingCharge=parking?n*AB_PARKING_RATE:0;
+  const parkingRate=Number(parking?.rate ?? AB_PARKING_RATE_FALLBACK);
+  const parkingCharge=parking?n*parkingRate:0;
   const deposit=AB_SECURITY_DEPOSIT;
-  return {n,roomCharge,extraCharge,parkingCharge,deposit,total:roomCharge+extraCharge+parkingCharge+deposit,extraAdults,roomRate,parkingOnly};
+  return {n,roomCharge,extraCharge,parkingCharge,deposit,total:roomCharge+extraCharge+parkingCharge+deposit,extraAdults,roomRate,parkingRate,parkingOnly};
 }
 function updateAdminBookingSummary(){
   const x=adminBookingTotal();
-  ab("abSummary").innerHTML=`<div><span>Nights</span><strong>${x.n||0}</strong></div><div><span>Accommodation</span><strong>${abMoney(x.roomCharge)}</strong></div>${x.extraCharge?`<div><span>Extra adults (${x.extraAdults})</span><strong>${abMoney(x.extraCharge)}</strong></div>`:""}${x.parkingCharge?`<div><span>Parking</span><strong>${abMoney(x.parkingCharge)}</strong></div>`:""}<div><span>Refundable security deposit</span><strong>${abMoney(x.deposit)}</strong></div><div class="grand"><span>TOTAL AMOUNT</span><strong>${abMoney(x.total)}</strong></div>`;
+  ab("abSummary").innerHTML=`<div><span>Nights</span><strong>${x.n||0}</strong></div><div><span>Accommodation</span><strong>${abMoney(x.roomCharge)}</strong></div>${x.extraCharge?`<div><span>Extra adults (${x.extraAdults})</span><strong>${abMoney(x.extraCharge)}</strong></div>`:""}${x.parkingCharge?`<div><span>Parking (${abMoney(x.parkingRate)}/night)</span><strong>${abMoney(x.parkingCharge)}</strong></div>`:""}<div><span>Refundable security deposit</span><strong>${abMoney(x.deposit)}</strong></div><div class="grand"><span>TOTAL AMOUNT</span><strong>${abMoney(x.total)}</strong></div>`;
 }
 function updateParkingOnlyUI(){
   const only=ab("abParkingOnly").value==="true";
@@ -59,8 +68,8 @@ async function loadAdminBookingOptions(){
     const roomsJson=await roomsRes.json(); const parkingJson=await parkingRes.json();
     adminRooms=Array.isArray(roomsJson.data)?roomsJson.data:[];
     adminParking=Array.isArray(parkingJson.data)?parkingJson.data:[];
-    ab("abRoom").innerHTML=`<option value="">Select accommodation</option>${adminRooms.map(r=>`<option value="${abEscape(r._id)}">${abEscape(r.unitNumber)} — ${abEscape(r.unitName)} (${abMoney(r.price)}/night)</option>`).join("")}`;
-    ab("abParking").innerHTML=`<option value="">No parking</option>${adminParking.map(p=>`<option value="${abEscape(p._id)}">${abEscape(p.parkingNumber||p.parkingName||"Parking")}</option>`).join("")}`;
+    ab("abRoom").innerHTML=`<option value="">Select accommodation</option>${adminRooms.filter(r=>r.status!=="Maintenance").map(r=>`<option value="${abEscape(r._id)}">${abEscape(r.unitNumber)} — ${abEscape(r.unitName)} (${abMoney(r.price)}/night)</option>`).join("")}`;
+    ab("abParking").innerHTML=`<option value="">No parking</option>${adminParking.filter(p=>p.status!=="Maintenance").map(p=>`<option value="${abEscape(p._id)}">${abEscape(p.parkingNumber||p.parkingName||"Parking")} (${abMoney(p.rate)}/night)</option>`).join("")}`;
   }catch(err){
     console.error("ADMIN BOOKING OPTIONS ERROR:",err);
     ab("abError").textContent="Unable to load accommodations or parking options.";
