@@ -5,138 +5,23 @@ const AB_PARKING_RATE_FALLBACK = 500;
 const AB_SECURITY_DEPOSIT = 1000;
 let adminRooms = [];
 let adminParking = [];
-
 const ab = id => document.getElementById(id);
 const abMoney = value => `₱${Number(value || 0).toLocaleString("en-PH")}`;
 const abEscape = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
-
-function adminToken(){ return sessionStorage.getItem("caSmartAdminToken") || ""; }
-function adminHeaders(){ return { "Content-Type":"application/json", Authorization:`Bearer ${adminToken()}` }; }
-function localDateString(d=new Date()){
-  const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,"0"); const day=String(d.getDate()).padStart(2,"0");
-  return `${y}-${m}-${day}`;
-}
-function nights(){
-  const a=ab("abCheckIn").value, b=ab("abCheckOut").value;
-  if(!a||!b) return 0;
-  const diff=(new Date(`${b}T00:00:00`)-new Date(`${a}T00:00:00`))/86400000;
-  return Number.isFinite(diff)&&diff>0?diff:0;
-}
-function selectedRoom(){ return adminRooms.find(r=>String(r._id)===ab("abRoom").value) || null; }
-function selectedParking(){ return adminParking.find(p=>String(p._id)===ab("abParking").value) || null; }
-function roomRateForDate(room,dateValue){
-  const base=Number(room?.price||AB_ROOM_RATE_FALLBACK);
-  if(!dateValue) return base;
-  const d=new Date(`${dateValue}T00:00:00`);
-  const day=d.getDay();
-  if((day===0||day===6)&&Number(room?.weekendPrice)>0) return Number(room.weekendPrice);
-  return base;
-}
-function adminBookingTotal(){
-  const n=nights();
-  const adults=Math.max(1,Number(ab("abAdults").value||1));
-  const parkingOnly=ab("abParkingOnly").value==="true";
-  const room=selectedRoom();
-  const parking=selectedParking();
-  const roomRate=roomRateForDate(room,ab("abCheckIn").value);
-  const extraAdults=Math.max(0,adults-2);
-  const roomCharge=parkingOnly?0:roomRate*n;
-  const extraCharge=parkingOnly?0:extraAdults*AB_EXTRA_GUEST_FEE*n;
-  const parkingRate=Number(parking?.rate ?? AB_PARKING_RATE_FALLBACK);
-  const parkingCharge=parking?n*parkingRate:0;
-  const deposit=AB_SECURITY_DEPOSIT;
-  return {n,roomCharge,extraCharge,parkingCharge,deposit,total:roomCharge+extraCharge+parkingCharge+deposit,extraAdults,roomRate,parkingRate,parkingOnly};
-}
-function updateAdminBookingSummary(){
-  const x=adminBookingTotal();
-  ab("abSummary").innerHTML=`<div><span>Nights</span><strong>${x.n||0}</strong></div><div><span>Accommodation</span><strong>${abMoney(x.roomCharge)}</strong></div>${x.extraCharge?`<div><span>Extra adults (${x.extraAdults})</span><strong>${abMoney(x.extraCharge)}</strong></div>`:""}${x.parkingCharge?`<div><span>Parking (${abMoney(x.parkingRate)}/night)</span><strong>${abMoney(x.parkingCharge)}</strong></div>`:""}<div><span>Refundable security deposit</span><strong>${abMoney(x.deposit)}</strong></div><div class="grand"><span>TOTAL AMOUNT</span><strong>${abMoney(x.total)}</strong></div>`;
-}
-function updateParkingOnlyUI(){
-  const only=ab("abParkingOnly").value==="true";
-  ab("abRoom").disabled=only;
-  if(only) ab("abRoom").value="";
-  updateAdminBookingSummary();
-}
-async function loadAdminBookingOptions(){
-  const token=adminToken();
-  if(!token) return;
-  try{
-    const [roomsRes,parkingRes]=await Promise.all([
-      fetch(`${ADMIN_BOOKING_API}/rooms`,{cache:"no-store"}),
-      fetch(`${ADMIN_BOOKING_API}/parking`,{cache:"no-store"})
-    ]);
-    const roomsJson=await roomsRes.json(); const parkingJson=await parkingRes.json();
-    adminRooms=Array.isArray(roomsJson.data)?roomsJson.data:[];
-    adminParking=Array.isArray(parkingJson.data)?parkingJson.data:[];
-    ab("abRoom").innerHTML=`<option value="">Select accommodation</option>${adminRooms.filter(r=>r.status!=="Maintenance").map(r=>`<option value="${abEscape(r._id)}">${abEscape(r.unitNumber)} — ${abEscape(r.unitName)} (${abMoney(r.price)}/night)</option>`).join("")}`;
-    ab("abParking").innerHTML=`<option value="">No parking</option>${adminParking.filter(p=>p.status!=="Maintenance").map(p=>`<option value="${abEscape(p._id)}">${abEscape(p.parkingNumber||p.parkingName||"Parking")} (${abMoney(p.rate)}/night)</option>`).join("")}`;
-  }catch(err){
-    console.error("ADMIN BOOKING OPTIONS ERROR:",err);
-    ab("abError").textContent="Unable to load accommodations or parking options.";
-  }
-}
-function openAdminBooking(){
-  ab("adminBookingModal").hidden=false;
-  ab("abError").textContent="";
-  const today=localDateString();
-  ab("abCheckIn").min=today; ab("abCheckOut").min=today;
-  loadAdminBookingOptions();
-  updateAdminBookingSummary();
-}
-function closeAdminBooking(){ ab("adminBookingModal").hidden=true; }
-async function submitAdminBooking(event){
-  event.preventDefault();
-  const x=adminBookingTotal();
-  const room=selectedRoom();
-  const parking=selectedParking();
-  const parkingOnly=ab("abParkingOnly").value==="true";
-  const checkIn=ab("abCheckIn").value;
-  const checkOut=ab("abCheckOut").value;
-  const adults=Math.max(1,Number(ab("abAdults").value||1));
-  if(!adminToken()){ ab("abError").textContent="Your admin session has expired. Please sign in again."; return; }
-  if(!x.n){ ab("abError").textContent="Please select a valid check-in and check-out date."; return; }
-  if(!parkingOnly&&!room){ ab("abError").textContent="Please select an accommodation or choose Parking Only."; return; }
-  if(adults>4){ ab("abError").textContent="Maximum occupancy is 4 adults."; return; }
-  const button=event.submitter; button.disabled=true; button.textContent="Creating…"; ab("abError").textContent="";
-  try{
-    const body={
-      firstName:ab("abFirstName").value.trim(), lastName:ab("abLastName").value.trim(),
-      email:ab("abEmail").value.trim(), mobile:ab("abMobile").value.trim(), address:ab("abAddress").value.trim(),
-      room:parkingOnly?null:room?._id||null, parking:parking?._id||null, parkingOnly,
-      checkIn, checkOut, adults, children:Math.max(0,Number(ab("abChildren").value||0)),
-      totalAmount:x.total, paymentStatus:ab("abPaymentStatus").value,
-      paymentReference:ab("abPaymentReference").value.trim(), notes:ab("abNotes").value.trim()
-    };
-    const res=await fetch(`${ADMIN_BOOKING_API}/admin/bookings`,{method:"POST",headers:adminHeaders(),body:JSON.stringify(body)});
-    const json=await res.json();
-    if(res.status===401||res.status===403){ ab("abError").textContent="Your admin session has expired. Please sign in again."; return; }
-    if(!res.ok) throw new Error(json.message||"Unable to create booking.");
-    alert(`Booking created successfully.\nReference: ${json.data?.bookingReference||"—"}`);
-    closeAdminBooking();
-    if(typeof loadBookings==="function") await loadBookings();
-    ab("adminBookingForm").reset();
-    ab("abAdults").value="2";
-    ab("abPaymentStatus").value="Paid";
-    ab("abParkingOnly").value="false";
-    updateParkingOnlyUI();
-  }catch(err){
-    console.error("ADMIN CREATE BOOKING ERROR:",err);
-    ab("abError").textContent=err.message||"Unable to create booking.";
-  }finally{
-    button.disabled=false; button.textContent="Create Booking";
-  }
-}
-
-ab("navNewBooking").addEventListener("click",openAdminBooking);
-ab("adminBookingClose").addEventListener("click",closeAdminBooking);
-ab("adminBookingCancel").addEventListener("click",closeAdminBooking);
-ab("adminBookingForm").addEventListener("submit",submitAdminBooking);
-ab("abParkingOnly").addEventListener("change",updateParkingOnlyUI);
-["abCheckIn","abCheckOut","abRoom","abParking","abAdults","abChildren"].forEach(id=>ab(id).addEventListener("input",updateAdminBookingSummary));
-ab("abCheckIn").addEventListener("change",()=>{
-  const value=ab("abCheckIn").value;
-  ab("abCheckOut").min=value||localDateString();
-  if(ab("abCheckOut").value&&value&&ab("abCheckOut").value<=value) ab("abCheckOut").value="";
-  updateAdminBookingSummary();
-});
-ab("adminBookingModal").addEventListener("click",e=>{if(e.target.id==="adminBookingModal")closeAdminBooking();});
+function adminToken(){return sessionStorage.getItem("caSmartAdminToken")||"";}
+function adminHeaders(){return {"Content-Type":"application/json",Authorization:`Bearer ${adminToken()}`};}
+function localDateString(d=new Date()){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`;}
+function nights(){const a=ab("abCheckIn").value,b=ab("abCheckOut").value;if(!a||!b)return 0;const diff=(new Date(`${b}T00:00:00`)-new Date(`${a}T00:00:00`))/86400000;return Number.isFinite(diff)&&diff>0?diff:0;}
+function selectedRoom(){return adminRooms.find(r=>String(r._id)===ab("abRoom").value)||null;}
+function selectedParking(){return adminParking.find(p=>String(p._id)===ab("abParking").value)||null;}
+function roomRateForDate(room,dateValue){const base=Number(room?.price||AB_ROOM_RATE_FALLBACK);if(!dateValue)return base;const d=new Date(`${dateValue}T00:00:00`),day=d.getDay();return(day===0||day===6)&&Number(room?.weekendPrice)>0?Number(room.weekendPrice):base;}
+function adminBookingTotal(){const n=nights(),adults=Math.max(1,Number(ab("abAdults").value||1)),parkingOnly=ab("abParkingOnly").value==="true",room=selectedRoom(),parking=selectedParking(),roomRate=roomRateForDate(room,ab("abCheckIn").value),extraAdults=Math.max(0,adults-2),roomCharge=parkingOnly?0:roomRate*n,extraCharge=parkingOnly?0:extraAdults*AB_EXTRA_GUEST_FEE*n,parkingRate=Number(parking?.rate??AB_PARKING_RATE_FALLBACK),parkingCharge=parking?n*parkingRate:0,deposit=AB_SECURITY_DEPOSIT;return{n,roomCharge,extraCharge,parkingCharge,deposit,total:roomCharge+extraCharge+parkingCharge+deposit,extraAdults,roomRate,parkingRate,parkingOnly};}
+function updateAdminBookingSummary(){const x=adminBookingTotal();ab("abSummary").innerHTML=`<div><span>Nights</span><strong>${x.n||0}</strong></div><div><span>Accommodation</span><strong>${abMoney(x.roomCharge)}</strong></div>${x.extraCharge?`<div><span>Extra adults (${x.extraAdults})</span><strong>${abMoney(x.extraCharge)}</strong></div>`:""}${x.parkingCharge?`<div><span>Parking (${abMoney(x.parkingRate)}/night)</span><strong>${abMoney(x.parkingCharge)}</strong></div>`:""}<div><span>Refundable security deposit</span><strong>${abMoney(x.deposit)}</strong></div><div class="grand"><span>TOTAL AMOUNT</span><strong>${abMoney(x.total)}</strong></div>`;}
+function updateDocumentRequirements(){const parkingOnly=ab("abParkingOnly").value==="true",hasParking=parkingOnly||Boolean(ab("abParking").value),gov=ab("abGovernmentId"),license=ab("abDriversLicense");ab("abGovIdWrap").style.display=parkingOnly?"none":"";gov.required=!parkingOnly;if(parkingOnly)gov.value="";["abLicenseWrap","abVehicleBrandWrap","abVehicleModelWrap","abVehicleColorWrap","abPlateWrap"].forEach(id=>ab(id).style.display=hasParking?"":"none");license.required=hasParking;["abVehicleBrand","abVehicleModel","abVehicleColor","abPlateNumber"].forEach(id=>ab(id).required=hasParking);if(!hasParking){license.value="";["abVehicleBrand","abVehicleModel","abVehicleColor","abPlateNumber"].forEach(id=>ab(id).value="");}}
+async function loadAdminBookingOptions(){const token=adminToken();if(!token)return;try{const [roomsRes,parkingRes]=await Promise.all([fetch(`${ADMIN_BOOKING_API}/rooms`,{cache:"no-store"}),fetch(`${ADMIN_BOOKING_API}/parking`,{cache:"no-store"})]);const roomsJson=await roomsRes.json(),parkingJson=await parkingRes.json();adminRooms=Array.isArray(roomsJson.data)?roomsJson.data:[];adminParking=Array.isArray(parkingJson.data)?parkingJson.data:[];ab("abRoom").innerHTML=`<option value="">Select accommodation</option>${adminRooms.filter(r=>r.status!=="Maintenance").map(r=>`<option value="${abEscape(r._id)}">${abEscape(r.unitNumber)} — ${abEscape(r.unitName)} (${abMoney(r.price)}/night)</option>`).join("")}`;ab("abParking").innerHTML=`<option value="">No parking</option>${adminParking.filter(p=>p.status!=="Maintenance").map(p=>`<option value="${abEscape(p._id)}">${abEscape(p.parkingNumber||p.parkingName||"Parking")} (${abMoney(p.rate)}/night)</option>`).join("")}`;updateDocumentRequirements();}catch(err){console.error("ADMIN BOOKING OPTIONS ERROR:",err);ab("abError").textContent="Unable to load accommodations or parking options.";}}
+function openAdminBooking(){ab("adminBookingModal").hidden=false;ab("abError").textContent="";const today=localDateString();ab("abCheckIn").min=today;ab("abCheckOut").min=today;loadAdminBookingOptions();updateDocumentRequirements();updateAdminBookingSummary();}
+function closeAdminBooking(){ab("adminBookingModal").hidden=true;}
+function validateFile(file,label){if(!file)return null;const allowed=["image/jpeg","image/png","image/webp","application/pdf"];if(!allowed.includes(file.type))throw new Error(`${label} must be JPG, PNG, WEBP, or PDF.`);if(file.size>10*1024*1024)throw new Error(`${label} must be smaller than 10 MB.`);return file;}
+async function uploadAdminDocuments(bookingId){const parkingOnly=ab("abParkingOnly").value==="true",governmentId=ab("abGovernmentId").files?.[0]||null,driversLicense=ab("abDriversLicense").files?.[0]||null,hasParking=parkingOnly||Boolean(ab("abParking").value);if(!parkingOnly&&!governmentId)throw new Error("Please upload a clear government-issued ID.");if(hasParking&&!driversLicense)throw new Error("Please upload the driver's license required for parking.");validateFile(governmentId,"Government ID");validateFile(driversLicense,"Driver's License");const fd=new FormData();if(governmentId)fd.append("governmentId",governmentId);if(driversLicense)fd.append("driversLicense",driversLicense);fd.append("vehicleBrand",ab("abVehicleBrand").value.trim());fd.append("vehicleModel",ab("abVehicleModel").value.trim());fd.append("vehicleColor",ab("abVehicleColor").value.trim());fd.append("plateNumber",ab("abPlateNumber").value.trim());const res=await fetch(`${ADMIN_BOOKING_API}/bookings/${encodeURIComponent(bookingId)}/documents`,{method:"POST",body:fd});const json=await res.json();if(!res.ok)throw new Error(json.message||"Guest document upload failed.");return json;}
+async function submitAdminBooking(event){event.preventDefault();const x=adminBookingTotal(),room=selectedRoom(),parking=selectedParking(),parkingOnly=ab("abParkingOnly").value==="true",checkIn=ab("abCheckIn").value,checkOut=ab("abCheckOut").value,adults=Math.max(1,Number(ab("abAdults").value||1)),hasParking=parkingOnly||Boolean(parking);if(!adminToken()){ab("abError").textContent="Your admin session has expired. Please sign in again.";return;}if(!x.n){ab("abError").textContent="Please select a valid check-in and check-out date.";return;}if(!parkingOnly&&!room){ab("abError").textContent="Please select an accommodation or choose Parking Only.";return;}if(adults>4){ab("abError").textContent="Maximum occupancy is 4 adults.";return;}if(!parkingOnly&&!ab("abGovernmentId").files?.[0]){ab("abError").textContent="Government-issued ID is required.";return;}if(hasParking){if(!ab("abDriversLicense").files?.[0]){ab("abError").textContent="Driver's License is required for parking.";return;}for(const id of ["abVehicleBrand","abVehicleModel","abVehicleColor","abPlateNumber"]){if(!ab(id).value.trim()){ab("abError").textContent="Complete all vehicle information required for parking.";return;}}}const button=event.submitter;button.disabled=true;button.textContent="Creating…";ab("abError").textContent="";try{const body={firstName:ab("abFirstName").value.trim(),lastName:ab("abLastName").value.trim(),email:ab("abEmail").value.trim(),mobile:ab("abMobile").value.trim(),address:ab("abAddress").value.trim(),room:parkingOnly?null:room?._id||null,parking:parking?._id||null,parkingOnly,checkIn,checkOut,adults,children:Math.max(0,Number(ab("abChildren").value||0)),totalAmount:x.total,paymentStatus:ab("abPaymentStatus").value,paymentReference:ab("abPaymentReference").value.trim(),notes:ab("abNotes").value.trim(),vehicleBrand:ab("abVehicleBrand").value.trim(),vehicleModel:ab("abVehicleModel").value.trim(),vehicleColor:ab("abVehicleColor").value.trim(),plateNumber:ab("abPlateNumber").value.trim()};const res=await fetch(`${ADMIN_BOOKING_API}/admin/bookings`,{method:"POST",headers:adminHeaders(),body:JSON.stringify(body)}),json=await res.json();if(res.status===401||res.status===403){ab("abError").textContent="Your admin session has expired. Please sign in again.";return;}if(!res.ok)throw new Error(json.message||"Unable to create booking.");await uploadAdminDocuments(json.data._id);alert(`Booking created successfully.\nReference: ${json.data?.bookingReference||"—"}`);closeAdminBooking();if(typeof loadBookings==="function")await loadBookings();ab("adminBookingForm").reset();ab("abAdults").value="2";ab("abPaymentStatus").value="Paid";ab("abParkingOnly").value="false";updateDocumentRequirements();updateAdminBookingSummary();}catch(err){console.error("ADMIN CREATE BOOKING ERROR:",err);ab("abError").textContent=err.message||"Unable to create booking.";}finally{button.disabled=false;button.textContent="Create Booking";}}
+ab("navNewBooking").addEventListener("click",openAdminBooking);ab("adminBookingClose").addEventListener("click",closeAdminBooking);ab("adminBookingCancel").addEventListener("click",closeAdminBooking);ab("adminBookingForm").addEventListener("submit",submitAdminBooking);ab("abParkingOnly").addEventListener("change",updateDocumentRequirements);ab("abParking").addEventListener("change",updateDocumentRequirements);["abCheckIn","abCheckOut","abRoom","abParking","abAdults","abChildren"].forEach(id=>ab(id).addEventListener("input",updateAdminBookingSummary));ab("abCheckIn").addEventListener("change",()=>{const value=ab("abCheckIn").value;ab("abCheckOut").min=value||localDateString();if(ab("abCheckOut").value&&value&&ab("abCheckOut").value<=value)ab("abCheckOut").value="";updateAdminBookingSummary();});ab("adminBookingModal").addEventListener("click",e=>{if(e.target.id==="adminBookingModal")closeAdminBooking();});
