@@ -51,6 +51,7 @@ app.use('/api', require('./routes/bookingRoutes'));
 app.use('/api', require('./routes/guestDocumentRoutes'));
 app.use('/api', require('./routes/parkingRoutes'));
 app.use('/api', require('./routes/voucherRoutes'));
+app.use('/api', require('./routes/messagingRoutes'));
 app.use('/api/settings', settingsRoutes);
 app.use((req, res) => res.status(404).json({ status: 'error', message: 'Route not found' }));
 const PORT = process.env.PORT || 3000;
