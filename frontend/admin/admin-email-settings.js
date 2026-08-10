@@ -33,25 +33,29 @@ function renderAdminNotificationEmails(emails = []) {
   list.innerHTML = "";
   const unique = [...new Set(emails.map(v => String(v || "").trim().toLowerCase()).filter(Boolean))];
   if (!unique.length) {
-    list.innerHTML = '<div style="font-size:12px;color:#66736e;padding:5px 0">No notification emails added.</div>';
+    list.innerHTML = '<div style="font-size:12px;color:#66736e;padding:5px 0">No additional notification emails added.</div>';
     return;
   }
-  unique.forEach((email, index) => {
+  // The primary email is already shown in the main field above.
+  // Only additional addresses are listed here, each with its own Delete button.
+  const additional = unique.slice(1);
+  if (!additional.length) {
+    list.innerHTML = '<div style="font-size:12px;color:#66736e;padding:5px 0">No additional notification emails added.</div>';
+    return;
+  }
+  additional.forEach(email => {
     const row = document.createElement("div");
     row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;margin:6px 0;background:#fff;border:1px solid #d7e1dc;border-radius:7px";
     const label = document.createElement("span");
-    label.textContent = index === 0 ? `${email} (Primary)` : email;
+    label.textContent = email;
     label.style.cssText = "font-size:13px;color:#173f35;word-break:break-all";
     row.appendChild(label);
-    if (index > 0) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = "Delete";
-      button.dataset.email = email;
-      button.style.cssText = "min-height:34px;padding:0 12px;border:1px solid #d9b1ad;background:#fff;color:#a1261f;border-radius:6px;cursor:pointer";
-      button.addEventListener("click", () => deleteAdminNotificationEmail(email));
-      row.appendChild(button);
-    }
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Delete";
+    button.style.cssText = "min-height:34px;padding:0 12px;border:1px solid #d9b1ad;background:#fff;color:#a1261f;border-radius:6px;cursor:pointer";
+    button.addEventListener("click", () => deleteAdminNotificationEmail(email));
+    row.appendChild(button);
     list.appendChild(row);
   });
 }
@@ -68,7 +72,7 @@ async function loadAdminNotificationEmail() {
     input.value = data.email || "";
     const emails = Array.isArray(data.emails) && data.emails.length ? data.emails : (data.email ? [data.email] : []);
     renderAdminNotificationEmails(emails);
-    if (status) status.textContent = data.email ? `Primary notification email: ${data.email}` : "No custom admin notification email is set.";
+    if (status) status.textContent = data.email ? "" : "No custom admin notification email is set.";
   } catch (err) {
     console.error("ADMIN EMAIL LOAD ERROR:", err);
     if (status) status.textContent = err.message;
@@ -91,7 +95,7 @@ async function saveAdminNotificationEmail() {
     const res = await fetch(`${ADMIN_EMAIL_API}/settings/admin-notification-email`, { method: "PUT", headers: adminEmailAuthHeaders(true), body: JSON.stringify({ email }) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Unable to save notification email.");
-    if (status) status.textContent = `Saved. Primary admin notification email: ${data.email}.`;
+    if (status) status.textContent = "Saved.";
     await loadAdminNotificationEmail();
   } catch (err) {
     console.error("ADMIN EMAIL SAVE ERROR:", err);
@@ -118,7 +122,7 @@ async function addAdminNotificationEmail() {
     if (!res.ok) throw new Error(result.message || "Unable to add email.");
     input.value = "";
     renderAdminNotificationEmails(result.emails || emails);
-    if (status) status.textContent = `Added ${email} to admin notifications.`;
+    if (status) status.textContent = `Added ${email}.`;
   } catch (err) {
     console.error("ADMIN EMAIL ADD ERROR:", err);
     if (status) status.textContent = err.message;
@@ -133,7 +137,7 @@ async function deleteAdminNotificationEmail(email) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Unable to delete email.");
     renderAdminNotificationEmails(data.emails || []);
-    if (status) status.textContent = `Deleted ${email} from admin notifications.`;
+    if (status) status.textContent = `Deleted ${email}.`;
   } catch (err) {
     console.error("ADMIN EMAIL DELETE ERROR:", err);
     if (status) status.textContent = err.message;
