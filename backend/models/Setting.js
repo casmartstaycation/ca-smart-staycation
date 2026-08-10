@@ -30,6 +30,11 @@ const settingSchema = new mongoose.Schema({
     securityDeposit: {
         type: Number,
         default: 1000
+    },
+
+    adminNotificationEmail: {
+        type: String,
+        default: ""
     }
 
 });
