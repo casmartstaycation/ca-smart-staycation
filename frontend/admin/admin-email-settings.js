@@ -11,7 +11,7 @@ function adminEmailAuthHeaders(json = false) {
 
 function ensureAdminEmailManager() {
   const section = document.querySelector(".admin-email-settings");
-  if (!section || document.getElementById("adminEmailManager")) return;
+  if (!section || document.getElementById("adminEmailManager")) return false;
   const manager = document.createElement("div");
   manager.id = "adminEmailManager";
   manager.innerHTML = `
@@ -24,19 +24,23 @@ function ensureAdminEmailManager() {
       </div>
     </div>`;
   section.appendChild(manager);
+  document.getElementById("addAdminNotificationEmail")?.addEventListener("click", addAdminNotificationEmail);
+  return true;
 }
 
-function renderAdminNotificationEmails(emails = []) {
+function renderAdminNotificationEmails(emails = [], primaryEmail = "") {
   ensureAdminEmailManager();
   const list = document.getElementById("adminNotificationEmailList");
   if (!list) return;
   list.innerHTML = "";
+  const primary = String(primaryEmail || "").trim().toLowerCase();
   const unique = [...new Set(emails.map(v => String(v || "").trim().toLowerCase()).filter(Boolean))];
-  if (!unique.length) {
+  const ordered = primary ? [primary, ...unique.filter(email => email !== primary)] : unique;
+  if (!ordered.length) {
     list.innerHTML = '<div style="font-size:12px;color:#66736e;padding:5px 0">No notification emails added.</div>';
     return;
   }
-  unique.forEach((email, index) => {
+  ordered.forEach((email, index) => {
     const row = document.createElement("div");
     row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;margin:6px 0;background:#fff;border:1px solid #d7e1dc;border-radius:7px";
     const label = document.createElement("span");
@@ -56,14 +60,15 @@ function renderAdminNotificationEmails(emails = []) {
 }
 
 async function loadAdminNotificationEmail() {
-  ensureAdminEmailManager();
   const status = document.getElementById("adminNotificationEmailStatus");
   try {
+    ensureAdminEmailManager();
     const res = await fetch(`${ADMIN_EMAIL_API}/settings/admin-notification-email`, { headers: adminEmailAuthHeaders(), cache: "no-store" });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Unable to load notification emails.");
-    const emails = Array.isArray(data.emails) && data.emails.length ? data.emails : (data.email ? [data.email] : []);
-    renderAdminNotificationEmails(emails);
+    const primary = String(data.email || "").trim().toLowerCase();
+    const emails = Array.isArray(data.emails) ? data.emails : [];
+    renderAdminNotificationEmails(emails.length ? emails : (primary ? [primary] : []), primary);
     if (status) status.textContent = "";
   } catch (err) {
     console.error("ADMIN EMAIL LOAD ERROR:", err);
@@ -84,12 +89,13 @@ async function addAdminNotificationEmail() {
     const current = await fetch(`${ADMIN_EMAIL_API}/settings/admin-notification-email`, { headers: adminEmailAuthHeaders(), cache: "no-store" });
     const data = await current.json();
     if (!current.ok) throw new Error(data.message || "Unable to load current emails.");
-    const emails = Array.from(new Set([...(data.emails || []), email]));
+    const primary = String(data.email || "").trim().toLowerCase();
+    const emails = Array.from(new Set([primary, ...(data.emails || []), email].filter(Boolean)));
     const res = await fetch(`${ADMIN_EMAIL_API}/settings/admin-notification-emails`, { method: "PUT", headers: adminEmailAuthHeaders(true), body: JSON.stringify({ emails }) });
     const result = await res.json();
     if (!res.ok) throw new Error(result.message || "Unable to add email.");
     input.value = "";
-    renderAdminNotificationEmails(result.emails || emails);
+    renderAdminNotificationEmails(result.emails || emails, primary);
     if (status) status.textContent = `Added ${email} to admin notifications.`;
   } catch (err) {
     console.error("ADMIN EMAIL ADD ERROR:", err);
@@ -104,7 +110,8 @@ async function deleteAdminNotificationEmail(email) {
     const res = await fetch(`${ADMIN_EMAIL_API}/settings/admin-notification-emails`, { method: "DELETE", headers: adminEmailAuthHeaders(true), body: JSON.stringify({ email }) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Unable to delete email.");
-    renderAdminNotificationEmails(data.emails || []);
+    const primary = document.getElementById("adminNotificationEmailList")?.querySelector("span")?.textContent?.replace(/ \(Primary\)$/, "") || "";
+    renderAdminNotificationEmails(data.emails || [], primary);
     if (status) status.textContent = `Deleted ${email} from admin notifications.`;
   } catch (err) {
     console.error("ADMIN EMAIL DELETE ERROR:", err);
@@ -112,8 +119,27 @@ async function deleteAdminNotificationEmail(email) {
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function initAdminEmailSettings() {
   ensureAdminEmailManager();
-  document.getElementById("addAdminNotificationEmail")?.addEventListener("click", addAdminNotificationEmail);
   loadAdminNotificationEmail();
+}
+
+document.addEventListener("DOMContentLoaded", initAdminEmailSettings);
+
+// Admin settings content can be rendered dynamically after the initial page load.
+// Keep the email list synchronized whenever that section is inserted or replaced.
+const adminEmailObserver = new MutationObserver(() => {
+  const section = document.querySelector(".admin-email-settings");
+  if (!section) return;
+  const managerCreated = ensureAdminEmailManager();
+  if (managerCreated || !document.getElementById("adminNotificationEmailList")?.children.length) {
+    loadAdminNotificationEmail();
+  }
 });
+
+function startAdminEmailObserver() {
+  if (document.body) adminEmailObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", startAdminEmailObserver);
+else startAdminEmailObserver();
