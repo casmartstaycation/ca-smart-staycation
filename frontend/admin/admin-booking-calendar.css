@@ -1,10 +1,7 @@
 .admin-booking-calendar{margin-top:10px;padding:14px;border:1px solid #d9e2dd;border-radius:12px;background:#fff;max-width:460px}.abc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;color:#173f35}.abc-head button{border:1px solid #d9e2dd;background:#f5f8f6;border-radius:7px;width:34px;height:32px;font-size:20px;cursor:pointer}.abc-week,.abc-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.abc-week span{text-align:center;font-size:11px;font-weight:700;color:#77827e;padding:4px}.abc-day{min-height:42px;border:1px solid #dfe6e2;border-radius:7px;background:#fff;cursor:pointer;font-size:13px;position:relative}.abc-day:hover:not(:disabled){border-color:#173f35;background:#f0f6f3}.abc-day.past{color:#b7bfbb;background:#f5f6f5}.abc-day.booked{background:#ead9d9;border-color:#c98f8f;color:#8b3535;cursor:not-allowed}.abc-day.booked small{display:block;font-size:7px;font-weight:700}.abc-day.selected{background:#173f35;color:#fff;border-color:#173f35}.abc-day.between{background:#dceae4}.abc-empty{min-height:42px}.abc-legend{display:flex;gap:16px;margin-top:10px;font-size:11px;color:#697570}.abc-legend span{display:inline-flex;align-items:center;gap:5px}.abc-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;border:1px solid #ccd7d2}.abc-legend .free{background:#fff}.abc-legend .busy{background:#ead9d9;border-color:#c98f8f}
 
-/* The custom availability calendar is the only date selector. */
+/* Keep native date fields available alongside the custom availability calendar. */
 #adminBookingModal input[type="date"]{appearance:none;-webkit-appearance:none;cursor:default}
 #adminBookingModal input[type="date"]::-webkit-calendar-picker-indicator{display:none;-webkit-appearance:none}
 #adminBookingModal input[type="date"]::-webkit-clear-button,#adminBookingModal input[type="date"]::-webkit-inner-spin-button{display:none}
 #adminBookingModal input[type="date"]{pointer-events:none;background:#f7f9f8}
-
-/* Keep the selected dates in the form for submission, but hide the redundant Check-in/Check-out labels and boxes. */
-#adminBookingModal .admin-booking-field:has(>#abCheckIn),#adminBookingModal .admin-booking-field:has(>#abCheckOut){display:none!important}
