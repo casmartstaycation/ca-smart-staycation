@@ -28,8 +28,6 @@ if (uploadButton) {
             return;
         }
 
-        // A rejected proof can be replaced. For a normal unpaid booking,
-        // the original one-hour deadline still applies.
         const isRejected = booking.bookingStatus === "Payment Rejected";
         if (!isRejected && booking.paymentDeadline && Date.now() >= new Date(booking.paymentDeadline).getTime()) {
             alert("This booking has expired because payment was not settled within 1 hour. Please create a new booking.");
@@ -39,13 +37,11 @@ if (uploadButton) {
 
         const bookingId = booking._id || booking.id;
         const file = fileInput?.files?.[0];
-
         if (!bookingId) {
             alert("Booking ID is missing. Please start a new booking.");
             resetUploadButton();
             return;
         }
-
         if (!file) {
             alert("Please select your payment proof.");
             resetUploadButton();
@@ -58,7 +54,6 @@ if (uploadButton) {
             resetUploadButton();
             return;
         }
-
         if (file.size > 10 * 1024 * 1024) {
             alert("Payment proof is too large. Please upload a file smaller than 10 MB.");
             resetUploadButton();
@@ -75,26 +70,15 @@ if (uploadButton) {
 
         const formData = new FormData();
         formData.append("paymentProof", file);
-
         const url = `https://ca-smart-staycation-muqd.onrender.com/api/bookings/${encodeURIComponent(bookingId)}/payment`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 90 * 1000);
 
         try {
-            const response = await fetch(url, {
-                method: "POST",
-                body: formData,
-                signal: controller.signal
-            });
-
+            const response = await fetch(url, { method: "POST", body: formData, signal: controller.signal });
             clearTimeout(timeoutId);
-
             let result = {};
-            try {
-                result = await response.json();
-            } catch (_) {
-                result = {};
-            }
+            try { result = await response.json(); } catch (_) { result = {}; }
 
             if (!response.ok) {
                 alert(result.message || "Payment upload failed. Please try again.");
@@ -102,15 +86,23 @@ if (uploadButton) {
                 return;
             }
 
-            localStorage.setItem("guestBooking", JSON.stringify({
+            const updatedBooking = {
                 ...booking,
                 ...(result.data || {}),
                 bookingStatus: "Pending Payment Verification",
                 paymentStatus: "Pending"
-            }));
+            };
+            localStorage.setItem("guestBooking", JSON.stringify(updatedBooking));
 
-            alert("Payment proof uploaded successfully. Your booking is now waiting for admin payment verification.");
-            window.location.href = "booking-submitted.html";
+            const token = localStorage.getItem("guestAuthToken");
+            if (token) {
+                alert("Payment proof uploaded successfully. Your booking is now waiting for admin payment verification.");
+                window.location.href = "guest-dashboard.html";
+            } else {
+                // New guests may not have an account token until payment proof creates the account.
+                alert("Payment proof uploaded successfully. Your guest account has been created. Please log in to continue.");
+                window.location.href = "guest-login.html";
+            }
         } catch (err) {
             clearTimeout(timeoutId);
             console.error("Payment upload error:", err);
