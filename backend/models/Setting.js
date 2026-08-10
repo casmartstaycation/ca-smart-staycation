@@ -35,6 +35,11 @@ const settingSchema = new mongoose.Schema({
     adminNotificationEmail: {
         type: String,
         default: ""
+    },
+
+    adminNotificationEmails: {
+        type: [String],
+        default: []
     }
 
 });
