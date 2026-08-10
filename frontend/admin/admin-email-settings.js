@@ -1,65 +1,15 @@
 const ADMIN_EMAIL_API="https://ca-smart-staycation-muqd.onrender.com/api";
 const ADMIN_EMAIL_TOKEN_KEY="caSmartAdminToken";
 const ADMIN_FALLBACK_EMAIL="markryantamayo@gmail.com";
-
 function adminEmailAuthHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";const t=sessionStorage.getItem(ADMIN_EMAIL_TOKEN_KEY)||"";if(t)h.Authorization=`Bearer ${t}`;return h;}
 function validAdminEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v||"").trim());}
 function adminEmailStatus(text,good=false){const el=document.getElementById("adminNotificationEmailStatus");if(el){el.textContent=text||"";el.style.color=good?"#276749":"#66736e";}}
-function getManager(){return document.getElementById("adminEmailManager");}
-function ensureAdminEmailManager(){
- const section=document.querySelector(".admin-email-settings");if(!section)return null;
- let manager=getManager();
- if(!manager){
-  manager=document.createElement("div");manager.id="adminEmailManager";
-  manager.innerHTML=`<div style="margin-top:14px;border-top:1px solid #d7e1dc;padding-top:14px"><strong style="display:block;color:#173f35;margin-bottom:8px">Admin Notification Emails</strong><div id="adminNotificationEmailList"></div><div style="display:flex;gap:10px;align-items:center;margin-top:10px"><input id="additionalAdminNotificationEmail" type="email" placeholder="Add another email address" autocomplete="email" style="flex:1;min-height:40px;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd7d1;border-radius:7px"><button type="button" id="addAdminNotificationEmail" style="min-height:40px;padding:0 16px">+ Add Email</button></div></div>`;
-  section.appendChild(manager);
- }
- const add=document.getElementById("addAdminNotificationEmail");
- if(add&&!add.dataset.bound){add.dataset.bound="1";add.addEventListener("click",addAdminNotificationEmail);}
- const input=document.getElementById("additionalAdminNotificationEmail");
- if(input&&!input.dataset.bound){input.dataset.bound="1";input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addAdminNotificationEmail();}});}
- return manager;
-}
-function renderAdminNotificationEmails(emails=[]){
- ensureAdminEmailManager();const list=document.getElementById("adminNotificationEmailList");if(!list)return;
- const unique=[...new Set(emails.map(v=>String(v||"").trim().toLowerCase()).filter(validAdminEmail))];
- list.innerHTML="";
- if(!unique.length){list.innerHTML='<div style="font-size:12px;color:#66736e;padding:5px 0">No notification email configured.</div>';return;}
- unique.forEach((email,index)=>{const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;margin:6px 0;background:#fff;border:1px solid #d7e1dc;border-radius:7px";const label=document.createElement("span");label.textContent=index===0?`${email} (Primary)`:email;label.style.cssText="font-size:13px;color:#173f35;word-break:break-all";row.appendChild(label);if(index>0){const b=document.createElement("button");b.type="button";b.textContent="Delete";b.style.cssText="min-height:34px;padding:0 12px;border:1px solid #d9b1ad;background:#fff;color:#a1261f;border-radius:6px;cursor:pointer";b.addEventListener("click",()=>deleteAdminNotificationEmail(email));row.appendChild(b);}list.appendChild(row);});
-}
-async function fetchAdminEmails(){
- const res=await fetch(`${ADMIN_EMAIL_API}/settings/admin-notification-email?_=${Date.now()}`,{headers:adminEmailAuthHeaders(),cache:"no-store"});
- const data=await res.json().catch(()=>({}));
- if(!res.ok)throw new Error(data.message||`Unable to load admin notification emails (${res.status}).`);
- const primary=validAdminEmail(data.email)?data.email.toLowerCase():ADMIN_FALLBACK_EMAIL;
- const emails=[primary,...(Array.isArray(data.emails)?data.emails:[])].filter(validAdminEmail);
- return [...new Set(emails)];
-}
-async function loadAdminNotificationEmail(){
- ensureAdminEmailManager();
- try{const emails=await fetchAdminEmails();renderAdminNotificationEmails(emails);adminEmailStatus(`Primary notification email: ${emails[0]}`,true);}catch(e){console.error("ADMIN EMAIL LOAD ERROR:",e);renderAdminNotificationEmails([ADMIN_FALLBACK_EMAIL]);adminEmailStatus(e.message);}
-}
-async function addAdminNotificationEmail(){
- const input=document.getElementById("additionalAdminNotificationEmail");if(!input)return;
- const email=input.value.trim().toLowerCase();
- if(!validAdminEmail(email)){adminEmailStatus("Please enter a valid additional email address.");input.focus();return;}
- const button=document.getElementById("addAdminNotificationEmail");if(button)button.disabled=true;adminEmailStatus("Saving…");
- try{
-  const current=await fetchAdminEmails();
-  if(current.some(v=>v.toLowerCase()===email)){adminEmailStatus("That email is already added.");return;}
-  const emails=[...current,email];
-  const res=await fetch(`${ADMIN_EMAIL_API}/settings/admin-notification-emails`,{method:"PUT",headers:adminEmailAuthHeaders(true),body:JSON.stringify({emails})});
-  const data=await res.json().catch(()=>({}));
-  if(!res.ok)throw new Error(data.message||`Unable to save email (${res.status}).`);
-  input.value="";renderAdminNotificationEmails(data.emails||emails);adminEmailStatus(`Added ${email}.`,true);
- }catch(e){console.error("ADMIN EMAIL ADD ERROR:",e);adminEmailStatus(e.message);alert(e.message);}finally{if(button)button.disabled=false;}
-}
-async function deleteAdminNotificationEmail(email){
- if(!confirm(`Delete ${email} from admin notification emails?`))return;adminEmailStatus("Deleting…");
- try{const res=await fetch(`${ADMIN_EMAIL_API}/settings/admin-notification-emails`,{method:"DELETE",headers:adminEmailAuthHeaders(true),body:JSON.stringify({email})});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.message||`Unable to delete email (${res.status}).`);renderAdminNotificationEmails(data.emails||[]);adminEmailStatus(`Deleted ${email}.`,true);}catch(e){console.error("ADMIN EMAIL DELETE ERROR:",e);adminEmailStatus(e.message);alert(e.message);}
-}
-window.loadAdminNotificationEmail=loadAdminNotificationEmail;
-window.addAdminNotificationEmail=addAdminNotificationEmail;
-window.deleteAdminNotificationEmail=deleteAdminNotificationEmail;
+function ensureAdminEmailManager(){const section=document.querySelector(".admin-email-settings");if(!section)return null;let manager=document.getElementById("adminEmailManager");if(!manager){manager=document.createElement("div");manager.id="adminEmailManager";manager.innerHTML=`<div style="margin-top:14px;border-top:1px solid #d7e1dc;padding-top:14px"><strong style="display:block;color:#173f35;margin-bottom:8px">Admin Notification Emails</strong><div id="adminNotificationEmailList"></div><div style="display:flex;gap:10px;align-items:center;margin-top:10px"><input id="additionalAdminNotificationEmail" type="email" placeholder="Add another email address" autocomplete="email" style="flex:1;min-height:40px;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd7d1;border-radius:7px"><button type="button" id="addAdminNotificationEmail" style="min-height:40px;padding:0 16px">+ Add Email</button></div></div>`;section.appendChild(manager);}const add=document.getElementById("addAdminNotificationEmail");if(add&&!add.dataset.bound){add.dataset.bound="1";add.addEventListener("click",addAdminNotificationEmail);}const input=document.getElementById("additionalAdminNotificationEmail");if(input&&!input.dataset.bound){input.dataset.bound="1";input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addAdminNotificationEmail();}});}return manager;}
+function renderAdminNotificationEmails(emails=[]){ensureAdminEmailManager();const list=document.getElementById("adminNotificationEmailList");if(!list)return;const unique=[...new Set(emails.map(v=>String(v||"").trim().toLowerCase()).filter(validAdminEmail))];list.innerHTML="";if(!unique.length){list.innerHTML='<div style="font-size:12px;color:#66736e;padding:5px 0">No notification email configured.</div>';return;}unique.forEach((email,index)=>{const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;margin:6px 0;background:#fff;border:1px solid #d7e1dc;border-radius:7px";const label=document.createElement("span");label.textContent=index===0?`${email} (Primary)`:email;label.style.cssText="font-size:13px;color:#173f35;word-break:break-all";row.appendChild(label);if(index>0){const b=document.createElement("button");b.type="button";b.textContent="Delete";b.style.cssText="min-height:34px;padding:0 12px;border:1px solid #d9b1ad;background:#fff;color:#a1261f;border-radius:6px;cursor:pointer";b.addEventListener("click",()=>deleteAdminNotificationEmail(email));row.appendChild(b);}list.appendChild(row);});}
+async function fetchAdminEmails(){const res=await fetch(`${ADMIN_EMAIL_API}/settings/admin-notification-email?_=${Date.now()}`,{headers:adminEmailAuthHeaders(),cache:"no-store"});const data=await res.json().catch(()=>({}));if(res.status===401||res.status===403){throw Object.assign(new Error("Admin session expired or invalid. Please sign in again, then try adding the email."),{authExpired:true});}if(!res.ok)throw new Error(data.message||`Unable to load admin notification emails (${res.status}).`);const primary=validAdminEmail(data.email)?data.email.toLowerCase():ADMIN_FALLBACK_EMAIL;const emails=[primary,...(Array.isArray(data.emails)?data.emails:[])].filter(validAdminEmail);return [...new Set(emails)];}
+async function loadAdminNotificationEmail(){ensureAdminEmailManager();try{const emails=await fetchAdminEmails();renderAdminNotificationEmails(emails);adminEmailStatus(`Primary notification email: ${emails[0]}`,true);}catch(e){console.error("ADMIN EMAIL LOAD ERROR:",e);renderAdminNotificationEmails([ADMIN_FALLBACK_EMAIL]);adminEmailStatus(e.message);}}
+async function addAdminNotificationEmail(){const input=document.getElementById("additionalAdminNotificationEmail");if(!input)return;const email=input.value.trim().toLowerCase();if(!validAdminEmail(email)){adminEmailStatus("Please enter a valid additional email address.");input.focus();return;}const button=document.getElementById("addAdminNotificationEmail");if(button)button.disabled=true;adminEmailStatus("Saving…");try{const current=await fetchAdminEmails();if(current.some(v=>v.toLowerCase()===email)){adminEmailStatus("That email is already added.");return;}const emails=[...current,email];const res=await fetch(`${ADMIN_EMAIL_API}/settings/admin-notification-emails`,{method:"PUT",headers:adminEmailAuthHeaders(true),body:JSON.stringify({emails})});const data=await res.json().catch(()=>({}));if(res.status===401||res.status===403){throw Object.assign(new Error("Admin session expired or invalid. Please sign in again, then try adding the email."),{authExpired:true});}if(!res.ok)throw new Error(data.message||`Unable to save email (${res.status}).`);input.value="";renderAdminNotificationEmails(data.emails||emails);adminEmailStatus(`Added ${email}.`,true);}catch(e){console.error("ADMIN EMAIL ADD ERROR:",e);adminEmailStatus(e.message);if(e.authExpired){sessionStorage.removeItem(ADMIN_EMAIL_TOKEN_KEY);const login=document.getElementById("adminAuth");const shell=document.getElementById("adminShell");if(shell)shell.hidden=true;if(login)login.hidden=false;const err=document.getElementById("adminAuthError");if(err)err.textContent=e.message;}}finally{if(button)button.disabled=false;}}
+async function deleteAdminNotificationEmail(email){if(!confirm(`Delete ${email} from admin notification emails?`))return;adminEmailStatus("Deleting…");try{const res=await fetch(`${ADMIN_EMAIL_API}/settings/admin-notification-emails`,{method:"DELETE",headers:adminEmailAuthHeaders(true),body:JSON.stringify({email})});const data=await res.json().catch(()=>({}));if(res.status===401||res.status===403)throw new Error("Admin session expired or invalid. Please sign in again.");if(!res.ok)throw new Error(data.message||`Unable to delete email (${res.status}).`);renderAdminNotificationEmails(data.emails||[]);adminEmailStatus(`Deleted ${email}.`,true);}catch(e){console.error("ADMIN EMAIL DELETE ERROR:",e);adminEmailStatus(e.message);alert(e.message);}}
+window.loadAdminNotificationEmail=loadAdminNotificationEmail;window.addAdminNotificationEmail=addAdminNotificationEmail;window.deleteAdminNotificationEmail=deleteAdminNotificationEmail;
 function bootAdminEmailManager(){ensureAdminEmailManager();loadAdminNotificationEmail();}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bootAdminEmailManager);else bootAdminEmailManager();
