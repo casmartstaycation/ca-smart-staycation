@@ -15,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Remove date-change UI and code
+      - name: Remove guest date-change feature
         shell: python
         run: |
           from pathlib import Path
@@ -24,35 +24,41 @@ jobs:
           path = Path('frontend/guest-booking/guest-dashboard.html')
           text = path.read_text(encoding='utf-8')
 
-          # Remove date-change related CSS blocks.
-          text = re.sub(r'\.reschedule-box\{.*?\}', '', text)
-          text = re.sub(r'\.reschedule-box\.open\{.*?\}', '', text)
-          text = re.sub(r'\.reschedule-grid\{.*?\}', '', text)
-          text = re.sub(r'\.reschedule-grid label\{.*?\}', '', text)
-          text = re.sub(r'\.reschedule-grid input\{.*?\}', '', text)
-          text = re.sub(r'\.reschedule-actions\{.*?\}', '', text)
-          text = re.sub(r'\.reschedule-actions button\{.*?\}', '', text)
-          text = re.sub(r'\.fee-box\{.*?\}', '', text)
-          text = re.sub(r'\.fee-box input\{.*?\}', '', text)
-          text = re.sub(r'@media\(max-width:600px\)\{\.reschedule-grid\{.*?\}\}', '', text)
+          # Remove all date-change/reschedule CSS, including the responsive rule.
+          css_patterns = [
+              r'\.reschedule-box(?:\.open)?\{.*?\}',
+              r'\.reschedule-grid(?: label| input)?\{.*?\}',
+              r'\.reschedule-actions(?: button)?\{.*?\}',
+              r'\.fee-box(?: input)?\{.*?\}',
+              r'@media\(max-width:600px\)\{\.reschedule-grid\{.*?\}\}',
+          ]
+          for pattern in css_patterns:
+              text = re.sub(pattern, '', text)
 
-          # Remove date-change functions.
-          text = re.sub(r'function uploadRescheduleProof\(.*?\nfunction rescheduleBooking\(', 'function rescheduleBooking_REMOVED(', text, flags=re.S)
-          text = re.sub(r'function rescheduleBooking_REMOVED\(.*?\nfunction renderBooking\(', 'function renderBooking(', text, flags=re.S)
+          # Remove both reschedule functions and everything between them and renderBooking.
+          text = re.sub(r'async function uploadRescheduleProof\(.*?(?=function renderBooking\()', '', text, flags=re.S)
 
-          # Remove the Change Booking Dates UI block from each booking card.
-          text = re.sub(r'if\(active\(b\)\)\{const rescheduleBtn=.*?actions\.appendChild\(rescheduleBtn\);actions\.appendChild\(box\);const cancelBtn=', 'if(active(b)){const cancelBtn=', text, flags=re.S)
+          # Remove the guest Change Booking Dates UI while preserving Cancel Booking.
+          text = re.sub(
+              r'if\(active\(b\)\)\{const rescheduleBtn=.*?actions\.appendChild\(rescheduleBtn\);actions\.appendChild\(box\);const cancelBtn=',
+              'if(active(b)){const cancelBtn=',
+              text,
+              flags=re.S
+          )
 
-          # Remove any remaining date-change approval/payment references from guest rendering.
-          text = text.replace('if(b.reschedulePaymentStatus==="Pending Verification")message="Your booking dates have been changed. The convenience-fee payment proof is waiting for admin verification.";', '')
+          # Remove any remaining date-change status message.
+          text = re.sub(r'if\(b\.reschedulePaymentStatus===.*?;', '', text)
 
           path.write_text(text, encoding='utf-8')
 
-      - name: Verify feature removed
+      - name: Verify date-change feature is absent
+        shell: bash
         run: |
           ! grep -q "Change Booking Dates" frontend/guest-booking/guest-dashboard.html
           ! grep -q "rescheduleBooking" frontend/guest-booking/guest-dashboard.html
+          ! grep -q "uploadRescheduleProof" frontend/guest-booking/guest-dashboard.html
           ! grep -q "reschedulePaymentProof" frontend/guest-booking/guest-dashboard.html
+          ! grep -q "reschedule-box" frontend/guest-booking/guest-dashboard.html
 
       - name: Commit changes
         run: |
