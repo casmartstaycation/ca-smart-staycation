@@ -56,46 +56,24 @@ async function cleanupTerminalBookingUploads() {
       if (booking.governmentId) referencedDocumentFiles.add(path.basename(String(booking.governmentId)));
       if (booking.driversLicense) referencedDocumentFiles.add(path.basename(String(booking.driversLicense)));
       if (booking.reschedulePaymentProof) referencedDocumentFiles.add(path.basename(String(booking.reschedulePaymentProof)));
-
-      if (terminalStatuses.has(String(booking.bookingStatus || "").trim())) {
-        terminalBookings.push(booking);
-      }
+      if (terminalStatuses.has(String(booking.bookingStatus || "").trim())) terminalBookings.push(booking);
     }
 
-    // Remove files belonging to cancelled/checked-out bookings and clear their DB references.
     for (const booking of terminalBookings) {
       deleteUploadedFile(paymentUploadDir, booking.paymentProof);
       deleteUploadedFile(guestDocumentUploadDir, booking.governmentId);
       deleteUploadedFile(guestDocumentUploadDir, booking.driversLicense);
       deleteUploadedFile(guestDocumentUploadDir, booking.reschedulePaymentProof);
-
-      await Booking.updateOne(
-        { _id: booking._id },
-        {
-          $set: {
-            paymentProof: "",
-            governmentId: "",
-            driversLicense: "",
-            reschedulePaymentProof: ""
-          }
-        }
-      );
+      await Booking.updateOne({ _id: booking._id }, { $set: { paymentProof: "", governmentId: "", driversLicense: "", reschedulePaymentProof: "" } });
     }
 
-    // Remove orphaned testing uploads that are no longer referenced by ANY booking.
-    // This is limited to the two booking-upload directories and never touches other server files.
     const orphanPaymentFiles = listFiles(paymentUploadDir).filter(name => !referencedPaymentFiles.has(name));
     const orphanDocumentFiles = listFiles(guestDocumentUploadDir).filter(name => !referencedDocumentFiles.has(name));
-
     for (const filename of orphanPaymentFiles) deleteUploadedFile(paymentUploadDir, filename);
     for (const filename of orphanDocumentFiles) deleteUploadedFile(guestDocumentUploadDir, filename);
 
     if (terminalBookings.length || orphanPaymentFiles.length || orphanDocumentFiles.length) {
-      console.log(
-        `🧹 Upload cleanup: ${terminalBookings.length} terminal booking(s), ` +
-        `${orphanPaymentFiles.length} orphan payment file(s), ` +
-        `${orphanDocumentFiles.length} orphan document file(s).`
-      );
+      console.log(`🧹 Upload cleanup: ${terminalBookings.length} terminal booking(s), ${orphanPaymentFiles.length} orphan payment file(s), ${orphanDocumentFiles.length} orphan document file(s).`);
     }
   } catch (err) {
     console.error("TERMINAL/ORPHAN UPLOAD CLEANUP ERROR:", err);
@@ -107,7 +85,7 @@ app.use(cors({ origin: ["https://casmartstaycation.github.io", "http://localhost
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'));
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 mongoose.connect(process.env.MONGODB_URI).then(() => console.log("✅ MongoDB Connected")).catch(err => console.error("MongoDB Error:", err));
@@ -121,20 +99,27 @@ async function expireUnpaidBookings() {
   } catch (err) { console.error("BOOKING EXPIRATION ERROR:", err); }
 }
 
+// Lightweight booking list used by the admin table and calendar.
+// Never populate Room images/description or booking document/history arrays here.
 app.get('/api/bookings', async (req, res) => {
   try {
     await expireUnpaidBookings();
     const [bookings, currentParking] = await Promise.all([
       Booking.find()
-        .select("bookingReference firstName lastName email mobile address room checkIn checkOut adults children subtotalAmount voucherCode voucherDiscountPercent voucherDiscountAmount voucherMaxNights complimentaryNonCancellable totalAmount paymentStatus bookingStatus housekeepingStatus parkingOnly parking notes paymentDate paymentReference paymentRejectionReason paymentDeadline paymentProof paymentProofSubmittedAt paymentVerifiedAt cancellationRequestedAt cancellationReason refundRequested refundRequestedAt refundAmount refundFee refundPolicyRule refundStatus refundProcessedAt refundProcessedBy reschedulePending reschedulePendingCheckIn reschedulePendingCheckOut rescheduleFee reschedulePolicyRule rescheduleRefundAmount rescheduleRequestedAt createdAt updatedAt")
-        .populate("room")
+        .select("bookingReference firstName lastName email mobile room checkIn checkOut adults children subtotalAmount voucherCode voucherDiscountPercent voucherDiscountAmount voucherMaxNights complimentaryNonCancellable totalAmount paymentStatus bookingStatus housekeepingStatus parkingOnly parking notes paymentDate paymentReference paymentRejectionReason paymentDeadline paymentProof paymentProofSubmittedAt paymentVerifiedAt cancellationRequestedAt cancellationReason refundRequested refundRequestedAt refundAmount refundFee refundPolicyRule refundStatus refundProcessedAt refundProcessedBy reschedulePending reschedulePendingCheckIn reschedulePendingCheckOut rescheduleFee reschedulePolicyRule rescheduleRefundAmount rescheduleRequestedAt createdAt updatedAt")
+        .populate({ path: "room", select: "unitNumber unitName category capacity price weekendPrice holidayPrice status" })
+        .populate({ path: "parking", select: "parkingNumber parkingName status" })
         .lean()
         .sort({ createdAt: -1 }),
-      Parking.findOne({ parkingNumber: "SLOT 9" }).lean().then(slot => slot || Parking.findOne().lean())
+      Parking.findOne({ parkingNumber: "SLOT 9" }).select("parkingNumber parkingName status").lean().then(slot => slot || Parking.findOne().select("parkingNumber parkingName status").lean())
     ]);
-    const normalizedBookings = bookings.map(booking => booking.parking && currentParking ? { ...booking, parking: currentParking } : booking);
+
+    const normalizedBookings = bookings.map(booking => booking.parking && currentParking ? { ...booking, parking: booking.parking } : booking);
     res.json({ success: true, data: normalizedBookings });
-  } catch (err) { console.error("Guest calendar bookings error:", err); res.status(500).json({ success: false, message: err.message }); }
+  } catch (err) {
+    console.error("Guest calendar bookings error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 app.use('/api', require('./routes/adminRoutes'));
