@@ -1,83 +1,49 @@
 const express = require("express");
 const router = express.Router();
-
 const Parking = require("../models/Parking");
+const { requireAdmin } = require("../middleware/adminAuth");
 
-// GET
+// GET all parking slots — public because booking pages need current options.
 router.get("/parking", async (req, res) => {
-
-    const parking = await Parking.find().sort({
-        parkingNumber: 1
-    });
-
-    res.json({
-        status: "success",
-        data: parking
-    });
-
-});
-
-// CREATE
-router.post("/parking", async (req, res) => {
-
     try {
-
-        const parking = new Parking(req.body);
-
-        await parking.save();
-
-        res.status(201).json({
-            status: "success",
-            data: parking
-        });
-
+        const parking = await Parking.find().sort({ parkingNumber: 1 });
+        res.json({ status: "success", data: parking });
     } catch (err) {
-
-        res.status(400).json({
-            status: "error",
-            message: err.message
-        });
-
+        res.status(500).json({ status: "error", message: err.message });
     }
-
 });
 
-// UPDATE
-router.put("/parking/:id", async (req, res) => {
-
-    const parking = await Parking.findByIdAndUpdate(
-
-        req.params.id,
-
-        req.body,
-
-        {
-            new: true
-        }
-
-    );
-
-    res.json({
-
-        status: "success",
-
-        data: parking
-
-    });
-
+// CREATE — admin only
+router.post("/parking", requireAdmin, async (req, res) => {
+    try {
+        const parking = new Parking(req.body);
+        await parking.save();
+        res.status(201).json({ status: "success", data: parking });
+    } catch (err) {
+        res.status(400).json({ status: "error", message: err.message });
+    }
 });
 
-// DELETE
-router.delete("/parking/:id", async (req, res) => {
+// UPDATE — admin only
+router.put("/parking/:id", requireAdmin, async (req, res) => {
+    try {
+        const parking = await Parking.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+        if (!parking) return res.status(404).json({ status: "error", message: "Parking slot not found" });
+        res.json({ status: "success", data: parking });
+    } catch (err) {
+        res.status(400).json({ status: "error", message: err.message });
+    }
+});
 
-    await Parking.findByIdAndDelete(req.params.id);
-
-    res.json({
-
-        status: "success"
-
-    });
-
+// DELETE — admin only
+router.delete("/parking/:id", requireAdmin, async (req, res) => {
+    try {
+        const parking = await Parking.findByIdAndDelete(req.params.id);
+        if (!parking) return res.status(404).json({ status: "error", message: "Parking slot not found" });
+        res.json({ status: "success" });
+    } catch (err) {
+        res.status(500).json({ status: "error", message: err.message });
+    }
 });
 
 module.exports = router;
