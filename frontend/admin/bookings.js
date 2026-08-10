@@ -63,7 +63,97 @@ function reviewPendingPayments(){ $("statusFilter").value="Pending Payment Verif
 function filteredBookings(){ const search=$("searchInput").value.trim().toLowerCase(); const status=$("statusFilter").value; const payment=$("paymentFilter").value; return bookings.filter(b=>{ const guest=`${b.firstName||""} ${b.lastName||""}`.toLowerCase(); const haystack=`${b.bookingReference||""} ${guest} ${b.mobile||""} ${b.email||""}`.toLowerCase(); return (!search||haystack.includes(search))&&(!status||b.bookingStatus===status)&&(!payment||b.paymentStatus===payment); }); }
 function actionButtons(booking){ const id=esc(booking._id); const actions=[`<button class="view" onclick="viewBooking('${id}')">View</button>`]; if(booking.bookingStatus==="Pending Payment Verification"){ actions.push(`<button class="approve" onclick="approvePayment('${id}')">Approve Payment</button>`); actions.push(`<button class="cancel" onclick="rejectPayment('${id}')">Reject Payment</button>`); } if(booking.bookingStatus==="Payment Rejected"){ actions.push(`<button class="view" onclick="viewBooking('${id}')">Review</button>`); } if(booking.bookingStatus==="Reserved"){ actions.push(`<button class="checkin" onclick="checkIn('${id}')">Check In</button>`); actions.push(`<button class="cancel" onclick="cancelBooking('${id}')">Cancel</button>`); } if(booking.bookingStatus==="Checked In") actions.push(`<button class="checkout" onclick="checkOut('${id}')">Check Out</button>`); if(booking.bookingStatus==="Checked Out"&&booking.housekeepingStatus!=="Clean") actions.push(`<button class="clean" onclick="markClean('${id}')">Mark Clean</button>`); return actions.join(""); }
 function renderBookings(){ const tbody=document.querySelector("#bookingTable tbody"); const rows=filteredBookings(); tbody.innerHTML=""; $("emptyState").hidden=rows.length!==0; rows.forEach(booking=>{ const guest=`${esc(booking.firstName)} ${esc(booking.lastName)}`.trim()||"Guest"; const room=booking.room?`${esc(booking.room.unitNumber||booking.room.roomNumber||"Room")}<div class="muted">${esc(booking.room.unitName||booking.room.roomName||"")}</div>`:"—"; const parking=booking.parking?`${esc(booking.parking.parkingNumber||booking.parking.parkingName||"Reserved")}<div class="muted">${esc(booking.parking.parkingName||"")}</div>`:(booking.parkingOnly?"Reserved":"—"); const proof=booking.paymentProof?`<a class="proof" target="_blank" rel="noopener" href="${API}/uploads/payments/${encodeURIComponent(booking.paymentProof)}">View proof</a>`:`<span class="muted">No upload</span>`; tbody.innerHTML+=`<tr><td><div class="ref">${esc(booking.bookingReference||"—")}</div><div class="muted">${esc(booking._id||"")}</div></td><td>${guest}<div class="muted">${esc(booking.mobile||booking.email||"")}</div></td><td>${formatDate(booking.checkIn)}<div class="muted">to ${formatDate(booking.checkOut)}</div></td><td>${room}</td><td>${parking}</td><td class="money">${money(booking.totalAmount)}</td><td>${esc(booking.paymentStatus||"Pending")}</td><td><span class="badge ${statusClass(booking.bookingStatus)}">${esc(booking.bookingStatus||"Reserved")}</span><div class="muted">${esc(booking.housekeepingStatus||"")}</div></td><td>${proof}</td><td><div class="actions">${actionButtons(booking)}</div></td></tr>`; }); }
-function viewBooking(id){ const booking=bookings.find(b=>String(b._id)===String(id)); if(!booking)return; $("modalTitle").textContent=booking.bookingReference||"Booking Details"; const guest=`${booking.firstName||""} ${booking.lastName||""}`.trim()||"Guest"; const room=booking.room?`${booking.room.unitNumber||booking.room.roomNumber||"Room"} — ${booking.room.unitName||booking.room.roomName||""}`:"Parking Only"; const parking=booking.parking?`${booking.parking.parkingNumber||"Parking"} — ${booking.parking.parkingName||""}`:(booking.parkingOnly?"Parking reserved":"None"); const proof=booking.paymentProof?`<div class="notes"><span>Payment Proof</span><p><a class="proof" target="_blank" rel="noopener" href="${API}/uploads/payments/${encodeURIComponent(booking.paymentProof)}">Open uploaded payment proof</a></p></div>`:"<div class="notes"><span>Payment Proof</span><p>No payment proof uploaded.</p></div>"; $("bookingDetails").innerHTML=`<div class="detail-grid"><div><span>Guest</span><strong>${esc(guest)}</strong></div><div><span>Mobile</span><strong>${esc(booking.mobile||"—")}</strong></div><div><span>Email</span><strong>${esc(booking.email||"—")}</strong></div><div><span>Booking Status</span><strong>${esc(booking.bookingStatus||"—")}</strong></div><div><span>Check-in</span><strong>${formatDate(booking.checkIn)}</strong></div><div><span>Check-out</span><strong>${formatDate(booking.checkOut)}</strong></div><div><span>Accommodation</span><strong>${esc(room)}</strong></div><div><span>Parking</span><strong>${esc(parking)}</strong></div><div><span>Guests</span><strong>${esc(booking.adults??booking.guests??0)} adults · ${esc(booking.children||0)} children</strong></div><div><span>Payment</span><strong>${esc(booking.paymentStatus||"Pending")}</strong></div><div><span>Total</span><strong>${money(booking.totalAmount)}</strong></div><div><span>Housekeeping</span><strong>${esc(booking.housekeepingStatus||"—")}</strong></div><div><span>Payment Date</span><strong>${formatDateTime(booking.paymentDate)}</strong></div><div><span>Created</span><strong>${formatDateTime(booking.createdAt)}</strong></div></div>${proof}<div class="notes"><span>Notes</span><p>${esc(booking.notes||"No notes.")}</p></div>`; const actions=[]; const eid=esc(id); if(booking.bookingStatus==="Pending Payment Verification"){actions.push(`<button class="approve" onclick="approvePayment('${eid}');closeModal()">Approve Payment</button>`);actions.push(`<button class="cancel" onclick="rejectPayment('${eid}');closeModal()">Reject Payment</button>`);} if(booking.bookingStatus==="Reserved")actions.push(`<button class="checkin" onclick="checkIn('${eid}');closeModal()">Check In</button>`); if(booking.bookingStatus==="Checked In")actions.push(`<button class="checkout" onclick="checkOut('${eid}');closeModal()">Check Out</button>`); if(booking.bookingStatus==="Checked Out"&&booking.housekeepingStatus!=="Clean")actions.push(`<button class="clean" onclick="markClean('${eid}');closeModal()">Mark Clean</button>`); if(["Reserved","Pending Payment Verification","Payment Rejected"].includes(booking.bookingStatus))actions.push(`<button class="cancel" onclick="cancelBooking('${eid}');closeModal()">Cancel Booking</button>`); $("modalActions").innerHTML=actions.join(""); $("bookingModal").hidden=false; }
+function viewBooking(id){
+  const booking=bookings.find(b=>String(b._id)===String(id));
+  if(!booking)return;
+
+  $("modalTitle").textContent=booking.bookingReference||"Booking Details";
+
+  const guest=`${booking.firstName||""} ${booking.lastName||""}`.trim()||"Guest";
+
+  const room=booking.room
+    ? `${booking.room.unitNumber||booking.room.roomNumber||"Room"} — ${booking.room.unitName||booking.room.roomName||""}`
+    : "Parking Only";
+
+  const parking=booking.parking
+    ? `${booking.parking.parkingNumber||"Parking"} — ${booking.parking.parkingName||""}`
+    : (booking.parkingOnly?"Parking reserved":"None");
+
+  let proof="";
+  if(booking.paymentProof){
+    proof=`
+      <div class="notes">
+        <span>Payment Proof</span>
+        <p>
+          <a class="proof" target="_blank" rel="noopener"
+             href="${API}/uploads/payments/${encodeURIComponent(booking.paymentProof)}">
+            Open uploaded payment proof
+          </a>
+        </p>
+      </div>`;
+  }else{
+    proof=`
+      <div class="notes">
+        <span>Payment Proof</span>
+        <p>No payment proof uploaded.</p>
+      </div>`;
+  }
+
+  const details=`
+    <div class="detail-grid">
+      <div><span>Guest</span><strong>${esc(guest)}</strong></div>
+      <div><span>Mobile</span><strong>${esc(booking.mobile||"—")}</strong></div>
+      <div><span>Email</span><strong>${esc(booking.email||"—")}</strong></div>
+      <div><span>Booking Status</span><strong>${esc(booking.bookingStatus||"—")}</strong></div>
+      <div><span>Check-in</span><strong>${formatDate(booking.checkIn)}</strong></div>
+      <div><span>Check-out</span><strong>${formatDate(booking.checkOut)}</strong></div>
+      <div><span>Accommodation</span><strong>${esc(room)}</strong></div>
+      <div><span>Parking</span><strong>${esc(parking)}</strong></div>
+      <div>
+        <span>Guests</span>
+        <strong>${esc(booking.adults??booking.guests??0)} adults · ${esc(booking.children||0)} children</strong>
+      </div>
+      <div><span>Payment</span><strong>${esc(booking.paymentStatus||"Pending")}</strong></div>
+      <div><span>Total</span><strong>${money(booking.totalAmount)}</strong></div>
+      <div><span>Housekeeping</span><strong>${esc(booking.housekeepingStatus||"—")}</strong></div>
+      <div><span>Payment Date</span><strong>${formatDateTime(booking.paymentDate)}</strong></div>
+      <div><span>Created</span><strong>${formatDateTime(booking.createdAt)}</strong></div>
+    </div>
+    ${proof}
+    <div class="notes">
+      <span>Notes</span>
+      <p>${esc(booking.notes||"No notes.")}</p>
+    </div>`;
+
+  $("bookingDetails").innerHTML=details;
+
+  const actions=[];
+  const eid=esc(id);
+
+  if(booking.bookingStatus==="Pending Payment Verification"){
+    actions.push(`<button class="approve" onclick="approvePayment('${eid}');closeModal()">Approve Payment</button>`);
+    actions.push(`<button class="cancel" onclick="rejectPayment('${eid}');closeModal()">Reject Payment</button>`);
+  }
+
+  if(booking.bookingStatus==="Reserved"){
+    actions.push(`<button class="checkin" onclick="checkIn('${eid}');closeModal()">Check In</button>`);
+  }
+
+  if(booking.bookingStatus==="Checked In"){
+    actions.push(`<button class="checkout" onclick="checkOut('${eid}');closeModal()">Check Out</button>`);
+  }
+
+  if(booking.bookingStatus==="Checked Out"&&booking.housekeepingStatus!=="Clean"){
+    actions.push(`<button class="clean" onclick="markClean('${eid}');closeModal()">Mark Clean</button>`);
+  }
+
+  if(["Reserved","Pending Payment Verification","Payment Rejected"].includes(booking.bookingStatus)){
+    actions.push(`<button class="cancel" onclick="cancelBooking('${eid}');closeModal()">Cancel Booking</button>`);
+  }
+
+  $("modalActions").innerHTML=actions.join("");
+  $("bookingModal").hidden=false;
+}
 function closeModal(){ $("bookingModal").hidden=true; }
 async function loadBookings(silent=false){ try{const res=await fetch(`${API}/bookings`,{cache:"no-store"});const json=await res.json();if(!res.ok)throw new Error(json.message||"Unable to load bookings.");bookings=Array.isArray(json.data)?json.data:[];renderStats();renderBookings();}catch(err){console.error(err);if(!silent)alert("Unable to load bookings. Please check the API connection.");} }
 async function updateBooking(id,body,successMessage){ try{const res=await fetch(`${API}/bookings/${encodeURIComponent(id)}`,{method:"PUT",headers:authHeaders(true),body:JSON.stringify(body)});const json=await res.json();if(res.status===401||res.status===403){showAdminLogin("Your admin session expired. Please sign in again.");return;}if(!res.ok)throw new Error(json.message||"Update failed.");alert(successMessage||json.message||"Booking updated.");await loadBookings();}catch(err){console.error(err);alert(err.message||"Unable to update booking.");} }
