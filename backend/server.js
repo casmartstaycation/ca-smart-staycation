@@ -28,20 +28,41 @@ function deleteUploadedFile(dir, filename) {
   }
 }
 
+function listFiles(dir) {
+  try {
+    if (!fs.existsSync(dir)) return [];
+    return fs.readdirSync(dir, { withFileTypes: true })
+      .filter(entry => entry.isFile())
+      .map(entry => entry.name);
+  } catch (err) {
+    console.error(`UPLOAD DIRECTORY SCAN ERROR (${dir}):`, err.message);
+    return [];
+  }
+}
+
 async function cleanupTerminalBookingUploads() {
   try {
-    const terminalBookings = await Booking.find({
-      bookingStatus: { $in: ["Cancelled", "Checked Out"] },
-      $or: [
-        { paymentProof: { $nin: [null, ""] } },
-        { governmentId: { $nin: [null, ""] } },
-        { driversLicense: { $nin: [null, ""] } },
-        { reschedulePaymentProof: { $nin: [null, ""] } }
-      ]
-    })
-      .select("_id paymentProof governmentId driversLicense reschedulePaymentProof")
+    const bookings = await Booking.find({})
+      .select("_id bookingStatus paymentProof governmentId driversLicense reschedulePaymentProof")
       .lean();
 
+    const terminalStatuses = new Set(["Cancelled", "Checked Out"]);
+    const referencedPaymentFiles = new Set();
+    const referencedDocumentFiles = new Set();
+    const terminalBookings = [];
+
+    for (const booking of bookings) {
+      if (booking.paymentProof) referencedPaymentFiles.add(path.basename(String(booking.paymentProof)));
+      if (booking.governmentId) referencedDocumentFiles.add(path.basename(String(booking.governmentId)));
+      if (booking.driversLicense) referencedDocumentFiles.add(path.basename(String(booking.driversLicense)));
+      if (booking.reschedulePaymentProof) referencedDocumentFiles.add(path.basename(String(booking.reschedulePaymentProof)));
+
+      if (terminalStatuses.has(String(booking.bookingStatus || "").trim())) {
+        terminalBookings.push(booking);
+      }
+    }
+
+    // Remove files belonging to cancelled/checked-out bookings and clear their DB references.
     for (const booking of terminalBookings) {
       deleteUploadedFile(paymentUploadDir, booking.paymentProof);
       deleteUploadedFile(guestDocumentUploadDir, booking.governmentId);
@@ -61,11 +82,23 @@ async function cleanupTerminalBookingUploads() {
       );
     }
 
-    if (terminalBookings.length) {
-      console.log(`🧹 Cleaned uploaded files for ${terminalBookings.length} terminal booking(s).`);
+    // Remove orphaned testing uploads that are no longer referenced by ANY booking.
+    // This is limited to the two booking-upload directories and never touches other server files.
+    const orphanPaymentFiles = listFiles(paymentUploadDir).filter(name => !referencedPaymentFiles.has(name));
+    const orphanDocumentFiles = listFiles(guestDocumentUploadDir).filter(name => !referencedDocumentFiles.has(name));
+
+    for (const filename of orphanPaymentFiles) deleteUploadedFile(paymentUploadDir, filename);
+    for (const filename of orphanDocumentFiles) deleteUploadedFile(guestDocumentUploadDir, filename);
+
+    if (terminalBookings.length || orphanPaymentFiles.length || orphanDocumentFiles.length) {
+      console.log(
+        `🧹 Upload cleanup: ${terminalBookings.length} terminal booking(s), ` +
+        `${orphanPaymentFiles.length} orphan payment file(s), ` +
+        `${orphanDocumentFiles.length} orphan document file(s).`
+      );
     }
   } catch (err) {
-    console.error("TERMINAL BOOKING UPLOAD CLEANUP ERROR:", err);
+    console.error("TERMINAL/ORPHAN UPLOAD CLEANUP ERROR:", err);
   }
 }
 
