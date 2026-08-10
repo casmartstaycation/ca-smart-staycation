@@ -31,7 +31,10 @@ async function submitGuestBookingWithDocuments(event) {
         alert("Please select an accommodation.");
         return;
     }
-    if (!governmentId) {
+
+    // Government ID is required for accommodation bookings only.
+    // Parking Only uses the driver's license as the required identity document.
+    if (bookingType !== "parking" && !governmentId) {
         alert("Please upload a clear government-issued ID.");
         return;
     }
@@ -101,7 +104,8 @@ async function submitGuestBookingWithDocuments(event) {
 
         const booking = bookingJson.data;
         const documents = new FormData();
-        documents.append("governmentId", governmentId);
+        // Do not send an empty government ID for Parking Only.
+        if (governmentId) documents.append("governmentId", governmentId);
         if (driversLicense) documents.append("driversLicense", driversLicense);
         documents.append("vehicleBrand", vehicleBrand);
         documents.append("vehicleModel", vehicleModel);
