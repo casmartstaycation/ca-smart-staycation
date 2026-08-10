@@ -127,7 +127,7 @@ async function submitAdminBooking(event){
   }
 }
 
-ab("newBookingBtn").addEventListener("click",openAdminBooking);
+ab("navNewBooking").addEventListener("click",openAdminBooking);
 ab("adminBookingClose").addEventListener("click",closeAdminBooking);
 ab("adminBookingCancel").addEventListener("click",closeAdminBooking);
 ab("adminBookingForm").addEventListener("submit",submitAdminBooking);
