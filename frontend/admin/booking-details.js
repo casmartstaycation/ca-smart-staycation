@@ -65,3 +65,41 @@ window.viewBooking = async function(id) {
         alert(err.message || "Unable to load booking details.");
     }
 };
+
+/* Three-tab admin workspace: My Bookings, Notifications, Messages. */
+(function installAdminThreeTabs(){
+    function init(){
+        const nav=document.querySelector('.admin-nav');
+        const shell=document.getElementById('adminShell');
+        if(!nav||!shell||document.getElementById('adminThreeTabs')) return;
+        const tabs=document.createElement('div');
+        tabs.id='adminThreeTabs';
+        tabs.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px;padding:6px;background:#eef3f0;border:1px solid #d7e1dc;border-radius:10px;';
+        const makeTab=(id,label)=>{const b=document.createElement('button');b.type='button';b.id=id;b.textContent=label;b.style.cssText='flex:1;min-width:150px;border:0;border-radius:7px;padding:12px 16px;background:transparent;color:#173f35;font-weight:700;font-size:15px;cursor:pointer;';return b;};
+        const bookingsTab=makeTab('adminTabBookings','My Bookings');
+        const notificationsTab=makeTab('adminTabNotifications','Notifications');
+        const messagesTab=makeTab('adminTabMessages','Messages');
+        tabs.append(bookingsTab,notificationsTab,messagesTab);
+        nav.replaceWith(tabs);
+
+        const existingSections=[...shell.children].filter(el=>!['header','adminThreeTabs'].includes(el.tagName.toLowerCase()) && !el.classList.contains('modal') && !el.classList.contains('admin-booking-modal'));
+        const bookingContent=document.createElement('div');
+        bookingContent.id='adminTabBookingsPanel';
+        existingSections.forEach(el=>bookingContent.appendChild(el));
+        const notificationPanel=document.createElement('section');
+        notificationPanel.id='adminTabNotificationsPanel';
+        notificationPanel.style.cssText='display:none;background:#fff;border:1px solid #dfe6e2;border-radius:10px;padding:20px;';
+        notificationPanel.innerHTML='<iframe title="Admin Notifications" src="notifications.html?embedded=1" style="width:100%;height:650px;border:0;border-radius:8px;background:#f5f7f6"></iframe>';
+        const messagePanel=document.createElement('section');
+        messagePanel.id='adminTabMessagesPanel';
+        messagePanel.style.cssText='display:none;background:#fff;border:1px solid #dfe6e2;border-radius:10px;padding:20px;';
+        messagePanel.innerHTML='<iframe title="Admin Messages" src="messages.html?embedded=1" style="width:100%;height:700px;border:0;border-radius:8px;background:#f5f7f6"></iframe>';
+        shell.append(bookingContent,notificationPanel,messagePanel);
+
+        const all=[bookingsTab,notificationsTab,messagesTab],panels=[bookingContent,notificationPanel,messagePanel];
+        function activate(index){all.forEach((b,i)=>{b.style.background=i===index?'#173f35':'transparent';b.style.color=i===index?'#fff':'#173f35';});panels.forEach((p,i)=>p.style.display=i===index?'block':'none');if(index>0){const frame=panels[index].querySelector('iframe');if(frame&&frame.contentWindow)try{frame.contentWindow.postMessage({type:'admin-tab-active'},'*')}catch(e){}}}
+        bookingsTab.onclick=()=>activate(0);notificationsTab.onclick=()=>activate(1);messagesTab.onclick=()=>activate(2);
+        activate(0);
+    }
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
