@@ -11,6 +11,10 @@ const bookingSchema = new mongoose.Schema({
   lastStatusNotificationKey: { type: String, default: "" }
 }, { timestamps: true });
 
+bookingSchema.index({ createdAt: -1 });
+bookingSchema.index({ checkIn: 1, checkOut: 1, bookingStatus: 1 });
+bookingSchema.index({ paymentDeadline: 1, bookingStatus: 1 });
+
 bookingSchema.pre("validate", function(next) {
   if (Number(this.voucherDiscountPercent || 0) === 100) this.complimentaryNonCancellable = true;
   if (this.bookingStatus === "Cancelled" && this.complimentaryNonCancellable) return next(new Error("Bookings using a 100% complimentary voucher cannot be cancelled."));
