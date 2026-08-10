@@ -12,72 +12,51 @@
 .payment-alert{margin:0 0 18px;padding:18px 20px;border:1px solid #d8c28a;border-radius:12px;background:#fffaf0;display:flex;align-items:center;justify-content:space-between;gap:16px}.payment-alert strong{display:block;margin-bottom:4px}.payment-alert span{color:#666;font-size:.92rem}.payment-alert button{border:0;border-radius:8px;padding:10px 16px;cursor:pointer;white-space:nowrap}.payment-alert[hidden]{display:none}
 .admin-booking-button{border:0;border-radius:8px;padding:10px 16px;cursor:pointer;margin-right:8px}
 .admin-booking-modal{position:fixed;inset:0;background:rgba(0,0,0,.48);display:flex;align-items:center;justify-content:center;padding:20px;z-index:1000}.admin-booking-modal[hidden]{display:none}.admin-booking-card{background:#fff;width:min(900px,100%);max-height:92vh;overflow:auto;border-radius:16px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
-.admin-booking-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:20px}.admin-booking-head h2{margin:0 0 5px}.admin-booking-close{border:0;background:transparent;font-size:28px;cursor:pointer}.admin-booking-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.admin-booking-field{display:flex;flex-direction:column;gap:6px}.admin-booking-field.full{grid-column:1/-1}.admin-booking-field label{font-weight:600;font-size:.9rem}.admin-booking-field input,.admin-booking-field select,.admin-booking-field textarea{width:100%;box-sizing:border-box;padding:11px;border:1px solid #ccc;border-radius:8px;font:inherit}.admin-booking-field textarea{min-height:80px;resize:vertical}.admin-booking-summary{margin-top:18px;padding:16px;border:1px solid #ddd;border-radius:10px;background:#fafafa}.admin-booking-summary div{display:flex;justify-content:space-between;margin:5px 0}.admin-booking-summary .grand{font-size:1.08rem;font-weight:700;border-top:1px solid #ddd;padding-top:10px;margin-top:10px}.admin-booking-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.admin-booking-actions button{border:0;border-radius:8px;padding:11px 18px;cursor:pointer}.admin-booking-cancel{background:#eee}.admin-booking-save{background:#1f5b45;color:#fff}.admin-booking-error{color:#a11;min-height:20px;margin-top:10px}
-@media(max-width:700px){.admin-booking-grid{grid-template-columns:1fr}.admin-booking-field.full{grid-column:auto}.admin-booking-card{padding:20px}.admin-nav .spacer{display:none}}
+.admin-booking-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:20px}.admin-booking-head h2{margin:0 0 5px}.admin-booking-close{border:0;background:transparent;font-size:28px;cursor:pointer}.admin-booking-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.admin-booking-field{display:flex;flex-direction:column;gap:6px}.admin-booking-field.full{grid-column:1/-1}.admin-booking-field label{font-weight:600;font-size:.9rem}.admin-booking-field input,.admin-booking-field select,.admin-booking-field textarea{width:100%;box-sizing:border-box;padding:11px;border:1px solid #ccc;border-radius:8px;font:inherit}.admin-booking-field textarea{min-height:80px;resize:vertical}.admin-booking-docs{margin-top:18px;padding:18px;border:1px solid #ddd;border-radius:10px;background:#fafafa}.admin-booking-docs h3{margin:0 0 6px}.admin-booking-docs p{margin:0 0 14px;color:#666;font-size:.9rem}.admin-booking-docs-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.admin-booking-doc{display:flex;flex-direction:column;gap:6px}.admin-booking-doc label{font-weight:600;font-size:.9rem}.admin-booking-doc small{color:#666}.admin-booking-summary{margin-top:18px;padding:16px;border:1px solid #ddd;border-radius:10px;background:#fafafa}.admin-booking-summary div{display:flex;justify-content:space-between;margin:5px 0}.admin-booking-summary .grand{font-size:1.08rem;font-weight:700;border-top:1px solid #ddd;padding-top:10px;margin-top:10px}.admin-booking-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.admin-booking-actions button{border:0;border-radius:8px;padding:11px 18px;cursor:pointer}.admin-booking-cancel{background:#eee}.admin-booking-save{background:#1f5b45;color:#fff}.admin-booking-error{color:#a11;min-height:20px;margin-top:10px}
+@media(max-width:700px){.admin-booking-grid,.admin-booking-docs-grid{grid-template-columns:1fr}.admin-booking-field.full{grid-column:auto}.admin-booking-card{padding:20px}.admin-nav .spacer{display:none}}
 </style>
 </head>
 <body>
 <section id="adminAuth" class="admin-auth">
-  <p class="eyebrow">CA SMART STAYCATION</p>
-  <h1>Admin Login</h1>
-  <p>Sign in to review bookings and verify guest payment proofs.</p>
-  <form id="adminLoginForm">
-    <label for="adminEmail">Admin Email</label>
-    <input id="adminEmail" type="email" autocomplete="username" required>
-    <label for="adminPassword">Password</label>
-    <input id="adminPassword" type="password" autocomplete="current-password" required>
-    <button type="submit">Sign In</button>
-    <div id="adminAuthError" class="error" aria-live="polite"></div>
-  </form>
+  <p class="eyebrow">CA SMART STAYCATION</p><h1>Admin Login</h1><p>Sign in to review bookings and verify guest payment proofs.</p>
+  <form id="adminLoginForm"><label for="adminEmail">Admin Email</label><input id="adminEmail" type="email" autocomplete="username" required><label for="adminPassword">Password</label><input id="adminPassword" type="password" autocomplete="current-password" required><button type="submit">Sign In</button><div id="adminAuthError" class="error" aria-live="polite"></div></form>
 </section>
-
 <div id="adminShell" class="page admin-shell" hidden>
   <header class="topbar"><div><p class="eyebrow">CA SMART STAYCATION</p><h1>Booking Management</h1><p class="subtitle">Review reservations, payments, check-ins and check-outs.</p></div><div><button class="refresh" id="refreshBtn">Refresh</button> <button class="refresh" id="logoutBtn">Logout</button></div></header>
-
-  <nav class="admin-nav" aria-label="Admin navigation">
-    <a href="bookings.html" class="active">Bookings</a>
-    <a href="resources.html">Units & Parking Management</a>
-    <button type="button" class="new-booking" id="navNewBooking">+ New Guest Booking</button>
-  </nav>
-
+  <nav class="admin-nav" aria-label="Admin navigation"><a href="bookings.html" class="active">Bookings</a><a href="resources.html">Units & Parking Management</a><button type="button" class="new-booking" id="navNewBooking">+ New Guest Booking</button></nav>
   <section id="paymentAlert" class="payment-alert" hidden><div><strong id="paymentAlertTitle">Payment Verification Required</strong><span id="paymentAlertText">There are bookings waiting for payment verification.</span></div><button id="reviewPaymentsBtn" type="button">Review Payments</button></section>
   <section class="stats" aria-label="Booking summary"><div class="stat"><span>Total</span><strong id="totalCount">0</strong></div><div class="stat"><span>Reserved</span><strong id="reservedCount">0</strong></div><div class="stat"><span>Pending Payment</span><strong id="pendingCount">0</strong></div><div class="stat"><span>Checked In</span><strong id="checkedInCount">0</strong></div></section>
   <section class="toolbar"><input id="searchInput" type="search" placeholder="Search reference, guest, mobile or email"><select id="statusFilter"><option value="">All statuses</option><option>Waiting for Payment</option><option>Reserved</option><option>Pending Payment Verification</option><option>Payment Rejected</option><option>Checked In</option><option>Checked Out</option><option>Cancelled</option></select><select id="paymentFilter"><option value="">All payments</option><option>Paid</option><option>Pending</option></select></section>
   <div class="table-wrap"><table id="bookingTable"><thead><tr><th>Reference</th><th>Guest</th><th>Stay</th><th>Accommodation</th><th>Parking</th><th>Total</th><th>Payment</th><th>Status</th><th>Proof</th><th>Action</th></tr></thead><tbody></tbody></table><div id="emptyState" class="empty" hidden>No bookings match the current filters.</div></div>
 </div>
-
 <div id="bookingModal" class="modal" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-head"><div><p class="eyebrow">BOOKING DETAILS</p><h2 id="modalTitle">Booking</h2></div><button id="closeModal" class="close">×</button></div><div id="bookingDetails" class="details"></div><div id="modalActions" class="modal-actions"></div></div></div>
-
 <div id="adminBookingModal" class="admin-booking-modal" hidden>
   <div class="admin-booking-card" role="dialog" aria-modal="true" aria-labelledby="adminBookingTitle">
-    <div class="admin-booking-head"><div><p class="eyebrow">ADMIN BOOKING</p><h2 id="adminBookingTitle">Create Guest Booking</h2><p class="subtitle">Create a reservation directly for a guest. Admin-created bookings are not subject to the 1-hour online payment expiry.</p></div><button id="adminBookingClose" class="admin-booking-close" type="button">×</button></div>
+    <div class="admin-booking-head"><div><p class="eyebrow">ADMIN BOOKING</p><h2 id="adminBookingTitle">Create Guest Booking</h2><p class="subtitle">Use the same guest information and identity/vehicle requirements as the public booking form.</p></div><button id="adminBookingClose" class="admin-booking-close" type="button">×</button></div>
     <form id="adminBookingForm">
       <div class="admin-booking-grid">
-        <div class="admin-booking-field"><label for="abFirstName">First Name</label><input id="abFirstName" required></div>
-        <div class="admin-booking-field"><label for="abLastName">Last Name</label><input id="abLastName" required></div>
-        <div class="admin-booking-field"><label for="abEmail">Email</label><input id="abEmail" type="email" required></div>
-        <div class="admin-booking-field"><label for="abMobile">Mobile</label><input id="abMobile" required></div>
-        <div class="admin-booking-field full"><label for="abAddress">Address</label><input id="abAddress" required></div>
-        <div class="admin-booking-field"><label for="abCheckIn">Check-in</label><input id="abCheckIn" type="date" required></div>
-        <div class="admin-booking-field"><label for="abCheckOut">Check-out</label><input id="abCheckOut" type="date" required></div>
-        <div class="admin-booking-field"><label for="abRoom">Accommodation</label><select id="abRoom"><option value="">Select accommodation</option></select></div>
-        <div class="admin-booking-field"><label for="abParking">Parking</label><select id="abParking"><option value="">No parking</option></select></div>
-        <div class="admin-booking-field"><label for="abAdults">Adults</label><input id="abAdults" type="number" min="1" max="4" value="2" required></div>
-        <div class="admin-booking-field"><label for="abChildren">Children (age 1–2)</label><input id="abChildren" type="number" min="0" value="0"></div>
-        <div class="admin-booking-field"><label for="abPaymentStatus">Payment Status</label><select id="abPaymentStatus"><option>Pending</option><option>Partial</option><option selected>Paid</option><option>Refunded</option></select></div>
-        <div class="admin-booking-field"><label for="abPaymentReference">Payment Reference</label><input id="abPaymentReference" placeholder="Optional"></div>
-        <div class="admin-booking-field"><label for="abParkingOnly">Booking Type</label><select id="abParkingOnly"><option value="false" selected>Accommodation</option><option value="true">Parking Only</option></select></div>
-        <div class="admin-booking-field full"><label for="abNotes">Notes</label><textarea id="abNotes" placeholder="Special requests or internal notes"></textarea></div>
+        <div class="admin-booking-field"><label for="abFirstName">First Name</label><input id="abFirstName" required></div><div class="admin-booking-field"><label for="abLastName">Last Name</label><input id="abLastName" required></div>
+        <div class="admin-booking-field"><label for="abEmail">Email</label><input id="abEmail" type="email" required></div><div class="admin-booking-field"><label for="abMobile">Mobile Number</label><input id="abMobile" required></div>
+        <div class="admin-booking-field full"><label for="abAddress">Complete Address</label><textarea id="abAddress" rows="3" required></textarea></div>
+        <div class="admin-booking-field"><label for="abCheckIn">Check-in</label><input id="abCheckIn" type="date" required></div><div class="admin-booking-field"><label for="abCheckOut">Check-out</label><input id="abCheckOut" type="date" required></div>
+        <div class="admin-booking-field"><label for="abRoom">Accommodation</label><select id="abRoom"><option value="">Select accommodation</option></select></div><div class="admin-booking-field"><label for="abParking">Parking</label><select id="abParking"><option value="">No parking</option></select></div>
+        <div class="admin-booking-field"><label for="abAdults">Number of Guests</label><input id="abAdults" type="number" min="1" max="4" value="2" required></div><div class="admin-booking-field"><label for="abChildren">Children (age 0–2)</label><input id="abChildren" type="number" min="0" value="0"></div>
+        <div class="admin-booking-field"><label for="abPaymentStatus">Payment Status</label><select id="abPaymentStatus"><option>Pending</option><option>Partial</option><option selected>Paid</option><option>Refunded</option></select></div><div class="admin-booking-field"><label for="abPaymentReference">Payment Reference</label><input id="abPaymentReference" placeholder="Optional"></div>
+        <div class="admin-booking-field full"><label for="abParkingOnly">Booking Type</label><select id="abParkingOnly"><option value="false" selected>Accommodation Only</option><option value="true">Parking Only</option></select></div>
       </div>
-      <div id="abSummary" class="admin-booking-summary"></div>
-      <div id="abError" class="admin-booking-error" aria-live="polite"></div>
+      <div class="admin-booking-docs" id="abDocumentsSection"><h3>Required Documents & Vehicle Information</h3><p>These requirements match the public booking form. Government ID is required for Accommodation Only and Accommodation + Parking. Driver's License and vehicle information are required whenever parking is included.</p>
+        <div class="admin-booking-docs-grid">
+          <div class="admin-booking-doc" id="abGovIdWrap"><label for="abGovernmentId">Government-Issued ID <span>*</span></label><input id="abGovernmentId" type="file" accept="image/png,image/jpeg,image/webp,application/pdf"><small>JPG, PNG, WEBP, or PDF — max 10 MB</small></div>
+          <div class="admin-booking-doc" id="abLicenseWrap"><label for="abDriversLicense">Driver's License <span>*</span></label><input id="abDriversLicense" type="file" accept="image/png,image/jpeg,image/webp,application/pdf"><small>Required for Parking Only and Accommodation + Parking</small></div>
+          <div class="admin-booking-doc" id="abVehicleBrandWrap"><label for="abVehicleBrand">Vehicle Brand <span>*</span></label><input id="abVehicleBrand" placeholder="Toyota"></div><div class="admin-booking-doc" id="abVehicleModelWrap"><label for="abVehicleModel">Vehicle Model <span>*</span></label><input id="abVehicleModel" placeholder="Vios"></div>
+          <div class="admin-booking-doc" id="abVehicleColorWrap"><label for="abVehicleColor">Vehicle Color <span>*</span></label><input id="abVehicleColor" placeholder="White"></div><div class="admin-booking-doc" id="abPlateWrap"><label for="abPlateNumber">Plate Number <span>*</span></label><input id="abPlateNumber" placeholder="ABC 1234"></div>
+        </div>
+      </div>
+      <div class="admin-booking-field full" style="margin-top:14px"><label for="abNotes">Notes</label><textarea id="abNotes" placeholder="Special requests or internal notes"></textarea></div>
+      <div id="abSummary" class="admin-booking-summary"></div><div id="abError" class="admin-booking-error" aria-live="polite"></div>
       <div class="admin-booking-actions"><button class="admin-booking-cancel" id="adminBookingCancel" type="button">Cancel</button><button class="admin-booking-save" type="submit">Create Booking</button></div>
     </form>
   </div>
 </div>
-
-<script src="bookings.js"></script>
-<script src="create-booking.js"></script>
-<script src="booking-details.js"></script>
-</body>
-</html>
+<script src="bookings.js"></script><script src="create-booking.js"></script><script src="booking-details.js"></script>
+</body></html>
