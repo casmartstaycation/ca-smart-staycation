@@ -3,7 +3,6 @@
    GUEST BOOKING WEBSITE
 ========================================= */
 
-// Backend API
 const API = "https://ca-smart-staycation-muqd.onrender.com/api";
 
 /* =========================================
@@ -35,9 +34,6 @@ let selectedCheckOut = null;
 
 /* =========================================
    DATE HELPERS
-   Keep booking dates as Philippine/local calendar dates.
-   Do not use toISOString() for YYYY-MM-DD form values because
-   UTC conversion moves Philippine midnight back one calendar day.
 ========================================= */
 function formatLocalDate(date) {
     const year = date.getFullYear();
@@ -58,6 +54,22 @@ function parseBookingDate(value) {
     if (Number.isNaN(date.getTime())) return null;
     date.setHours(0, 0, 0, 0);
     return date;
+}
+
+function isTerminalBooking(booking) {
+    return ["Cancelled", "Checked Out", "Expired"].includes(String(booking?.bookingStatus || ""));
+}
+
+function bookingHasAccommodation(booking) {
+    return Boolean(booking?.room?._id || booking?.room);
+}
+
+function bookingHasParking(booking) {
+    return Boolean(booking?.parking?._id || booking?.parking);
+}
+
+function datesOverlap(target, checkIn, checkOut) {
+    return Boolean(checkIn && checkOut && target >= checkIn && target < checkOut);
 }
 
 /* =========================================
@@ -87,19 +99,24 @@ document.addEventListener("DOMContentLoaded", async () => {
         setupEvents();
         const form = document.getElementById("guestBookingForm");
         if (form) form.addEventListener("submit", submitBooking);
-    } catch (err) { console.error(err); }
+        renderCalendar();
+    } catch (err) {
+        console.error(err);
+    }
 });
-window.addEventListener("load", () => { renderCalendar(); });
+window.addEventListener("load", renderCalendar);
 
 /* =========================================
    LOAD SETTINGS
 ========================================= */
 async function loadSettings() {
     try {
-        const res = await fetch(`${API}/settings`);
+        const res = await fetch(`${API}/settings`, { cache: "no-store" });
         const json = await res.json();
         if (res.ok && json.data) settings = { ...settings, ...json.data };
-    } catch (err) { console.warn("Unable to load settings. Using defaults."); }
+    } catch (err) {
+        console.warn("Unable to load settings. Using defaults.");
+    }
 }
 
 /* =========================================
@@ -107,9 +124,9 @@ async function loadSettings() {
 ========================================= */
 async function loadRooms() {
     try {
-        const res = await fetch(`${API}/rooms`);
+        const res = await fetch(`${API}/rooms`, { cache: "no-store" });
         const json = await res.json();
-        rooms = json.data || [];
+        rooms = Array.isArray(json.data) ? json.data : [];
         const roomSelect = document.getElementById("room");
         if (!roomSelect) return;
         roomSelect.innerHTML = '<option value="">Select Accommodation</option>';
@@ -118,7 +135,9 @@ async function loadRooms() {
             const name = room.unitName || room.roomName || "Room";
             roomSelect.innerHTML += `<option value="${room._id}">${number} - ${name}</option>`;
         });
-    } catch (err) { console.error("loadRooms ERROR:", err); }
+    } catch (err) {
+        console.error("loadRooms ERROR:", err);
+    }
 }
 
 /* =========================================
@@ -126,7 +145,7 @@ async function loadRooms() {
 ========================================= */
 async function loadParkingSlots() {
     try {
-        const res = await fetch(`${API}/parking`);
+        const res = await fetch(`${API}/parking`, { cache: "no-store" });
         const json = await res.json();
         if (!res.ok) throw new Error(json.message || "Unable to load parking slots.");
         parkingSlots = Array.isArray(json.data) ? json.data : [];
@@ -137,8 +156,6 @@ async function loadParkingSlots() {
         const parking = preferredParking || parkingSlots[0] || null;
         selectedParkingId = parking?._id || null;
         selectedParkingNumber = parking?.parkingNumber || null;
-        console.log("PARKING SLOTS:", parkingSlots);
-        console.log("SELECTED PARKING:", parking);
     } catch (err) {
         parkingSlots = [];
         selectedParkingId = null;
@@ -149,17 +166,19 @@ async function loadParkingSlots() {
 
 /* =========================================
    LOAD BOOKED DATES
+   IMPORTANT: the guest calendar reads the same /api/bookings
+   source used by admin bookings. This keeps accommodation-only,
+   parking-only and combined bookings synchronized.
 ========================================= */
 async function loadBookedDates() {
     try {
-        const res = await fetch(`${API}/bookings`);
+        const res = await fetch(`${API}/bookings`, {
+            cache: "no-store",
+            headers: { Accept: "application/json" }
+        });
         const json = await res.json();
-        bookedDates = res.ok ? (json.data || []) : [];
-        console.log("BOOKINGS:", bookedDates);
-        console.table(bookedDates.map(b => ({
-            ref: b.bookingReference, parking: b.parking, parkingOnly: b.parkingOnly,
-            room: b.room, checkIn: b.checkIn, checkOut: b.checkOut, status: b.bookingStatus
-        })));
+        bookedDates = res.ok && Array.isArray(json.data) ? json.data : [];
+        console.log("BOOKINGS USED BY GUEST CALENDAR:", bookedDates);
         renderCalendar();
     } catch (err) {
         console.error("Failed to load booked dates:", err);
@@ -167,6 +186,12 @@ async function loadBookedDates() {
         renderCalendar();
     }
 }
+
+/* Refresh booking availability when the guest returns to the tab. */
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) loadBookedDates();
+});
+window.addEventListener("focus", () => loadBookedDates());
 
 /* =========================================
    SETUP EVENTS
@@ -211,9 +236,12 @@ function bookingTypeChanged() {
         if (vehicleSection) vehicleSection.style.display = "none";
         if (bookingNotes) bookingNotes.style.display = "block";
     }
-    selectedCheckIn = null; selectedCheckOut = null;
-    document.getElementById("checkIn").value = "";
-    document.getElementById("checkOut").value = "";
+    selectedCheckIn = null;
+    selectedCheckOut = null;
+    const checkIn = document.getElementById("checkIn");
+    const checkOut = document.getElementById("checkOut");
+    if (checkIn) checkIn.value = "";
+    if (checkOut) checkOut.value = "";
     calculateTotal();
     loadBookedDates();
 }
@@ -235,7 +263,7 @@ function calculateTotal() {
         updateSummary(0, 0, parkingTotal, 0, parkingTotal); return;
     }
     if (!roomId) { updateSummary(0, 0, 0, 0, 0); return; }
-    const room = rooms.find(r => r._id === roomId);
+    const room = rooms.find(r => String(r._id) === String(roomId));
     if (!room) return;
     const start = parseBookingDate(checkIn); const end = parseBookingDate(checkOut);
     const nights = Math.ceil((end - start) / 86400000);
@@ -251,9 +279,6 @@ function calculateTotal() {
     updateSummary(roomTotal, extraAdultTotal, parkingTotal, securityDeposit, total);
 }
 
-/* =========================================
-   UPDATE SUMMARY
-========================================= */
 function updateSummary(roomTotal, extraAdultTotal, parkingTotal, securityDeposit, total) {
     const roomAmount = document.getElementById("roomAmount");
     const extraAmount = document.getElementById("extraGuestAmount");
@@ -294,15 +319,36 @@ async function submitBooking(event) {
                 alert("Please complete all vehicle information."); return;
             }
         }
+
+        // Client-side protection. The backend remains the final authority.
         const checkStart = parseBookingDate(checkIn);
         const checkEnd = parseBookingDate(checkOut);
+        const roomUnavailable = bookingType !== "parking" && bookedDates.some(booking => {
+            if (isTerminalBooking(booking) || !bookingHasAccommodation(booking)) return false;
+            const existingStart = parseBookingDate(booking.checkIn);
+            const existingEnd = parseBookingDate(booking.checkOut);
+            if (!datesOverlap(checkStart, existingStart, existingEnd) && !(checkStart < existingEnd && checkEnd > existingStart)) return false;
+            const existingRoomId = booking.room?._id || booking.room;
+            return !room || String(existingRoomId) === String(room);
+        });
+        if (roomUnavailable) {
+            alert("The selected accommodation is already booked for one or more of those dates.");
+            await loadBookedDates();
+            return;
+        }
+
         const parkingUnavailable = (bookingType === "parking" || bookingType === "both") && bookedDates.some(booking => {
-            if (booking.bookingStatus === "Cancelled" || booking.bookingStatus === "Checked Out" || !booking.parking) return false;
+            if (isTerminalBooking(booking) || !bookingHasParking(booking)) return false;
             const existingStart = parseBookingDate(booking.checkIn);
             const existingEnd = parseBookingDate(booking.checkOut);
             return checkStart < existingEnd && checkEnd > existingStart;
         });
-        if (parkingUnavailable) { alert("Parking slot is already reserved for the selected dates."); renderCalendar(); return; }
+        if (parkingUnavailable) {
+            alert("Parking slot is already reserved for the selected dates.");
+            await loadBookedDates();
+            return;
+        }
+
         const bookingData = {
             vehicleBrand: document.getElementById("vehicleBrand")?.value || "",
             vehicleModel: document.getElementById("vehicleModel")?.value || "",
@@ -316,11 +362,9 @@ async function submitBooking(event) {
             parkingOnly: bookingType === "parking",
             totalAmount: parseFloat(document.getElementById("totalAmount").innerText.replace("₱", "").replace(/,/g, ""))
         };
-        console.log("SENDING BOOKING:", bookingData);
         const res = await fetch(`${API}/bookings`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bookingData) });
         const json = await res.json();
         if (!res.ok) { alert(json.message || "Booking failed."); console.error(json); return; }
-        console.log("Booking Success:", json);
         const booking = {
             ...(json.data || {}), firstName, lastName, room, parking,
             parkingOnly: bookingType === "parking", bookingType, checkIn, checkOut, guests,
@@ -330,31 +374,54 @@ async function submitBooking(event) {
         localStorage.setItem("guestBooking", JSON.stringify(booking));
         localStorage.setItem("bookingReference", booking.bookingReference || "");
         window.location.href = "guest-booking/booking-success.html";
-    } catch (err) { console.error(err); alert("Unable to connect to server."); }
+    } catch (err) {
+        console.error(err);
+        alert("Unable to connect to server.");
+    }
 }
 
 /* =========================================
    CHECK IF DATE IS BOOKED
+   Accommodation-only:
+     block the selected accommodation when another active
+     accommodation booking overlaps.
+   Accommodation + parking:
+     block when either the selected accommodation OR the
+     parking slot is already occupied.
+   Parking-only:
+     block when the parking slot is occupied.
 ========================================= */
 function isDateBooked(date) {
-    const bookingType = document.getElementById("bookingType")?.value;
+    const bookingType = document.getElementById("bookingType")?.value || "unit";
     const selectedRoom = document.getElementById("room")?.value || "";
-    const target = new Date(date); target.setHours(0, 0, 0, 0);
+    const target = new Date(date);
+    target.setHours(0, 0, 0, 0);
+
     for (const booking of bookedDates) {
-        if (booking.bookingStatus === "Cancelled" || booking.bookingStatus === "Checked Out") continue;
+        if (isTerminalBooking(booking)) continue;
         const checkIn = parseBookingDate(booking.checkIn);
         const checkOut = parseBookingDate(booking.checkOut);
-        if (!checkIn || !checkOut) continue;
-        const overlaps = target >= checkIn && target < checkOut;
-        if (!overlaps) continue;
-        const bookedRoom = booking.room?._id || booking.room || null;
-        const hasParking = Boolean(booking.parking);
-        if (bookingType === "unit" && bookedRoom && String(bookedRoom) === String(selectedRoom)) return true;
-        if (bookingType === "parking" && hasParking) return true;
-        if (bookingType === "both") {
-            if (bookedRoom && String(bookedRoom) === String(selectedRoom)) return true;
+        if (!datesOverlap(target, checkIn, checkOut)) continue;
+
+        const hasAccommodation = bookingHasAccommodation(booking);
+        const hasParking = bookingHasParking(booking);
+        const bookedRoomId = booking.room?._id || booking.room || null;
+
+        if (bookingType === "parking") {
             if (hasParking) return true;
+            continue;
         }
+
+        if (bookingType === "both") {
+            // A combined booking needs BOTH resources, so either
+            // an occupied room or occupied parking makes the date unavailable.
+            if (hasAccommodation && String(bookedRoomId) === String(selectedRoom)) return true;
+            if (hasParking) return true;
+            continue;
+        }
+
+        // Accommodation-only. Match the selected unit.
+        if (hasAccommodation && String(bookedRoomId) === String(selectedRoom)) return true;
     }
     return false;
 }
@@ -372,43 +439,61 @@ function renderCalendar() {
     title.textContent = firstDay.toLocaleString("en-US", { month: "long", year: "numeric" });
     const startDay = firstDay.getDay();
     for (let i = 0; i < startDay; i++) {
-        const empty = document.createElement("div"); empty.className = "calendar-day empty"; grid.appendChild(empty);
+        const empty = document.createElement("div");
+        empty.className = "calendar-day empty";
+        grid.appendChild(empty);
     }
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     for (let day = 1; day <= lastDay.getDate(); day++) {
-        const date = new Date(currentYear, currentMonth, day); date.setHours(0, 0, 0, 0);
-        const cell = document.createElement("div"); cell.className = "calendar-day"; cell.textContent = day;
+        const date = new Date(currentYear, currentMonth, day);
+        date.setHours(0, 0, 0, 0);
+        const cell = document.createElement("div");
+        cell.className = "calendar-day";
+        cell.textContent = day;
+
         if (date < today) {
             cell.classList.add("disabled");
         } else if (isDateBooked(date)) {
-            cell.classList.add("booked"); cell.title = "Already booked";
+            cell.classList.add("booked");
+            cell.title = "Already booked";
         } else {
             cell.addEventListener("click", () => {
                 if (!selectedCheckIn || selectedCheckOut) {
-                    selectedCheckIn = new Date(date); selectedCheckOut = null;
+                    selectedCheckIn = new Date(date);
+                    selectedCheckOut = null;
                 } else if (date > selectedCheckIn) {
                     let blocked = false;
-                    const temp = new Date(selectedCheckIn); temp.setDate(temp.getDate() + 1);
+                    const temp = new Date(selectedCheckIn);
+                    temp.setDate(temp.getDate() + 1);
                     while (temp < date) {
-                        if (isDateBooked(temp)) { blocked = true; break; }
+                        if (isDateBooked(temp)) {
+                            blocked = true;
+                            break;
+                        }
                         temp.setDate(temp.getDate() + 1);
                     }
-                    if (blocked) {
+                    if (blocked || isDateBooked(date)) {
                         alert("Your selected stay contains booked dates.");
-                        selectedCheckIn = null; selectedCheckOut = null;
+                        selectedCheckIn = null;
+                        selectedCheckOut = null;
                         document.getElementById("checkIn").value = "";
                         document.getElementById("checkOut").value = "";
-                        renderCalendar(); return;
+                        renderCalendar();
+                        return;
                     }
                     selectedCheckOut = new Date(date);
                 } else {
-                    selectedCheckIn = new Date(date); selectedCheckOut = null;
+                    selectedCheckIn = new Date(date);
+                    selectedCheckOut = null;
                 }
                 document.getElementById("checkIn").value = selectedCheckIn ? formatLocalDate(selectedCheckIn) : "";
                 document.getElementById("checkOut").value = selectedCheckOut ? formatLocalDate(selectedCheckOut) : "";
-                calculateTotal(); renderCalendar();
+                calculateTotal();
+                renderCalendar();
             });
         }
+
         if (selectedCheckIn && date.getTime() === selectedCheckIn.getTime()) cell.classList.add("checkin");
         if (selectedCheckOut && date.getTime() === selectedCheckOut.getTime()) cell.classList.add("checkout");
         if (selectedCheckIn && selectedCheckOut && date > selectedCheckIn && date < selectedCheckOut) cell.classList.add("selected-range");
@@ -420,41 +505,39 @@ function renderCalendar() {
 /* =========================================
    MONTH NAVIGATION
 ========================================= */
-function previousMonth() { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(); }
-function nextMonth() { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(); }
+function previousMonth() {
+    currentMonth--;
+    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+    renderCalendar();
+}
+function nextMonth() {
+    currentMonth++;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    renderCalendar();
+}
 
-/* =========================================
-   CALENDAR BUTTONS
-========================================= */
 const prevBtn = document.getElementById("prevMonth");
 const nextBtn = document.getElementById("nextMonth");
 if (prevBtn) prevBtn.addEventListener("click", previousMonth);
 if (nextBtn) nextBtn.addEventListener("click", nextMonth);
 
-/* =========================================
-   RESET BOOKING
-========================================= */
 function clearBookingSelection() {
-    selectedCheckIn = null; selectedCheckOut = null;
+    selectedCheckIn = null;
+    selectedCheckOut = null;
     const checkIn = document.getElementById("checkIn");
     const checkOut = document.getElementById("checkOut");
     if (checkIn) checkIn.value = "";
     if (checkOut) checkOut.value = "";
-    calculateTotal(); renderCalendar();
+    calculateTotal();
+    renderCalendar();
 }
 
-/* =========================================
-   BOOKING SUCCESS
-========================================= */
 function saveBookingReference(booking) {
     if (!booking) return;
     localStorage.setItem("guestBooking", JSON.stringify(booking));
     if (booking.bookingReference) localStorage.setItem("bookingReference", booking.bookingReference);
 }
 
-/* =========================================
-   LOAD BOOKING SUCCESS PAGE
-========================================= */
 function loadBookingReference() {
     const booking = JSON.parse(localStorage.getItem("guestBooking"));
     const reference = document.getElementById("bookingReference");
@@ -462,16 +545,10 @@ function loadBookingReference() {
     reference.innerText = booking && booking.bookingReference ? booking.bookingReference : "N/A";
 }
 
-/* =========================================
-   FORMAT CURRENCY
-========================================= */
 function peso(value) {
     return "₱" + Number(value || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-/* =========================================
-   PAGE INITIALIZATION
-========================================= */
 window.addEventListener("load", () => {
     if (document.getElementById("bookingReference")) loadBookingReference();
 });
