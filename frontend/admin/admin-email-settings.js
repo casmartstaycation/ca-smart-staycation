@@ -15,8 +15,8 @@ function ensureAdminEmailManager() {
   const manager = document.createElement("div");
   manager.id = "adminEmailManager";
   manager.innerHTML = `
-    <div style="margin-top:14px;border-top:1px solid #d7e1dc;padding-top:14px">
-      <strong style="display:block;color:#173f35;margin-bottom:8px">Additional Notification Emails</strong>
+    <div style="margin-top:0">
+      <strong style="display:block;color:#173f35;margin-bottom:8px">Admin Notification Emails</strong>
       <div id="adminNotificationEmailList"></div>
       <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
         <input id="additionalAdminNotificationEmail" type="email" placeholder="Add another email address" autocomplete="email" style="flex:1;min-height:40px;box-sizing:border-box;padding:8px 10px;border:1px solid #cbd7d1;border-radius:7px">
@@ -57,45 +57,18 @@ function renderAdminNotificationEmails(emails = []) {
 
 async function loadAdminNotificationEmail() {
   ensureAdminEmailManager();
-  const input = document.getElementById("adminNotificationEmail");
   const status = document.getElementById("adminNotificationEmailStatus");
-  if (!input) return;
   try {
     const res = await fetch(`${ADMIN_EMAIL_API}/settings/admin-notification-email`, { headers: adminEmailAuthHeaders(), cache: "no-store" });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Unable to load notification emails.");
-    input.value = data.email || "";
     const emails = Array.isArray(data.emails) && data.emails.length ? data.emails : (data.email ? [data.email] : []);
     renderAdminNotificationEmails(emails);
-    if (status) status.textContent = data.email ? `Primary notification email: ${data.email}` : "No custom admin notification email is set.";
+    if (status) status.textContent = "";
   } catch (err) {
     console.error("ADMIN EMAIL LOAD ERROR:", err);
     if (status) status.textContent = err.message;
   }
-}
-
-async function saveAdminNotificationEmail() {
-  const input = document.getElementById("adminNotificationEmail");
-  const status = document.getElementById("adminNotificationEmailStatus");
-  const button = document.getElementById("saveAdminNotificationEmail");
-  if (!input) return;
-  const email = input.value.trim().toLowerCase();
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    if (status) status.textContent = "Please enter a valid email address.";
-    return;
-  }
-  button.disabled = true;
-  if (status) status.textContent = "Saving…";
-  try {
-    const res = await fetch(`${ADMIN_EMAIL_API}/settings/admin-notification-email`, { method: "PUT", headers: adminEmailAuthHeaders(true), body: JSON.stringify({ email }) });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Unable to save notification email.");
-    if (status) status.textContent = `Saved. Primary admin notification email: ${data.email}.`;
-    await loadAdminNotificationEmail();
-  } catch (err) {
-    console.error("ADMIN EMAIL SAVE ERROR:", err);
-    if (status) status.textContent = err.message;
-  } finally { button.disabled = false; }
 }
 
 async function addAdminNotificationEmail() {
@@ -141,7 +114,6 @@ async function deleteAdminNotificationEmail(email) {
 
 document.addEventListener("DOMContentLoaded", () => {
   ensureAdminEmailManager();
-  document.getElementById("saveAdminNotificationEmail")?.addEventListener("click", saveAdminNotificationEmail);
   document.getElementById("addAdminNotificationEmail")?.addEventListener("click", addAdminNotificationEmail);
   loadAdminNotificationEmail();
 });
