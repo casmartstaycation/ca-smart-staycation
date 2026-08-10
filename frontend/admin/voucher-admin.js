@@ -5,7 +5,14 @@ function loadQrImage(text){return new Promise((resolve,reject)=>{const img=new I
 async function certificateImage(v,guest){
  const c=document.createElement("canvas"),x=c.getContext("2d");c.width=1600;c.height=760;
  const bg=x.createLinearGradient(0,0,1600,760);bg.addColorStop(0,"#0f332b");bg.addColorStop(.55,"#173f35");bg.addColorStop(1,"#0a2922");x.fillStyle=bg;x.fillRect(0,0,c.width,c.height);
- x.strokeStyle="#c7a24b";x.lineWidth=8;x.strokeRect(22,22,c.width-44,c.height-44);x.strokeStyle="#e2c46e";x.lineWidth=2;x.strokeRect(40,40,c.width-80,c.height-80);
+ // Elegant royal ornamental frame
+ x.strokeStyle="#c7a24b";x.lineWidth=7;x.strokeRect(24,24,c.width-48,c.height-48);
+ x.strokeStyle="#e2c46e";x.lineWidth=2;x.strokeRect(42,42,c.width-84,c.height-84);
+ x.strokeStyle="rgba(226,196,110,.75)";x.lineWidth=1;x.strokeRect(55,55,c.width-110,c.height-110);
+ function royalCorner(cx,cy,rotation){x.save();x.translate(cx,cy);x.rotate(rotation);x.strokeStyle="#e2c46e";x.fillStyle="#e2c46e";x.lineWidth=3;x.beginPath();x.moveTo(0,0);x.bezierCurveTo(12,4,23,14,28,28);x.bezierCurveTo(39,16,51,8,68,8);x.bezierCurveTo(54,25,44,41,40,61);x.bezierCurveTo(27,49,16,37,0,31);x.stroke();x.beginPath();x.moveTo(7,4);x.bezierCurveTo(22,10,31,20,35,36);x.bezierCurveTo(45,25,54,20,64,18);x.stroke();x.beginPath();x.arc(38,14,5,0,Math.PI*2);x.fill();x.restore()}
+ function royalFlourish(cx,cy,flip){x.save();x.translate(cx,cy);if(flip)x.rotate(Math.PI);x.strokeStyle="#c7a24b";x.lineWidth=2.5;x.beginPath();x.moveTo(-120,0);x.bezierCurveTo(-85,-2,-74,-25,-48,-25);x.bezierCurveTo(-28,-25,-21,-8,0,0);x.bezierCurveTo(21,-8,28,-25,48,-25);x.bezierCurveTo(74,-25,85,-2,120,0);x.stroke();x.beginPath();x.moveTo(-52,-25);x.bezierCurveTo(-42,-48,-19,-49,-12,-27);x.bezierCurveTo(-8,-15,-2,-7,0,0);x.bezierCurveTo(2,-7,8,-15,12,-27);x.bezierCurveTo(19,-49,42,-48,52,-25);x.stroke();x.fillStyle="#e2c46e";x.beginPath();x.arc(0,0,4,0,Math.PI*2);x.fill();x.restore()}
+ royalCorner(70,70,0);royalCorner(c.width-70,70,Math.PI/2);royalCorner(c.width-70,c.height-70,Math.PI);royalCorner(70,c.height-70,-Math.PI/2);
+ royalFlourish(c.width/2,66,false);royalFlourish(c.width/2,c.height-66,true);
  x.fillStyle="#e2c46e";x.font="bold 22px Georgia";x.textAlign="left";x.fillText("CA SMART STAYCATION",85,105);x.font="14px Arial";x.fillStyle="#f4ead0";x.fillText("SPECIAL GUEST PRIVILEGE",85,130);
  x.textAlign="center";x.fillStyle="#f8f1df";x.font="bold 50px Georgia";x.fillText(v.certificateTitle||"SPECIAL GUEST VOUCHER",720,205);
  x.fillStyle="#e2c46e";x.font="bold 62px Georgia";x.fillText(`${v.discountPercent}% OFF`,720,290);
