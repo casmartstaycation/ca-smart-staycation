@@ -7,66 +7,11 @@ const router = express.Router();
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET;
 const PAYMENT_WINDOW_MS = 60 * 60 * 1000;
+function requireAdmin(req,res,next){const header=req.headers.authorization||"";const token=header.startsWith("Bearer ")?header.slice(7):"";if(!token||!ADMIN_JWT_SECRET)return res.status(401).json({success:false,message:"Admin authentication required."});try{const payload=jwt.verify(token,ADMIN_JWT_SECRET);if(payload.role!=="admin"||(ADMIN_EMAIL&&String(payload.email||"").toLowerCase()!==String(ADMIN_EMAIL).toLowerCase()))return res.status(403).json({success:false,message:"Admin access required."});req.admin=payload;next();}catch(_){return res.status(401).json({success:false,message:"Admin session expired or invalid."});}}
 
-function requireAdmin(req, res, next) {
-    const header = req.headers.authorization || "";
-    const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-    if (!token || !ADMIN_JWT_SECRET) return res.status(401).json({ success: false, message: "Admin authentication required." });
-    try {
-        const payload = jwt.verify(token, ADMIN_JWT_SECRET);
-        if (payload.role !== "admin" || (ADMIN_EMAIL && String(payload.email || "").toLowerCase() !== String(ADMIN_EMAIL).toLowerCase())) {
-            return res.status(403).json({ success: false, message: "Admin access required." });
-        }
-        req.admin = payload;
-        next();
-    } catch (_) {
-        return res.status(401).json({ success: false, message: "Admin session expired or invalid." });
-    }
-}
+router.put("/bookings/:id/reject-payment",requireAdmin,async(req,res)=>{try{const booking=await Booking.findById(req.params.id);if(!booking)return res.status(404).json({success:false,message:"Booking not found."});if(booking.paymentStatus==="Paid")return res.status(400).json({success:false,message:"A paid booking cannot have its payment proof rejected."});const reason=String(req.body?.reason||"Payment proof could not be verified.").trim().slice(0,500);const oldProof=booking.paymentProof;if(oldProof)booking.paymentProofHistory.push({filename:oldProof,rejectedAt:new Date(),rejectionReason:reason});booking.paymentProof="";booking.paymentDate=null;booking.paymentStatus="Pending";booking.bookingStatus="Payment Rejected";booking.paymentRejectionReason=reason;booking.paymentDeadline=new Date(Date.now()+PAYMENT_WINDOW_MS);await booking.save();if(booking.email){const loginUrl=process.env.GUEST_LOGIN_URL||"https://casmartstaycation.github.io/cassbooking/guest-booking/guest-login.html";const guestName=`${booking.firstName||""} ${booking.lastName||""}`.trim()||"Guest";const html=`<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>Your payment proof for booking <strong>${booking.bookingReference}</strong> could not be verified.</p><p><strong>Reason:</strong> ${reason}</p><p>Please log in and upload the correct payment proof.</p><p><a href="${loginUrl}">Login to your guest account</a></p>`;await sendEmail(booking.email,`Payment Proof Rejected — ${booking.bookingReference}`,html).catch(err=>console.error("PAYMENT REJECTION EMAIL ERROR:",err));}res.json({success:true,message:"Payment proof rejected.",data:booking});}catch(err){console.error("PAYMENT RECOVERY REJECT ERROR:",err);res.status(500).json({success:false,message:err.message});}});
 
-router.put("/bookings/:id/reject-payment", requireAdmin, async (req, res) => {
-    try {
-        const booking = await Booking.findById(req.params.id);
-        if (!booking) return res.status(404).json({ success: false, message: "Booking not found." });
-        if (booking.paymentStatus === "Paid") return res.status(400).json({ success: false, message: "A paid booking cannot have its payment proof rejected." });
+router.put("/bookings/:id/approve-reschedule-payment",requireAdmin,async(req,res)=>{try{const booking=await Booking.findById(req.params.id);if(!booking)return res.status(404).json({success:false,message:"Booking not found."});if(booking.reschedulePaymentStatus!=="Pending Verification"||!booking.reschedulePaymentProof)return res.status(400).json({success:false,message:"No pending date-change payment proof is waiting for approval."});if(!booking.reschedulePendingCheckIn||!booking.reschedulePendingCheckOut)return res.status(400).json({success:false,message:"The pending date-change request is incomplete."});const oldCheckIn=booking.checkIn,oldCheckOut=booking.checkOut;booking.checkIn=booking.reschedulePendingCheckIn;booking.checkOut=booking.reschedulePendingCheckOut;booking.rescheduleHistory=booking.rescheduleHistory||[];booking.rescheduleHistory.push({previousCheckIn:oldCheckIn,previousCheckOut:oldCheckOut,newCheckIn:booking.checkIn,newCheckOut:booking.checkOut,changedAt:new Date(),policyRule:booking.reschedulePolicyRule,inconvenienceFee:booking.rescheduleFee,refundAmount:booking.rescheduleRefundAmount});booking.reschedulePaymentStatus="Verified";booking.reschedulePending=false;booking.reschedulePendingCheckIn=null;booking.reschedulePendingCheckOut=null;await booking.save();if(booking.email){const guestName=`${booking.firstName||""} ${booking.lastName||""}`.trim()||"Guest";const html=`<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>Your date-change convenience-fee payment for booking <strong>${booking.bookingReference}</strong> has been verified and your new booking dates are confirmed.</p><p><strong>New check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString("en-PH")}<br><strong>New check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString("en-PH")}</p><p>CA Smart Staycation</p>`;await sendEmail(booking.email,`Date Change Approved — ${booking.bookingReference}`,html).catch(err=>console.error("RESCHEDULE APPROVAL EMAIL ERROR:",err));}res.json({success:true,message:"Date-change payment approved and the new booking dates are now active.",data:booking});}catch(err){console.error("RESCHEDULE PAYMENT APPROVAL ERROR:",err);res.status(500).json({success:false,message:err.message});}});
 
-        const reason = String(req.body?.reason || "Payment proof could not be verified.").trim().slice(0, 500);
-        const oldProof = booking.paymentProof;
-        if (oldProof) {
-            booking.paymentProofHistory.push({
-                filename: oldProof,
-                rejectedAt: new Date(),
-                rejectionReason: reason
-            });
-        }
-
-        // Clear the active proof so the old receipt cannot accidentally be approved.
-        // The rejected receipt remains available in paymentProofHistory for audit/history.
-        booking.paymentProof = "";
-        booking.paymentDate = null;
-        booking.paymentStatus = "Pending";
-        booking.bookingStatus = "Payment Rejected";
-        booking.paymentRejectionReason = reason;
-        // Give the guest a fresh one-hour correction window.
-        booking.paymentDeadline = new Date(Date.now() + PAYMENT_WINDOW_MS);
-        await booking.save();
-
-        if (booking.email) {
-            const loginUrl = process.env.GUEST_LOGIN_URL || "https://casmartstaycation.github.io/cassbooking/guest-booking/guest-login.html";
-            const guestName = `${booking.firstName || ""} ${booking.lastName || ""}`.trim() || "Guest";
-            const html = `<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>Your payment proof for booking <strong>${booking.bookingReference}</strong> could not be verified.</p><p><strong>Reason:</strong> ${reason}</p><p>Your reservation has not been cancelled. You have a new <strong>1-hour payment correction window</strong> to submit the correct proof.</p><p>Please log in and upload the correct receipt. The previously rejected receipt will remain in the booking history for record keeping.</p><p><a href="${loginUrl}">Login to your guest account</a></p><p><strong>Booking Reference:</strong> ${booking.bookingReference}</p><p>CA Smart Staycation</p>`;
-            await sendEmail(booking.email, `Payment Proof Rejected — Resubmission Required — ${booking.bookingReference}`, html).catch(err => console.error("PAYMENT REJECTION EMAIL ERROR:", err));
-        }
-
-        res.json({
-            success: true,
-            message: "Payment proof rejected. The old proof was archived and the guest received a new 1-hour correction window.",
-            data: booking
-        });
-    } catch (err) {
-        console.error("PAYMENT RECOVERY REJECT ERROR:", err);
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-module.exports = router;
+router.put("/bookings/:id/reject-reschedule-payment",requireAdmin,async(req,res)=>{try{const booking=await Booking.findById(req.params.id);if(!booking)return res.status(404).json({success:false,message:"Booking not found."});if(booking.reschedulePaymentStatus!=="Pending Verification")return res.status(400).json({success:false,message:"No pending date-change payment proof is waiting for approval."});booking.reschedulePaymentStatus="Rejected";booking.reschedulePaymentRejectionReason=String(req.body?.reason||"Convenience-fee payment proof could not be verified.").trim().slice(0,500);booking.reschedulePending=false;booking.reschedulePendingCheckIn=null;booking.reschedulePendingCheckOut=null;await booking.save();if(booking.email){const guestName=`${booking.firstName||""} ${booking.lastName||""}`.trim()||"Guest";const html=`<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>Your convenience-fee payment proof for booking <strong>${booking.bookingReference}</strong> could not be verified.</p><p><strong>Reason:</strong> ${booking.reschedulePaymentRejectionReason}</p><p>Your original booking dates remain unchanged. Please contact management if you need to submit another request.</p>`;await sendEmail(booking.email,`Date Change Payment Rejected — ${booking.bookingReference}`,html).catch(err=>console.error("RESCHEDULE REJECTION EMAIL ERROR:",err));}res.json({success:true,message:"Date-change payment rejected. The original booking dates remain active.",data:booking});}catch(err){console.error("RESCHEDULE PAYMENT REJECTION ERROR:",err);res.status(500).json({success:false,message:err.message});}});
+module.exports=router;
