@@ -1,6 +1,4 @@
-console.log("MONGODB_URI =", process.env.MONGODB_URI);
 require('dotenv').config();
-console.log("MONGODB_URI =", process.env.MONGODB_URI);
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -8,12 +6,68 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const Booking = require("./models/Booking");
 const Parking = require("./models/Parking");
 const settingsRoutes = require("./routes/settingsRoutes");
 const { processBookingStatusNotifications } = require("./services/bookingStatusNotifier");
+
+const paymentUploadDir = path.join(__dirname, 'uploads/payments');
+const guestDocumentUploadDir = path.join(__dirname, 'uploads/guest-documents');
+
+function deleteUploadedFile(dir, filename) {
+  if (!filename) return;
+  const safeName = path.basename(String(filename));
+  const filePath = path.join(dir, safeName);
+  try {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch (err) {
+    console.error(`UPLOAD CLEANUP ERROR (${safeName}):`, err.message);
+  }
+}
+
+async function cleanupTerminalBookingUploads() {
+  try {
+    const terminalBookings = await Booking.find({
+      bookingStatus: { $in: ["Cancelled", "Checked Out"] },
+      $or: [
+        { paymentProof: { $nin: [null, ""] } },
+        { governmentId: { $nin: [null, ""] } },
+        { driversLicense: { $nin: [null, ""] } },
+        { reschedulePaymentProof: { $nin: [null, ""] } }
+      ]
+    })
+      .select("_id paymentProof governmentId driversLicense reschedulePaymentProof")
+      .lean();
+
+    for (const booking of terminalBookings) {
+      deleteUploadedFile(paymentUploadDir, booking.paymentProof);
+      deleteUploadedFile(guestDocumentUploadDir, booking.governmentId);
+      deleteUploadedFile(guestDocumentUploadDir, booking.driversLicense);
+      deleteUploadedFile(guestDocumentUploadDir, booking.reschedulePaymentProof);
+
+      await Booking.updateOne(
+        { _id: booking._id },
+        {
+          $set: {
+            paymentProof: "",
+            governmentId: "",
+            driversLicense: "",
+            reschedulePaymentProof: ""
+          }
+        }
+      );
+    }
+
+    if (terminalBookings.length) {
+      console.log(`🧹 Cleaned uploaded files for ${terminalBookings.length} terminal booking(s).`);
+    }
+  } catch (err) {
+    console.error("TERMINAL BOOKING UPLOAD CLEANUP ERROR:", err);
+  }
+}
 
 app.use(helmet());
 app.use(cors({ origin: ["https://casmartstaycation.github.io", "http://localhost:3000", "http://127.0.0.1:5500", "http://localhost:5500"], credentials: true }));
@@ -37,7 +91,14 @@ async function expireUnpaidBookings() {
 app.get('/api/bookings', async (req, res) => {
   try {
     await expireUnpaidBookings();
-    const [bookings, currentParking] = await Promise.all([Booking.find().populate("room").lean().sort({ createdAt: -1 }), Parking.findOne({ parkingNumber: "SLOT 9" }).lean().then(slot => slot || Parking.findOne().lean())]);
+    const [bookings, currentParking] = await Promise.all([
+      Booking.find()
+        .select("bookingReference firstName lastName email mobile address room checkIn checkOut adults children subtotalAmount voucherCode voucherDiscountPercent voucherDiscountAmount voucherMaxNights complimentaryNonCancellable totalAmount paymentStatus bookingStatus housekeepingStatus parkingOnly parking notes paymentDate paymentReference paymentRejectionReason paymentDeadline paymentProof paymentProofSubmittedAt paymentVerifiedAt cancellationRequestedAt cancellationReason refundRequested refundRequestedAt refundAmount refundFee refundPolicyRule refundStatus refundProcessedAt refundProcessedBy reschedulePending reschedulePendingCheckIn reschedulePendingCheckOut rescheduleFee reschedulePolicyRule rescheduleRefundAmount rescheduleRequestedAt createdAt updatedAt")
+        .populate("room")
+        .lean()
+        .sort({ createdAt: -1 }),
+      Parking.findOne({ parkingNumber: "SLOT 9" }).lean().then(slot => slot || Parking.findOne().lean())
+    ]);
     const normalizedBookings = bookings.map(booking => booking.parking && currentParking ? { ...booking, parking: currentParking } : booking);
     res.json({ success: true, data: normalizedBookings });
   } catch (err) { console.error("Guest calendar bookings error:", err); res.status(500).json({ success: false, message: err.message }); }
@@ -59,7 +120,9 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 CA Smart Staycation API running on port ${PORT}`);
   setInterval(expireUnpaidBookings, 60 * 1000);
+  setInterval(cleanupTerminalBookingUploads, 60 * 1000);
   setInterval(() => processBookingStatusNotifications().catch(err => console.error("BOOKING STATUS NOTIFICATION ERROR:", err)), 15 * 1000);
   expireUnpaidBookings();
+  cleanupTerminalBookingUploads();
   processBookingStatusNotifications().catch(err => console.error("INITIAL BOOKING STATUS NOTIFICATION ERROR:", err));
 });
