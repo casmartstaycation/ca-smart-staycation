@@ -2,7 +2,6 @@ console.log("🔥 settingsRoutes.js executed");
 const express = require("express");
 const router = express.Router();
 const { requireAdmin } = require("../middleware/adminAuth");
-const router = express.Router();
 router.get("/test", (req, res) => {
     res.json({
         status: "success",
