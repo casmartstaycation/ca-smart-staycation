@@ -13,6 +13,7 @@ const app = express();
 const Booking = require("./models/Booking");
 const Parking = require("./models/Parking");
 const settingsRoutes = require("./routes/settingsRoutes");
+const { processBookingStatusNotifications } = require("./services/bookingStatusNotifier");
 
 app.use(helmet());
 app.use(cors({ origin: ["https://casmartstaycation.github.io", "http://localhost:3000", "http://127.0.0.1:5500", "http://localhost:5500"], credentials: true }));
@@ -55,4 +56,10 @@ app.use('/api', require('./routes/messagingRoutes'));
 app.use('/api/settings', settingsRoutes);
 app.use((req, res) => res.status(404).json({ status: 'error', message: 'Route not found' }));
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => { console.log(`🚀 CA Smart Staycation API running on port ${PORT}`); setInterval(expireUnpaidBookings, 60 * 1000); expireUnpaidBookings(); });
+app.listen(PORT, () => {
+  console.log(`🚀 CA Smart Staycation API running on port ${PORT}`);
+  setInterval(expireUnpaidBookings, 60 * 1000);
+  setInterval(() => processBookingStatusNotifications().catch(err => console.error("BOOKING STATUS NOTIFICATION ERROR:", err)), 15 * 1000);
+  expireUnpaidBookings();
+  processBookingStatusNotifications().catch(err => console.error("INITIAL BOOKING STATUS NOTIFICATION ERROR:", err));
+});
