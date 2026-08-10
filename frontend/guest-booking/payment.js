@@ -68,6 +68,12 @@ if (uploadButton) {
             return;
         }
 
+        // Preserve the existing guest session before navigating away.
+        // The guest dashboard uses this token to authenticate /guest-auth/me.
+        const guestToken = localStorage.getItem("guestAuthToken");
+        const guestAccount = localStorage.getItem("guestAccount");
+        const returnToAccount = "guest-dashboard.html";
+
         const formData = new FormData();
         formData.append("paymentProof", file);
         const url = `https://ca-smart-staycation-muqd.onrender.com/api/bookings/${encodeURIComponent(bookingId)}/payment`;
@@ -75,8 +81,13 @@ if (uploadButton) {
         const timeoutId = setTimeout(() => controller.abort(), 90 * 1000);
 
         try {
-            const response = await fetch(url, { method: "POST", body: formData, signal: controller.signal });
+            const response = await fetch(url, {
+                method: "POST",
+                body: formData,
+                signal: controller.signal
+            });
             clearTimeout(timeoutId);
+
             let result = {};
             try { result = await response.json(); } catch (_) { result = {}; }
 
@@ -94,15 +105,13 @@ if (uploadButton) {
             };
             localStorage.setItem("guestBooking", JSON.stringify(updatedBooking));
 
-            const token = localStorage.getItem("guestAuthToken");
-            if (token) {
-                alert("Payment proof uploaded successfully. Your booking is now waiting for admin payment verification.");
-                window.location.href = "guest-dashboard.html";
-            } else {
-                // New guests may not have an account token until payment proof creates the account.
-                alert("Payment proof uploaded successfully. Your guest account has been created. Please log in to continue.");
-                window.location.href = "guest-login.html";
-            }
+            // Never remove or replace the authenticated guest session here.
+            // This is intentionally a direct return to Guest Account Management.
+            if (guestToken) localStorage.setItem("guestAuthToken", guestToken);
+            if (guestAccount) localStorage.setItem("guestAccount", guestAccount);
+
+            alert("Payment proof uploaded successfully. Your booking is now waiting for admin payment verification.");
+            window.location.replace(returnToAccount);
         } catch (err) {
             clearTimeout(timeoutId);
             console.error("Payment upload error:", err);
