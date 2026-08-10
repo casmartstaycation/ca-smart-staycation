@@ -85,7 +85,7 @@ app.use(cors({ origin: ["https://casmartstaycation.github.io", "http://localhost
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 mongoose.connect(process.env.MONGODB_URI).then(() => console.log("✅ MongoDB Connected")).catch(err => console.error("MongoDB Error:", err));
@@ -99,25 +99,30 @@ async function expireUnpaidBookings() {
   } catch (err) { console.error("BOOKING EXPIRATION ERROR:", err); }
 }
 
-// Lightweight booking list used by the admin table and calendar.
-// Never populate Room images/description or booking document/history arrays here.
+// Small booking-list payload for admin tables and calendars. Large document/history fields are never sent here.
 app.get('/api/bookings', async (req, res) => {
   try {
     await expireUnpaidBookings();
-    const [bookings, currentParking] = await Promise.all([
-      Booking.find()
-        .select("bookingReference firstName lastName email mobile room checkIn checkOut adults children subtotalAmount voucherCode voucherDiscountPercent voucherDiscountAmount voucherMaxNights complimentaryNonCancellable totalAmount paymentStatus bookingStatus housekeepingStatus parkingOnly parking notes paymentDate paymentReference paymentRejectionReason paymentDeadline paymentProof paymentProofSubmittedAt paymentVerifiedAt cancellationRequestedAt cancellationReason refundRequested refundRequestedAt refundAmount refundFee refundPolicyRule refundStatus refundProcessedAt refundProcessedBy reschedulePending reschedulePendingCheckIn reschedulePendingCheckOut rescheduleFee reschedulePolicyRule rescheduleRefundAmount rescheduleRequestedAt createdAt updatedAt")
-        .populate({ path: "room", select: "unitNumber unitName category capacity price weekendPrice holidayPrice status" })
-        .populate({ path: "parking", select: "parkingNumber parkingName status" })
-        .lean()
-        .sort({ createdAt: -1 }),
-      Parking.findOne({ parkingNumber: "SLOT 9" }).select("parkingNumber parkingName status").lean().then(slot => slot || Parking.findOne().select("parkingNumber parkingName status").lean())
-    ]);
-
-    const normalizedBookings = bookings.map(booking => booking.parking && currentParking ? { ...booking, parking: booking.parking } : booking);
-    res.json({ success: true, data: normalizedBookings });
+    const bookings = await Booking.find()
+      .select("bookingReference firstName lastName email mobile room parking parkingOnly checkIn checkOut adults children totalAmount paymentStatus bookingStatus housekeepingStatus paymentProof createdAt updatedAt")
+      .populate({ path: "room", select: "unitNumber unitName category capacity price weekendPrice holidayPrice status" })
+      .populate({ path: "parking", select: "parkingNumber parkingName status" })
+      .lean()
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: bookings });
   } catch (err) {
-    console.error("Guest calendar bookings error:", err);
+    console.error("BOOKING LIST ERROR:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Full booking record is available only when a specific booking is requested.
+app.get('/api/bookings/:id', async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate("room").populate("parking").lean();
+    if (!booking) return res.status(404).json({ success: false, message: "Booking not found." });
+    res.json({ success: true, data: booking });
+  } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -134,6 +139,7 @@ app.use('/api', require('./routes/voucherRoutes'));
 app.use('/api', require('./routes/messagingRoutes'));
 app.use('/api/settings', settingsRoutes);
 app.use((req, res) => res.status(404).json({ status: 'error', message: 'Route not found' }));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 CA Smart Staycation API running on port ${PORT}`);
