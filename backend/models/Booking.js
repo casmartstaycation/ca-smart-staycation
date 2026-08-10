@@ -7,44 +7,26 @@ const bookingSchema = new mongoose.Schema({
   email: { type: String, required: true },
   mobile: { type: String, required: true },
   address: { type: String, required: true },
+  governmentId: { type: String, default: "" },
+  driversLicense: { type: String, default: "" },
+  vehicleBrand: { type: String, default: "" },
+  vehicleModel: { type: String, default: "" },
+  vehicleColor: { type: String, default: "" },
+  plateNumber: { type: String, default: "" },
   room: { type: mongoose.Schema.Types.ObjectId, ref: "Room", default: null },
   checkIn: { type: Date, required: true },
   checkOut: { type: Date, required: true },
   adults: { type: Number, default: 1 },
   children: { type: Number, default: 0 },
   totalAmount: { type: Number, required: true },
-  paymentStatus: {
-    type: String,
-    enum: ["Pending", "Partial", "Paid", "Refunded"],
-    default: "Pending"
-  },
-  bookingStatus: {
-    type: String,
-    enum: [
-      "Reserved",
-      "Pending Payment Verification",
-      "Payment Rejected",
-      "Checked In",
-      "Checked Out",
-      "Cancelled",
-      "Expired"
-    ],
-    default: "Reserved"
-  },
-  housekeepingStatus: {
-    type: String,
-    enum: ["Clean", "Needs Cleaning"],
-    default: "Clean"
-  },
+  paymentStatus: { type: String, enum: ["Pending", "Partial", "Paid", "Refunded"], default: "Pending" },
+  bookingStatus: { type: String, enum: ["Reserved", "Pending Payment Verification", "Payment Rejected", "Checked In", "Checked Out", "Cancelled", "Expired"], default: "Reserved" },
+  housekeepingStatus: { type: String, enum: ["Clean", "Needs Cleaning"], default: "Clean" },
   parkingOnly: { type: Boolean, default: false },
   parking: { type: mongoose.Schema.Types.ObjectId, ref: "Parking", default: null },
   notes: { type: String, default: "" },
   paymentProof: { type: String, default: "" },
-  paymentProofHistory: [{
-    filename: { type: String, required: true },
-    rejectedAt: { type: Date, default: Date.now },
-    rejectionReason: { type: String, default: "" }
-  }],
+  paymentProofHistory: [{ filename: { type: String, required: true }, rejectedAt: { type: Date, default: Date.now }, rejectionReason: { type: String, default: "" } }],
   paymentDate: { type: Date, default: null },
   paymentReference: { type: String, default: "" },
   paymentRejectionReason: { type: String, default: "" },
