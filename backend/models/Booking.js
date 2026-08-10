@@ -31,19 +31,35 @@ const bookingSchema = new mongoose.Schema({
   paymentReference: { type: String, default: "" },
   paymentRejectionReason: { type: String, default: "" },
   paymentDeadline: { type: Date, default: null },
+  paymentProofSubmittedAt: { type: Date, default: null },
   cancellationRequestedAt: { type: Date, default: null },
   cancellationReason: { type: String, default: "" },
   refundRequested: { type: Boolean, default: false },
   refundRequestedAt: { type: Date, default: null },
   refundAmount: { type: Number, default: 0 },
+  refundFee: { type: Number, default: 0 },
+  refundPolicyRule: { type: String, default: "" },
   refundStatus: { type: String, enum: ["Not Requested", "Requested", "Processing", "Refunded", "Not Eligible"], default: "Not Requested" },
   rescheduleHistory: [{
     previousCheckIn: { type: Date },
     previousCheckOut: { type: Date },
     newCheckIn: { type: Date },
     newCheckOut: { type: Date },
-    changedAt: { type: Date, default: Date.now }
-  }]
+    changedAt: { type: Date, default: Date.now },
+    policyRule: { type: String, default: "" },
+    inconvenienceFee: { type: Number, default: 0 },
+    refundAmount: { type: Number, default: 0 }
+  }],
+  reschedulePending: { type: Boolean, default: false },
+  reschedulePendingCheckIn: { type: Date, default: null },
+  reschedulePendingCheckOut: { type: Date, default: null },
+  rescheduleFee: { type: Number, default: 0 },
+  reschedulePolicyRule: { type: String, default: "" },
+  rescheduleRefundAmount: { type: Number, default: 0 },
+  rescheduleRequestedAt: { type: Date, default: null },
+  reschedulePaymentProof: { type: String, default: "" },
+  reschedulePaymentSubmittedAt: { type: Date, default: null },
+  reschedulePaymentStatus: { type: String, enum: ["Not Required", "Pending Verification", "Verified", "Rejected"], default: "Not Required" }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Booking", bookingSchema);
