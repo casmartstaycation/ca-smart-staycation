@@ -51,7 +51,8 @@ router.get("/admin-notification-email", requireAdmin, async (req, res) => {
     try {
         let settings = await Setting.findOne();
         if (!settings) settings = await Setting.create({});
-        res.json({ success: true, email: settings.adminNotificationEmail || "" });
+        const fallback = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "markryantamayo@gmail.com";
+        res.json({ success: true, email: settings.adminNotificationEmail || fallback });
     } catch (err) {
         console.error("ADMIN NOTIFICATION EMAIL GET ERROR:", err);
         res.status(500).json({ success: false, message: "Unable to load admin notification email." });
