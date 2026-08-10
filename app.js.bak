@@ -1,0 +1,15 @@
+const express = require('express');
+const app = express();
+// other middleware (bodyParser, etc.) can go here
+app.use(express.json());
+
+// mount admin routes
+const adminRoutes = require('./backend/routes/adminRoutes');
+app.use('/api', adminRoutes);
+
+// health check / root
+app.get('/', (req, res) => res.send('OK'));
+
+// start server (use your PORT or 3000)
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(Server listening on port ${PORT}));

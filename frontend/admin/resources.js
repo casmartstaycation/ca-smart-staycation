@@ -1,0 +1,124 @@
+const API="https://ca-smart-staycation-muqd.onrender.com/api";
+let rooms=[],parking=[],editing=null;
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const token=()=>sessionStorage.getItem("caSmartAdminToken")||"";
+const headers=()=>({"Content-Type":"application/json",Authorization:`Bearer ${token()}`});
+
+function ensureAdmin(){
+  if(!token()){
+    alert("Please sign in to the admin account first.");
+    window.location.href="bookings.html";
+    return false;
+  }
+  return true;
+}
+
+async function get(path){
+  const r=await fetch(API+path,{cache:"no-store"});
+  const j=await r.json();
+  if(!r.ok) throw Error(j.message||"Request failed");
+  return j.data||[];
+}
+
+async function send(path,method,body){
+  const r=await fetch(API+path,{method,headers:headers(),body:JSON.stringify(body)});
+  const j=await r.json();
+  if(r.status===401||r.status===403){
+    sessionStorage.removeItem("caSmartAdminToken");
+    throw Error("Your admin session has expired. Please sign in again.");
+  }
+  if(!r.ok) throw Error(j.message||"Request failed");
+  return j.data;
+}
+
+function statusClass(status){return String(status||"").toLowerCase()==="available"?"available":"occupied"}
+
+function render(){
+  $("rooms").innerHTML=rooms.length?rooms.map(r=>`
+    <div class="resource">
+      <div>
+        <div class="name">${esc(r.unitNumber||"Unit")} — ${esc(r.unitName||"")}</div>
+        <div class="meta">${esc(r.category||"")} · ₱${Number(r.price||0).toLocaleString()}/night · weekend ₱${Number(r.weekendPrice||0).toLocaleString()} · holiday ₱${Number(r.holidayPrice||0).toLocaleString()} · capacity ${esc(r.capacity||0)}</div>
+        <span class="badge ${statusClass(r.status)}">${esc(r.status||"Unknown")}</span>
+      </div>
+      <div class="actions"><button onclick="editRoom('${r._id}')">Edit</button><button class="danger" onclick="removeResource('room','${r._id}')">Delete</button></div>
+    </div>`).join(""):"<div class='muted'>No accommodation records.</div>";
+
+  $("parking").innerHTML=parking.length?parking.map(p=>`
+    <div class="resource">
+      <div>
+        <div class="name">${esc(p.parkingNumber||"Parking")} — ${esc(p.parkingName||"")}</div>
+        <div class="meta">₱${Number(p.rate||0).toLocaleString()}/night</div>
+        <span class="badge ${statusClass(p.status)}">${esc(p.status||"Unknown")}</span>
+      </div>
+      <div class="actions"><button onclick="editParking('${p._id}')">Edit</button><button class="danger" onclick="removeResource('parking','${p._id}')">Delete</button></div>
+    </div>`).join(""):"<div class='muted'>No parking records.</div>";
+}
+
+function openForm(type,item=null){
+  editing={type,id:item?item._id:null};
+  $("modalTitle").textContent=item?`Edit ${type==='room'?'Unit':'Parking Slot'}`:`Add ${type==='room'?'Unit':'Parking Slot'}`;
+  const room=type==='room';
+  $("resourceForm").innerHTML=room?`
+    <div class="field"><label>Unit Number</label><input name="unitNumber" value="${esc(item?.unitNumber)}" placeholder="e.g. UNIT 1" required></div>
+    <div class="field"><label>Unit Name</label><input name="unitName" value="${esc(item?.unitName)}" placeholder="e.g. Studio Unit" required></div>
+    <div class="field"><label>Category</label><input name="category" value="${esc(item?.category||'Studio')}" placeholder="Studio / 1 Bedroom / 2 Bedroom"></div>
+    <div class="field"><label>Nightly Price</label><input type="number" name="price" min="0" step="0.01" value="${item?.price??2800}" required></div>
+    <div class="field"><label>Weekend Price</label><input type="number" name="weekendPrice" min="0" step="0.01" value="${item?.weekendPrice??0}"></div>
+    <div class="field"><label>Holiday Price</label><input type="number" name="holidayPrice" min="0" step="0.01" value="${item?.holidayPrice??0}"></div>
+    <div class="field"><label>Capacity</label><input type="number" name="capacity" min="1" value="${item?.capacity??2}" required></div>
+    <div class="field"><label>Status</label><select name="status"><option ${item?.status==='Available'?'selected':''}>Available</option><option ${item?.status==='Reserved'?'selected':''}>Reserved</option><option ${item?.status==='Occupied'?'selected':''}>Occupied</option><option ${item?.status==='Maintenance'?'selected':''}>Maintenance</option></select></div>
+    <div class="field full"><label>Amenities</label><input name="amenities" value="${esc((item?.amenities||[]).join(', '))}" placeholder="Wi-Fi, TV, Kitchen, Air Conditioning"></div>
+    <div class="field full"><label>Description</label><textarea name="description" placeholder="Unit description">${esc(item?.description||'')}</textarea></div>
+  `:`
+    <div class="field"><label>Parking Number</label><input name="parkingNumber" value="${esc(item?.parkingNumber)}" placeholder="e.g. SLOT 1" required></div>
+    <div class="field"><label>Parking Name</label><input name="parkingName" value="${esc(item?.parkingName)}" placeholder="e.g. Basement Parking"></div>
+    <div class="field"><label>Rate per Night</label><input type="number" name="rate" min="0" step="0.01" value="${item?.rate??500}" required></div>
+    <div class="field"><label>Status</label><select name="status"><option ${item?.status==='Available'?'selected':''}>Available</option><option ${item?.status==='Occupied'?'selected':''}>Occupied</option><option ${item?.status==='Maintenance'?'selected':''}>Maintenance</option></select></div>
+  `+`<div class="form-actions"><button type="button" onclick="closeModal()">Cancel</button><button class="save" type="submit">Save Changes</button></div>`;
+  $("modal").classList.remove("hidden");
+}
+
+function closeModal(){$("modal").classList.add("hidden");editing=null}
+
+async function save(e){
+  e.preventDefault();
+  const f=new FormData(e.target),body=Object.fromEntries(f.entries());
+  if(editing.type==='room'){
+    body.price=Number(body.price); body.weekendPrice=Number(body.weekendPrice||0); body.holidayPrice=Number(body.holidayPrice||0); body.capacity=Number(body.capacity);
+    body.amenities=String(body.amenities||"").split(",").map(x=>x.trim()).filter(Boolean);
+  }else body.rate=Number(body.rate);
+  try{
+    await send(editing.type==='room'?`/rooms${editing.id?'/'+editing.id:''}`:`/parking${editing.id?'/'+editing.id:''}`,editing.id?'PUT':'POST',body);
+    closeModal(); await load();
+  }catch(err){alert(err.message)}
+}
+
+async function removeResource(type,id){
+  if(!ensureAdmin()) return;
+  if(!confirm(`Delete this ${type==='room'?'unit':'parking slot'}? This cannot be undone.`))return;
+  try{await send(type==='room'?`/rooms/${id}`:`/parking/${id}`,'DELETE',{});await load()}catch(err){alert(err.message)}
+}
+
+function editRoom(id){openForm('room',rooms.find(x=>x._id===id))}
+function editParking(id){openForm('parking',parking.find(x=>x._id===id))}
+
+async function load(){
+  if(!ensureAdmin()) return;
+  try{
+    [rooms,parking]=await Promise.all([get('/rooms'),get('/parking')]);
+    render();
+  }catch(e){
+    console.error(e);
+    alert(e.message||'Unable to load units and parking.');
+    if(String(e.message||"").toLowerCase().includes("session")) window.location.href="bookings.html";
+  }
+}
+
+$("addRoomBtn").onclick=()=>{if(ensureAdmin())openForm('room')};
+$("addParkingBtn").onclick=()=>{if(ensureAdmin())openForm('parking')};
+$("closeModal").onclick=closeModal;
+$("resourceForm").onsubmit=save;
+$("refreshBtn").onclick=load;
+load();

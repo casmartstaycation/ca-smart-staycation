@@ -1,0 +1,115 @@
+(() => {
+  const API = "https://ca-smart-staycation-muqd.onrender.com/api";
+  const token = () => sessionStorage.getItem("caSmartAdminToken") || "";
+  const headers = () => ({ "Content-Type": "application/json", Authorization: `Bearer ${token()}` });
+
+  function addTab() {
+    const nav = document.querySelector(".admin-nav");
+    if (!nav || document.getElementById("voucherManagementTab")) return;
+    const resources = Array.from(nav.querySelectorAll("a")).find(a => /Units & Parking Management/i.test(a.textContent));
+    const tab = document.createElement("a");
+    tab.id = "voucherManagementTab";
+    tab.href = "#voucherManagement";
+    tab.textContent = "Voucher Management";
+    tab.className = "voucher-management-tab";
+    if (resources) resources.insertAdjacentElement("afterend", tab); else nav.appendChild(tab);
+    tab.addEventListener("click", e => { e.preventDefault(); showTab(true); });
+  }
+
+  function addStyles() {
+    if (document.getElementById("voucherTabStyles")) return;
+    const s = document.createElement("style"); s.id = "voucherTabStyles";
+    s.textContent = `.voucher-management-tab{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 14px;border-radius:7px;background:#eef3f0;color:#173f35;border:1px solid #d7e1dc;text-decoration:none;font-weight:700}.voucher-management-tab.active{background:#173f35;color:#fff;border-color:#173f35}#voucherAdminCard.voucher-tab-panel{display:none!important;margin-top:18px}#voucherAdminCard.voucher-tab-panel.active{display:block!important}.voucher-delete-btn{background:#fff!important;color:#a1261f!important;border:1px solid #d9b1ad!important}.voucher-delete-btn:hover{background:#fff4f3!important}`;
+    document.head.appendChild(s);
+  }
+
+  function getCard() { return document.getElementById("voucherAdminCard"); }
+
+  function showTab(active) {
+    const card = getCard();
+    const tab = document.getElementById("voucherManagementTab");
+    if (!card || !tab) return;
+    card.classList.add("voucher-tab-panel");
+    card.classList.toggle("active", !!active);
+    tab.classList.toggle("active", !!active);
+    if (active) {
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+      setTimeout(addDeleteButtons, 100);
+    }
+  }
+
+  function hideTab() {
+    const card = getCard();
+    const tab = document.getElementById("voucherManagementTab");
+    if (card) { card.classList.add("voucher-tab-panel"); card.classList.remove("active"); }
+    if (tab) tab.classList.remove("active");
+  }
+
+  async function deleteVoucher(id, code) {
+    if (!confirm(`Delete voucher ${code}? This cannot be undone.`)) return;
+    try {
+      const r = await fetch(`${API}/vouchers/${id}`, { method: "DELETE", headers: headers() });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message || "Unable to delete voucher.");
+      const refresh = window.loadAdminVouchers;
+      if (typeof refresh === "function") await refresh();
+      setTimeout(addDeleteButtons, 100);
+    } catch (e) { alert(e.message || "Unable to delete voucher."); }
+  }
+
+  function addDeleteButtons() {
+    const list = document.getElementById("voucherAdminList");
+    if (!list) return;
+    list.querySelectorAll(".voucher-admin-item").forEach(row => {
+      if (row.querySelector(".voucher-delete-btn")) return;
+      const buttons = row.querySelectorAll("button[data-voucher-id]");
+      const id = buttons[0]?.dataset.voucherId;
+      if (!id) return;
+      row.dataset.voucherId = id;
+      const code = row.querySelector("strong")?.textContent?.trim() || "this voucher";
+      const actions = row.querySelector(".voucher-admin-actions");
+      if (!actions) return;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "voucher-delete-btn";
+      btn.textContent = "Delete";
+      btn.addEventListener("click", () => deleteVoucher(id, code));
+      actions.appendChild(btn);
+    });
+  }
+
+  function patchLoader() {
+    if (typeof window.loadAdminVouchers !== "function" || window.loadAdminVouchers.__patched) return;
+    const original = window.loadAdminVouchers;
+    async function wrapped() {
+      const result = await original();
+      setTimeout(addDeleteButtons, 0);
+      return result;
+    }
+    wrapped.__patched = true;
+    window.loadAdminVouchers = wrapped;
+  }
+
+  function init() {
+    addStyles();
+    addTab();
+    patchLoader();
+    // Voucher Management is hidden on the Bookings landing page by default.
+    hideTab();
+    setTimeout(() => { addTab(); patchLoader(); hideTab(); }, 500);
+    setTimeout(() => { addTab(); patchLoader(); hideTab(); }, 1500);
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+  const observer = new MutationObserver(() => {
+    addStyles();
+    addTab();
+    patchLoader();
+    // Keep it hidden unless the user explicitly opened the tab.
+    const card = getCard();
+    const tab = document.getElementById("voucherManagementTab");
+    if (card && tab && !tab.classList.contains("active")) hideTab();
+    addDeleteButtons();
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+})();

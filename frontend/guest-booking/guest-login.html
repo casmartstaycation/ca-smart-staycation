@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guest Login | CA Smart Staycation</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="booking-container">
+    <div class="form-card">
+        <h2>Guest Login</h2>
+        <p>Log in to view your booking status and reservation details.</p>
+        <form id="guestLoginForm">
+            <div class="form-group"><label>Email Address</label><input type="email" id="email" placeholder="example@email.com" autocomplete="email" required></div>
+            <div class="form-group"><label>Password</label><input type="password" id="password" placeholder="Your Booking Reference" autocomplete="current-password" required></div>
+            <div style="margin:12px 0;font-size:14px;color:#666;line-height:1.5;"><strong>First-time login?</strong><br>Use the same email address you used for your booking and your <strong>Booking Reference</strong> as your default password.</div>
+            <button type="submit" class="continue-button" id="loginButton">Login</button>
+        </form>
+        <div style="text-align:center;margin-top:16px;"><a href="forgot-password.html" style="color:#0b5d4d;font-weight:600;text-decoration:none;">Forgot Password?</a></div>
+    </div>
+</div>
+<script src="js/guest-login.js"></script>
+</body>
+</html>
