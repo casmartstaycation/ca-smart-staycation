@@ -1,0 +1,64 @@
+name: Remove date change feature
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  remove-date-change:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Remove date-change UI and code
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('frontend/guest-booking/guest-dashboard.html')
+          text = path.read_text(encoding='utf-8')
+
+          # Remove date-change related CSS blocks.
+          text = re.sub(r'\.reschedule-box\{.*?\}', '', text)
+          text = re.sub(r'\.reschedule-box\.open\{.*?\}', '', text)
+          text = re.sub(r'\.reschedule-grid\{.*?\}', '', text)
+          text = re.sub(r'\.reschedule-grid label\{.*?\}', '', text)
+          text = re.sub(r'\.reschedule-grid input\{.*?\}', '', text)
+          text = re.sub(r'\.reschedule-actions\{.*?\}', '', text)
+          text = re.sub(r'\.reschedule-actions button\{.*?\}', '', text)
+          text = re.sub(r'\.fee-box\{.*?\}', '', text)
+          text = re.sub(r'\.fee-box input\{.*?\}', '', text)
+          text = re.sub(r'@media\(max-width:600px\)\{\.reschedule-grid\{.*?\}\}', '', text)
+
+          # Remove date-change functions.
+          text = re.sub(r'function uploadRescheduleProof\(.*?\nfunction rescheduleBooking\(', 'function rescheduleBooking_REMOVED(', text, flags=re.S)
+          text = re.sub(r'function rescheduleBooking_REMOVED\(.*?\nfunction renderBooking\(', 'function renderBooking(', text, flags=re.S)
+
+          # Remove the Change Booking Dates UI block from each booking card.
+          text = re.sub(r'if\(active\(b\)\)\{const rescheduleBtn=.*?actions\.appendChild\(rescheduleBtn\);actions\.appendChild\(box\);const cancelBtn=', 'if(active(b)){const cancelBtn=', text, flags=re.S)
+
+          # Remove any remaining date-change approval/payment references from guest rendering.
+          text = text.replace('if(b.reschedulePaymentStatus==="Pending Verification")message="Your booking dates have been changed. The convenience-fee payment proof is waiting for admin verification.";', '')
+
+          path.write_text(text, encoding='utf-8')
+
+      - name: Verify feature removed
+        run: |
+          ! grep -q "Change Booking Dates" frontend/guest-booking/guest-dashboard.html
+          ! grep -q "rescheduleBooking" frontend/guest-booking/guest-dashboard.html
+          ! grep -q "reschedulePaymentProof" frontend/guest-booking/guest-dashboard.html
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/guest-booking/guest-dashboard.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Remove guest booking date change feature"
+          git push
