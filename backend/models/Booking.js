@@ -30,7 +30,20 @@ const bookingSchema = new mongoose.Schema({
   paymentDate: { type: Date, default: null },
   paymentReference: { type: String, default: "" },
   paymentRejectionReason: { type: String, default: "" },
-  paymentDeadline: { type: Date, default: null }
+  paymentDeadline: { type: Date, default: null },
+  cancellationRequestedAt: { type: Date, default: null },
+  cancellationReason: { type: String, default: "" },
+  refundRequested: { type: Boolean, default: false },
+  refundRequestedAt: { type: Date, default: null },
+  refundAmount: { type: Number, default: 0 },
+  refundStatus: { type: String, enum: ["Not Requested", "Requested", "Processing", "Refunded", "Not Eligible"], default: "Not Requested" },
+  rescheduleHistory: [{
+    previousCheckIn: { type: Date },
+    previousCheckOut: { type: Date },
+    newCheckIn: { type: Date },
+    newCheckOut: { type: Date },
+    changedAt: { type: Date, default: Date.now }
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model("Booking", bookingSchema);
