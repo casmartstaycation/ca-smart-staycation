@@ -1,12 +1,18 @@
 /* CA Smart Staycation — Admin booking auto-refresh
-   Refreshes the booking table so payment approvals, rejections, and cancellations
-   appear without requiring a manual page refresh. */
+   Refreshes the lightweight booking list without repeatedly hammering the API. */
 (function(){
-  const REFRESH_MS = 30000;
-  function refreshAdminBookings(){
-    if (typeof window.loadBookings !== 'function') return;
-    if (document.hidden) return;
-    window.loadBookings(true);
+  const REFRESH_MS = 120000;
+  let refreshInProgress = false;
+
+  async function refreshAdminBookings(){
+    if (refreshInProgress || document.hidden || typeof window.loadBookings !== 'function') return;
+    refreshInProgress = true;
+    try {
+      await window.loadBookings(true);
+    } finally {
+      refreshInProgress = false;
+    }
   }
+
   setInterval(refreshAdminBookings, REFRESH_MS);
 })();
