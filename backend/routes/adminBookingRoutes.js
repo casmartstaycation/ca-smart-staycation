@@ -8,11 +8,14 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const sendEmail = require("../mail/sendEmail");
+const path = require("path");
+const fs = require("fs");
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "markryantamayo@gmail.com";
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "");
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || (ADMIN_PASSWORD ? crypto.createHash("sha256").update(`ca-smart-admin:${ADMIN_PASSWORD}`).digest("hex") : "");
 const TERMINAL_STATUSES = ["Cancelled", "Checked Out", "Expired"];
+const paymentUploadDir = path.join(__dirname, "../uploads/payments");
 
 function requireAdmin(req, res, next) {
   const header = req.headers.authorization || "";
@@ -28,6 +31,7 @@ function requireAdmin(req, res, next) {
 
 function makeReference() { return "CA" + new Date().toISOString().slice(2, 10).replace(/-/g, "") + "-" + Math.floor(1000 + Math.random() * 9000); }
 function makeTemporaryPassword() { return `CA${crypto.randomBytes(5).toString("base64url")}!`; }
+function deletePaymentProof(filename) { if (!filename) return; const safeName = path.basename(String(filename)); const filePath = path.join(paymentUploadDir, safeName); try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (err) { console.error("PAYMENT PROOF DELETE ERROR:", err.message); } }
 
 router.post("/admin/bookings", requireAdmin, async (req, res) => {
   try {
@@ -60,8 +64,32 @@ router.post("/admin/bookings", requireAdmin, async (req, res) => {
   } catch (err) { console.error("ADMIN CREATE BOOKING ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
 });
 
+router.delete("/bookings/:id", requireAdmin, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ success: false, message: "Booking not found." });
+    deletePaymentProof(booking.paymentProof);
+    for (const item of (booking.paymentProofHistory || [])) deletePaymentProof(item?.filename);
+    deletePaymentProof(booking.reschedulePaymentProof);
+    await Booking.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: "Booking deleted." });
+  } catch (err) { console.error("ADMIN DELETE BOOKING ERROR:", err); res.status(500).json({ success: false, message: "Unable to delete booking." }); }
+});
+
+router.delete("/bookings", requireAdmin, async (req, res) => {
+  try {
+    const bookings = await Booking.find({}).select("paymentProof paymentProofHistory reschedulePaymentProof").lean();
+    for (const booking of bookings) {
+      deletePaymentProof(booking.paymentProof);
+      for (const item of (booking.paymentProofHistory || [])) deletePaymentProof(item?.filename);
+      deletePaymentProof(booking.reschedulePaymentProof);
+    }
+    const result = await Booking.deleteMany({});
+    res.json({ success: true, message: `${result.deletedCount || 0} booking(s) deleted.`, deletedCount: result.deletedCount || 0 });
+  } catch (err) { console.error("ADMIN DELETE ALL BOOKINGS ERROR:", err); res.status(500).json({ success: false, message: "Unable to delete bookings." }); }
+});
+
 // Full guest information and upload references are available to authenticated admins only.
-// Terminal bookings remain readable for history, but their files are removed by the server cleanup process.
 router.get("/admin/bookings/:id/full", requireAdmin, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id).populate("room").populate("parking").lean();
