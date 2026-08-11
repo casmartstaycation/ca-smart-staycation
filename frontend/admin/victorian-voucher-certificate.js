@@ -33,7 +33,7 @@
     x.strokeStyle="#d8b45b";x.lineWidth=3;x.strokeRect(43,43,W-86,H-86);
     x.strokeStyle="#b08a3c";x.lineWidth=1;x.strokeRect(51,51,W-102,H-102);
     x.strokeStyle="#173f35";x.lineWidth=1;x.strokeRect(57,57,W-114,H-114);
-    ornament(x,64,64,0,1.18);ornament(x,W-64,64,Math.PI/2,1.18);ornament(x,W-64,H-64,Math.PI,1.18);ornament(x,64,H-64,-Math.PI/2,1.18);
+    
     divider(x,W/2,64,false);divider(x,W/2,H-64,true);
 
     x.textAlign="left";x.fillStyle="#173f35";x.font="bold 23px Georgia";x.fillText("CA SMART STAYCATION",100,112);
