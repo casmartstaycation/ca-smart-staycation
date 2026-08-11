@@ -27,7 +27,6 @@ function publicAccount(account) {
   };
 }
 
-// Keep the guest dashboard payload small. Do not send document/history blobs or room images.
 async function lightweightBookingsForEmail(email) {
   return Booking.find({ email: String(email || "").trim().toLowerCase() })
     .select("_id bookingReference firstName lastName email mobile bookingType room parking parkingOnly checkIn checkOut adults children totalAmount paymentStatus bookingStatus housekeepingStatus paymentProof paymentProofSubmittedAt paymentDate refundStatus refundAmount refundFee refundPolicyRule cancellationRequestedAt cancellationReason createdAt updatedAt")
@@ -43,12 +42,22 @@ router.post("/guest-auth/login", async (req, res) => {
     const password = String(req.body.password || "").trim();
     if (!email || !password) return res.status(400).json({ success: false, message: "Email and password are required." });
 
-    // Normally there is one account per email. Query the newest account first so login
-    // does not scan every historical account for the same email.
     const account = await GuestAccount.findOne({ email }).sort({ createdAt: -1 });
-    if (!account || !(await bcrypt.compare(password, account.passwordHash))) {
-      return res.status(401).json({ success: false, message: "Invalid email or password." });
+    if (!account) return res.status(401).json({ success: false, message: "Invalid email or password." });
+
+    let validPassword = await bcrypt.compare(password, account.passwordHash);
+
+    // Guest accounts created by the booking system use the booking reference as
+    // their temporary password. If an older account has a stale/mismatched hash,
+    // accept that original temporary credential and immediately repair the hash.
+    if (!validPassword && account.defaultPassword === true && String(account.bookingReference || "").trim() === password) {
+      account.passwordHash = await bcrypt.hash(password, 12);
+      account.defaultPassword = true;
+      await account.save();
+      validPassword = true;
     }
+
+    if (!validPassword) return res.status(401).json({ success: false, message: "Invalid email or password." });
 
     await GuestAccount.updateOne({ _id: account._id }, { $set: { lastLoginAt: new Date() } });
 
@@ -58,7 +67,6 @@ router.post("/guest-auth/login", async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    // Login should return immediately. The dashboard fetches bookings once after navigation.
     res.json({ success: true, message: "Login successful.", token, account: publicAccount(account) });
   } catch (err) {
     console.error("GUEST FAST LOGIN ERROR:", err);
