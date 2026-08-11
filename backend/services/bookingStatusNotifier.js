@@ -6,6 +6,7 @@ const bcrypt = require("bcryptjs");
 const sendEmail = require("../mail/sendEmail");
 
 const FALLBACK_ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "casmartstaycation@gmail.com";
+const LEGACY_DEFAULT_ADMIN_EMAIL = "markryantamayo@gmail.com";
 const LOGIN_URL = process.env.GUEST_LOGIN_URL || "https://casmartstaycation.github.io/cassbooking/guest-booking/guest-login.html";
 
 function statusKey(booking) {
@@ -27,7 +28,12 @@ function statusMessage(booking) {
 async function getAdminNotificationEmail() {
   try {
     const settings = await Setting.findOne().select("adminNotificationEmail").lean();
-    return String(settings?.adminNotificationEmail || FALLBACK_ADMIN_EMAIL).trim().toLowerCase();
+    const configuredEmail = String(settings?.adminNotificationEmail || "").trim().toLowerCase();
+    if (configuredEmail === LEGACY_DEFAULT_ADMIN_EMAIL) {
+      await Setting.updateOne({}, { $set: { adminNotificationEmail: FALLBACK_ADMIN_EMAIL } });
+      return FALLBACK_ADMIN_EMAIL;
+    }
+    return configuredEmail || FALLBACK_ADMIN_EMAIL;
   } catch (err) {
     console.error("ADMIN NOTIFICATION EMAIL LOOKUP ERROR:", err);
     return FALLBACK_ADMIN_EMAIL;
