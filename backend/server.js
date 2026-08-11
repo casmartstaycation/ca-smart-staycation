@@ -57,7 +57,6 @@ async function cleanupTerminalBookingUploads() {
       await Booking.updateOne({ _id: booking._id }, { $set: { paymentProof: "", governmentId: "", driversLicense: "", reschedulePaymentProof: "", paymentProofHistory: [] } });
     }
 
-    // Delete only files that are not referenced by any non-terminal booking.
     const orphanPaymentFiles = listFiles(paymentUploadDir).filter(name => !referencedPaymentFiles.has(name));
     const orphanDocumentFiles = listFiles(guestDocumentUploadDir).filter(name => !referencedDocumentFiles.has(name));
     for (const filename of orphanPaymentFiles) deleteUploadedFile(paymentUploadDir, filename);
@@ -89,7 +88,7 @@ async function expireUnpaidBookings() {
 app.get('/api/bookings', async (req, res) => {
   try {
     await expireUnpaidBookings();
-    const bookings = await Booking.find().select("bookingReference firstName lastName email mobile room parking parkingOnly checkIn checkOut adults children totalAmount paymentStatus bookingStatus housekeepingStatus paymentProof createdAt updatedAt").populate({ path: "room", select: "unitNumber unitName category capacity price weekendPrice holidayPrice status" }).populate({ path: "parking", select: "parkingNumber parkingName status" }).lean().sort({ createdAt: -1 });
+    const bookings = await Booking.find().select("bookingReference firstName lastName email mobile room parking parkingOnly checkIn checkOut adults children totalAmount paymentStatus bookingStatus housekeepingStatus paymentProof paymentProofSubmittedAt paymentDate refundRequested refundRequestedAt refundAmount refundFee refundPolicyRule refundStatus refundProcessedAt refundProcessedBy cancellationRequestedAt cancellationReason createdAt updatedAt").populate({ path: "room", select: "unitNumber unitName category capacity price weekendPrice holidayPrice status" }).populate({ path: "parking", select: "parkingNumber parkingName status" }).lean().sort({ createdAt: -1 });
     res.json({ success: true, data: bookings });
   } catch (err) { console.error("BOOKING LIST ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
 });
