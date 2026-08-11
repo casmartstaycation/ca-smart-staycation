@@ -9,6 +9,40 @@ const FALLBACK_ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER |
 const LEGACY_DEFAULT_ADMIN_EMAIL = "markryantamayo@gmail.com";
 const LOGIN_URL = process.env.GUEST_LOGIN_URL || "https://casmartstaycation.github.io/cassbooking/guest-booking/guest-login.html";
 
+// Resend has a daily sending quota. When the quota is exhausted, retrying every
+// booking every few seconds only creates thousands of useless log lines and
+// repeated API requests. Open a process-level circuit until the next UTC day.
+let resendQuotaBlockedUntil = 0;
+let resendQuotaWarningLogged = false;
+
+function isResendQuotaError(err) {
+  return /daily email sending quota/i.test(String(err?.message || err || ""));
+}
+
+function blockResendUntilNextUtcDay() {
+  const now = new Date();
+  const nextUtcDay = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+    0, 0, 0, 0
+  );
+  resendQuotaBlockedUntil = nextUtcDay;
+
+  if (!resendQuotaWarningLogged) {
+    console.warn(`RESEND QUOTA EXHAUSTED: email notifications paused until ${new Date(nextUtcDay).toISOString()}.`);
+    resendQuotaWarningLogged = true;
+  }
+}
+
+function isResendQuotaBlocked() {
+  if (resendQuotaBlockedUntil && Date.now() >= resendQuotaBlockedUntil) {
+    resendQuotaBlockedUntil = 0;
+    resendQuotaWarningLogged = false;
+  }
+  return resendQuotaBlockedUntil > Date.now();
+}
+
 function statusKey(booking) {
   return [booking.bookingStatus || "", booking.paymentStatus || "", booking.refundStatus || ""].join("|");
 }
@@ -97,7 +131,11 @@ async function processBookingStatusNotifications() {
       await Booking.updateOne({ _id: booking._id }, { $set: { lastStatusNotificationKey: key } });
     }
 
-    // Email delivery is tracked independently, so SMTP failures are retried without duplicating web notifications.
+    // Once Resend reports its daily quota is exhausted, stop attempting email
+    // delivery for the rest of the day. Web/in-app notifications continue to work.
+    if (isResendQuotaBlocked()) continue;
+
+    // Email delivery is tracked independently, so normal transport failures are retried.
     if (guestEmail && booking.lastGuestEmailNotificationKey !== key) {
       try {
         if (isNewBooking) {
@@ -111,9 +149,15 @@ async function processBookingStatusNotifications() {
         }
         await Booking.updateOne({ _id: booking._id }, { $set: { lastGuestEmailNotificationKey: key } });
       } catch (err) {
+        if (isResendQuotaError(err)) {
+          blockResendUntilNextUtcDay();
+          continue;
+        }
         console.error(`GUEST EMAIL FAILED (${guestEmail}, ${booking.bookingReference}, key=${key}):`, err.message);
       }
     }
+
+    if (isResendQuotaBlocked()) continue;
 
     if (adminEmail && booking.lastAdminEmailNotificationKey !== key) {
       try {
@@ -128,6 +172,10 @@ async function processBookingStatusNotifications() {
         }
         await Booking.updateOne({ _id: booking._id }, { $set: { lastAdminEmailNotificationKey: key } });
       } catch (err) {
+        if (isResendQuotaError(err)) {
+          blockResendUntilNextUtcDay();
+          continue;
+        }
         console.error(`ADMIN EMAIL FAILED (${adminEmail}, ${booking.bookingReference}, key=${key}):`, err.message);
       }
     }
