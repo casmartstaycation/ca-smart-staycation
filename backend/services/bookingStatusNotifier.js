@@ -1,6 +1,8 @@
 const Booking = require("../models/Booking");
 const Notification = require("../models/Notification");
 const Setting = require("../models/Setting");
+const GuestAccount = require("../models/GuestAccount");
+const bcrypt = require("bcryptjs");
 const sendEmail = require("../mail/sendEmail");
 
 const FALLBACK_ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "markryantamayo@gmail.com";
@@ -32,15 +34,70 @@ async function getAdminNotificationEmail() {
   }
 }
 
+async function ensureGuestAccount(booking) {
+  if (!booking.email || !booking.bookingReference) return null;
+  const email = String(booking.email).trim().toLowerCase();
+  let account = await GuestAccount.findOne({ bookingReference: booking.bookingReference });
+  if (!account) {
+    const passwordHash = await bcrypt.hash(String(booking.bookingReference).trim(), 12);
+    account = await GuestAccount.create({
+      guest: null,
+      bookingReference: booking.bookingReference,
+      email,
+      passwordHash,
+      defaultPassword: true
+    });
+  } else if (account.email !== email) {
+    account.email = email;
+    await account.save();
+  }
+  return account;
+}
+
+async function sendNewBookingEmail(booking, account) {
+  if (!booking.email) return;
+  const guestEmail = String(booking.email).trim().toLowerCase();
+  const guestName = `${booking.firstName || ""} ${booking.lastName || ""}`.trim() || "Guest";
+  const password = String(booking.bookingReference).trim();
+  const html = `<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>Your booking request has been received successfully.</p><h3>Guest Account</h3><p><strong>Login email:</strong> ${guestEmail}<br><strong>Temporary password:</strong> ${password}</p><p>Please change this temporary password after your first login.</p><p><strong>Booking Reference:</strong> ${booking.bookingReference}<br><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString("en-PH")}<br><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString("en-PH")}<br><strong>Total:</strong> ₱${Number(booking.totalAmount || 0).toLocaleString("en-PH")}</p><p>Your booking is currently <strong>${booking.bookingStatus || "Waiting for Payment"}</strong>. Please follow the payment instructions on the booking page.</p><p><a href="${LOGIN_URL}">Open Guest Account</a></p>`;
+  await sendEmail(guestEmail, `Booking Received — ${booking.bookingReference}`, html);
+}
+
 async function processBookingStatusNotifications() {
   const adminEmail = await getAdminNotificationEmail();
   const bookings = await Booking.find().select("bookingReference firstName lastName email bookingStatus paymentStatus refundStatus checkIn checkOut totalAmount lastStatusNotificationKey").lean();
   for (const booking of bookings) {
     const key = statusKey(booking);
-    if (!booking.lastStatusNotificationKey) {
+    const isNewBooking = !booking.lastStatusNotificationKey;
+
+    if (isNewBooking) {
+      let account = null;
+      if (booking.email) {
+        try {
+          account = await ensureGuestAccount(booking);
+          await sendNewBookingEmail(booking, account);
+          console.log(`NEW BOOKING EMAIL SENT: ${booking.bookingReference} -> ${booking.email}`);
+        } catch (err) {
+          console.error(`NEW BOOKING EMAIL FAILED (${booking.email}, ${booking.bookingReference}):`, err.message);
+        }
+      }
+      const guestName = `${booking.firstName || ""} ${booking.lastName || ""}`.trim() || "Guest";
+      const adminMessage = `${booking.bookingReference} — ${guestName}: New booking received from ${booking.email || "no email"}.`;
+      if (booking.email) {
+        await Notification.create({ recipientType: "guest", recipientEmail: String(booking.email).trim().toLowerCase(), booking: booking._id, title: "Booking Received", message: `Your booking ${booking.bookingReference} has been received.`, type: "booking-received" });
+      }
+      if (adminEmail) {
+        await Notification.create({ recipientType: "admin", recipientEmail: adminEmail, booking: booking._id, title: `New Booking — ${booking.bookingReference}`, message: adminMessage, type: "booking-received" });
+        try {
+          await sendEmail(adminEmail, `New Booking — ${booking.bookingReference}`, `<h2>CA Smart Staycation Admin Notification</h2><p>${adminMessage}</p><p><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString("en-PH")}<br><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString("en-PH")}<br><strong>Total:</strong> ₱${Number(booking.totalAmount || 0).toLocaleString("en-PH")}</p>`);
+        } catch (err) {
+          console.error(`ADMIN NEW BOOKING EMAIL FAILED (${adminEmail}, ${booking.bookingReference}):`, err.message);
+        }
+      }
       await Booking.updateOne({ _id: booking._id }, { $set: { lastStatusNotificationKey: key } });
       continue;
     }
+
     if (booking.lastStatusNotificationKey === key) continue;
 
     const info = statusMessage(booking);
