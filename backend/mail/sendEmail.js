@@ -1,5 +1,14 @@
 const nodemailer = require("nodemailer");
 
+// Render Free blocks outbound SMTP connections. Use the HTTP email API when
+// RESEND_API_KEY is configured; SMTP remains available as a local/paid-host
+// fallback when the API key is not present.
+const resendApiKey = String(process.env.RESEND_API_KEY || "").trim();
+const resendFromEmail = String(
+    process.env.RESEND_FROM_EMAIL || process.env.EMAIL_USER || ""
+).trim();
+const resendFromName = String(process.env.RESEND_FROM_NAME || "CA Smart Staycation").trim();
+
 const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
 const smtpPort = Number(process.env.SMTP_PORT || 465);
 const smtpSecure = String(process.env.SMTP_SECURE || (smtpPort === 465)).toLowerCase() === "true";
@@ -17,7 +26,8 @@ const transporter = nodemailer.createTransport({
 });
 
 let verificationPromise = null;
-async function verifyEmailTransport() {
+
+async function verifySmtpTransport() {
     if (!emailUser || !emailPass) {
         throw new Error("EMAIL_USER and EMAIL_PASS are not configured on the server.");
     }
@@ -34,9 +44,43 @@ async function verifyEmailTransport() {
     return verificationPromise;
 }
 
-async function sendEmail(to, subject, html) {
-    if (!to) throw new Error("Email recipient is missing.");
-    await verifyEmailTransport();
+async function sendViaResend(to, subject, html) {
+    if (!resendApiKey) throw new Error("RESEND_API_KEY is not configured on the server.");
+    if (!resendFromEmail) throw new Error("RESEND_FROM_EMAIL is not configured on the server.");
+
+    const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${resendApiKey}`
+        },
+        body: JSON.stringify({
+            from: `${resendFromName} <${resendFromEmail}>`,
+            to: [to],
+            subject,
+            html
+        })
+    });
+
+    let payload = null;
+    try {
+        payload = await response.json();
+    } catch (_) {
+        payload = null;
+    }
+
+    if (!response.ok) {
+        const detail = payload?.message || payload?.error || `HTTP ${response.status}`;
+        throw new Error(`Resend API request failed: ${detail}`);
+    }
+
+    const messageId = payload?.id || null;
+    console.log(`EMAIL SENT VIA RESEND: ${subject} -> ${to} (${messageId || "no-message-id"})`);
+    return { sent: true, messageId, provider: "resend" };
+}
+
+async function sendViaSmtp(to, subject, html) {
+    await verifySmtpTransport();
     try {
         const result = await transporter.sendMail({
             from: `\"CA Smart Staycation\" <${emailUser}>`,
@@ -44,12 +88,23 @@ async function sendEmail(to, subject, html) {
             subject,
             html
         });
-        console.log(`EMAIL SENT: ${subject} -> ${to} (${result.messageId || "no-message-id"})`);
-        return { sent: true, messageId: result.messageId };
+        console.log(`EMAIL SENT VIA SMTP: ${subject} -> ${to} (${result.messageId || "no-message-id"})`);
+        return { sent: true, messageId: result.messageId, provider: "smtp" };
     } catch (err) {
-        console.error(`EMAIL SEND FAILED: ${subject} -> ${to}:`, err && err.message ? err.message : err);
+        console.error(`EMAIL SMTP SEND FAILED: ${subject} -> ${to}:`, err && err.message ? err.message : err);
         throw new Error(`Unable to send email: ${err && err.message ? err.message : "SMTP send failed"}`);
     }
+}
+
+async function sendEmail(to, subject, html) {
+    if (!to) throw new Error("Email recipient is missing.");
+
+    // Prefer the HTTP API. This avoids Render's outbound SMTP restrictions.
+    if (resendApiKey) {
+        return sendViaResend(to, subject, html);
+    }
+
+    return sendViaSmtp(to, subject, html);
 }
 
 module.exports = sendEmail;
