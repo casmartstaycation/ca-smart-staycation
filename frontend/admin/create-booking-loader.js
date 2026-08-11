@@ -24,6 +24,8 @@
       code = code.replace('`${ADMIN_BOOKING_API}/bookings`', '`${ADMIN_BOOKING_API}/bookings?_=${Date.now()}`');
       run(code);
       syncGuestAvailability();
+      const room = document.getElementById("abRoom");
+      if (room) setInterval(() => { if (!document.getElementById("adminBookingModal")?.hidden) room.dispatchEvent(new Event("change")); }, 10000);
     })
     .catch(err => console.error("Admin guest booking module failed to load:", err));
 })();
