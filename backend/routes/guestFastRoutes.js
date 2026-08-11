@@ -27,11 +27,11 @@ function publicAccount(account) {
   };
 }
 
-// Guest dashboard/login payload: intentionally excludes large document/history fields.
+// Keep the guest dashboard payload small. Do not send document/history blobs or room images.
 async function lightweightBookingsForEmail(email) {
   return Booking.find({ email: String(email || "").trim().toLowerCase() })
     .select("_id bookingReference firstName lastName email mobile bookingType room parking parkingOnly checkIn checkOut adults children totalAmount paymentStatus bookingStatus housekeepingStatus paymentProof paymentProofSubmittedAt paymentDate refundStatus refundAmount refundFee refundPolicyRule cancellationRequestedAt cancellationReason createdAt updatedAt")
-    .populate({ path: "room", select: "_id unitNumber unitName category capacity price weekendPrice holidayPrice status images description" })
+    .populate({ path: "room", select: "_id unitNumber unitName category capacity price weekendPrice holidayPrice status" })
     .populate({ path: "parking", select: "_id parkingNumber parkingName status" })
     .sort({ createdAt: -1 })
     .lean();
@@ -43,18 +43,14 @@ router.post("/guest-auth/login", async (req, res) => {
     const password = String(req.body.password || "").trim();
     if (!email || !password) return res.status(400).json({ success: false, message: "Email and password are required." });
 
-    const accounts = await GuestAccount.find({ email }).sort({ createdAt: -1 });
-    let account = null;
-    for (const candidate of accounts) {
-      if (await bcrypt.compare(password, candidate.passwordHash)) {
-        account = candidate;
-        break;
-      }
+    // Normally there is one account per email. Query the newest account first so login
+    // does not scan every historical account for the same email.
+    const account = await GuestAccount.findOne({ email }).sort({ createdAt: -1 });
+    if (!account || !(await bcrypt.compare(password, account.passwordHash))) {
+      return res.status(401).json({ success: false, message: "Invalid email or password." });
     }
-    if (!account) return res.status(401).json({ success: false, message: "Invalid email or password." });
 
-    account.lastLoginAt = new Date();
-    await account.save();
+    await GuestAccount.updateOne({ _id: account._id }, { $set: { lastLoginAt: new Date() } });
 
     const token = jwt.sign(
       { accountId: account._id.toString(), email: account.email, bookingReference: account.bookingReference },
@@ -62,8 +58,8 @@ router.post("/guest-auth/login", async (req, res) => {
       { expiresIn: "30d" }
     );
 
-    const bookings = await lightweightBookingsForEmail(account.email);
-    res.json({ success: true, message: "Login successful.", token, account: publicAccount(account), bookings });
+    // Login should return immediately. The dashboard fetches bookings once after navigation.
+    res.json({ success: true, message: "Login successful.", token, account: publicAccount(account) });
   } catch (err) {
     console.error("GUEST FAST LOGIN ERROR:", err);
     res.status(500).json({ success: false, message: err.message });
@@ -73,7 +69,7 @@ router.post("/guest-auth/login", async (req, res) => {
 router.get("/guest-auth/me", async (req, res) => {
   try {
     const payload = verifyToken(req);
-    const account = await GuestAccount.findById(payload.accountId).lean();
+    const account = await GuestAccount.findById(payload.accountId).select("_id email bookingReference defaultPassword").lean();
     if (!account) return res.status(401).json({ success: false, message: "Account not found." });
     const bookings = await lightweightBookingsForEmail(account.email);
     res.json({ success: true, account: publicAccount(account), bookings });
