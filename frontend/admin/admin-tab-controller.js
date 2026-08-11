@@ -61,7 +61,18 @@
     activate(fromHash || (saved==='voucher'||saved==='email'?saved:'bookings'));
   }
   function init(){
-    const style=document.createElement('style');style.id='adminTabIsolationStyles';style.textContent=`.admin-shell[data-admin-tab="voucher"] .stats,.admin-shell[data-admin-tab="voucher"] .toolbar,.admin-shell[data-admin-tab="voucher"] .table-wrap,.admin-shell[data-admin-tab="voucher"] #paymentAlert,.admin-shell[data-admin-tab="voucher"] .admin-email-settings{display:none!important}.admin-shell[data-admin-tab="email"] .stats,.admin-shell[data-admin-tab="email"] .toolbar,.admin-shell[data-admin-tab="email"] .table-wrap,.admin-shell[data-admin-tab="email"] #paymentAlert,.admin-shell[data-admin-tab="email"] #voucherAdminCard{display:none!important}.admin-shell[data-admin-tab="bookings"] #voucherAdminCard,.admin-shell[data-admin-tab="bookings"] .admin-email-settings{display:none!important}.admin-nav a,.admin-nav button{min-height:40px;padding:0 14px;border:1px solid #d7e1dc;border-radius:7px;background:#eef3f0;color:#173f35;text-decoration:none;font-weight:700;cursor:pointer}.admin-nav a.active,.admin-nav button.active{background:#173f35;color:#fff;border-color:#173f35}`;document.head.appendChild(style);wire();setTimeout(wire,300);setTimeout(wire,1000);}
+    const style=document.createElement('style');style.id='adminTabIsolationStyles';style.textContent=`
+      .admin-nav{display:flex!important;align-items:center!important;gap:8px!important;flex-wrap:nowrap!important;white-space:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;width:100%!important;box-sizing:border-box!important}
+      .admin-nav>a,.admin-nav>button{display:inline-flex!important;flex:0 0 auto!important;white-space:nowrap!important;align-items:center!important;justify-content:center!important}
+      .admin-nav .new-booking{margin-left:auto!important;flex:0 0 auto!important}
+      .admin-nav .admin-email-tab{flex:0 0 auto!important;order:0!important}
+      .admin-shell[data-admin-tab="voucher"] .stats,.admin-shell[data-admin-tab="voucher"] .toolbar,.admin-shell[data-admin-tab="voucher"] .table-wrap,.admin-shell[data-admin-tab="voucher"] #paymentAlert,.admin-shell[data-admin-tab="voucher"] .admin-email-settings{display:none!important}
+      .admin-shell[data-admin-tab="email"] .stats,.admin-shell[data-admin-tab="email"] .toolbar,.admin-shell[data-admin-tab="email"] .table-wrap,.admin-shell[data-admin-tab="email"] #paymentAlert,.admin-shell[data-admin-tab="email"] #voucherAdminCard{display:none!important}
+      .admin-shell[data-admin-tab="bookings"] #voucherAdminCard,.admin-shell[data-admin-tab="bookings"] .admin-email-settings{display:none!important}
+      .admin-nav a,.admin-nav button{min-height:40px;padding:0 14px;border:1px solid #d7e1dc;border-radius:7px;background:#eef3f0;color:#173f35;text-decoration:none;font-weight:700;cursor:pointer}
+      .admin-nav a.active,.admin-nav button.active{background:#173f35;color:#fff;border-color:#173f35}
+      @media(max-width:800px){.admin-nav{justify-content:flex-start!important}.admin-nav .new-booking{margin-left:0!important}}
+    `;document.head.appendChild(style);wire();setTimeout(wire,300);setTimeout(wire,1000);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   window.addEventListener('hashchange',wire);
   new MutationObserver(()=>wire()).observe(document.documentElement,{childList:true,subtree:true});
