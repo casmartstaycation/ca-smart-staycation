@@ -17,37 +17,27 @@
 <div class="form-action"><button type="submit" class="continue-button">Submit Booking <span>→</span></button><p>Your booking will remain pending until the payment is reviewed and validated.</p></div></form></main><footer><div><h3>CA Smart Staycation</h3><p>Private comfort with an elegant stay experience.</p></div><p>© 2026 CA Smart Staycation. All rights reserved.</p></footer>
 <script src="js/script.js"></script><script src="js/guest-booking-documents.js"></script><script>document.addEventListener('DOMContentLoaded',()=>{const type=document.getElementById('bookingType'),idSection=document.getElementById('governmentIdSection'),idInput=document.getElementById('governmentId'),room=document.getElementById('room'),roomGroup=document.getElementById('roomGroup');function updateDocumentRequirements(){const parkingOnly=type.value==='parking';idSection.style.display=parkingOnly?'none':'';idInput.required=!parkingOnly;if(parkingOnly)idInput.value='';room.required=!parkingOnly;roomGroup.style.display=parkingOnly?'none':''}type.addEventListener('change',updateDocumentRequirements);updateDocumentRequirements();});</script>
 <script>
-/* Checkout-boundary fix: a date marked BOOKED because another reservation
-   starts that day can still be selected as CHECK-OUT for the preceding stay. */
+/* Checkout-boundary fix: a booked date that is the start of another reservation can be selected as checkout. */
 document.addEventListener('DOMContentLoaded', () => {
     const grid = document.getElementById('calendarGrid');
     if (!grid) return;
-
     grid.addEventListener('click', (event) => {
         const cell = event.target.closest('.calendar-day.booked');
-        if (!cell || !window.bookedDates) return;
-        if (!window.selectedCheckIn || window.selectedCheckOut) return;
-
+        if (!cell || !selectedCheckIn || selectedCheckOut) return;
         const day = Number(cell.textContent.trim());
         if (!day) return;
-        const target = new Date(window.currentYear, window.currentMonth, day);
-        target.setHours(0, 0, 0, 0);
+        const target = new Date(currentYear, currentMonth, day); target.setHours(0,0,0,0);
         const selectedRoom = document.getElementById('room')?.value || '';
         const bookingType = document.getElementById('bookingType')?.value || 'unit';
         const isTerminal = booking => ['Cancelled','Checked Out','Expired'].includes(String(booking?.bookingStatus || ''));
         const parseDate = value => {
             if (!value) return null;
-            if (/^\\d{4}-\\d{2}-\\d{2}$/.test(String(value))) {
-                const [y,m,d] = String(value).split('-').map(Number);
-                return new Date(y,m-1,d);
-            }
-            const d = new Date(value);
-            if (Number.isNaN(d.getTime())) return null;
-            d.setHours(0,0,0,0); return d;
+            if (/^\\d{4}-\\d{2}-\\d{2}$/.test(String(value))) { const [y,m,d] = String(value).split('-').map(Number); const result = new Date(y,m-1,d); result.setHours(0,0,0,0); return result; }
+            const result = new Date(value); if (Number.isNaN(result.getTime())) return null; result.setHours(0,0,0,0); return result;
         };
         const hasRoom = b => Boolean(b?.room?._id || b?.room);
         const hasParking = b => Boolean(b?.parking?._id || b?.parking);
-        const matchingBoundary = window.bookedDates.some(booking => {
+        const matchingBoundary = bookedDates.some(booking => {
             if (isTerminal(booking)) return false;
             const start = parseDate(booking.checkIn);
             if (!start || start.getTime() !== target.getTime()) return false;
@@ -56,17 +46,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (bookingType === 'both') return (hasRoom(booking) && String(roomId) === String(selectedRoom)) || hasParking(booking);
             return hasRoom(booking) && String(roomId) === String(selectedRoom);
         });
-        if (!matchingBoundary || target <= window.selectedCheckIn) return;
-
-        // This is a valid hotel-style checkout boundary. The booked date
-        // remains visibly booked, but can be clicked as the checkout date.
+        if (!matchingBoundary || target <= selectedCheckIn) return;
         event.stopPropagation();
-        window.selectedCheckOut = new Date(target);
-        const checkIn = document.getElementById('checkIn');
-        const checkOut = document.getElementById('checkOut');
+        selectedCheckOut = new Date(target);
+        const checkIn = document.getElementById('checkIn'), checkOut = document.getElementById('checkOut');
         const format = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        if (checkIn) checkIn.value = format(window.selectedCheckIn);
-        if (checkOut) checkOut.value = format(window.selectedCheckOut);
+        if (checkIn) checkIn.value = format(selectedCheckIn);
+        if (checkOut) checkOut.value = format(selectedCheckOut);
         if (typeof calculateTotal === 'function') calculateTotal();
         if (typeof renderCalendar === 'function') renderCalendar();
     }, true);
