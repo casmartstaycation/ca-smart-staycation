@@ -12,6 +12,7 @@ const bookingSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 bookingSchema.index({ createdAt: -1 });
+bookingSchema.index({ email: 1, createdAt: -1 });
 bookingSchema.index({ checkIn: 1, checkOut: 1, bookingStatus: 1 });
 bookingSchema.index({ paymentDeadline: 1, bookingStatus: 1 });
 
