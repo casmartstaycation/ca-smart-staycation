@@ -26,7 +26,7 @@ router.get("/admin-notification-email", requireAdmin, async (req, res) => {
     try {
         let settings = await Setting.findOne();
         if (!settings) settings = await Setting.create({});
-        const fallback = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "markryantamayo@gmail.com";
+        const fallback = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "casmartstaycation@gmail.com";
         const primary = settings.adminNotificationEmail || fallback;
         const emails = Array.from(new Set([primary, ...(settings.adminNotificationEmails || [])].filter(validEmail)));
         res.json({ success: true, email: primary, emails });
@@ -60,7 +60,7 @@ router.put("/admin-notification-emails", requireAdmin, async (req, res) => {
         if (invalid) return res.status(400).json({ success: false, message: `Invalid email address: ${invalid}` });
         let settings = await Setting.findOne();
         if (!settings) settings = await Setting.create({});
-        const primary = settings.adminNotificationEmail || process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "markryantamayo@gmail.com";
+        const primary = settings.adminNotificationEmail || process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "casmartstaycation@gmail.com";
         settings.adminNotificationEmails = Array.from(new Set([primary, ...emails].filter(validEmail)));
         await settings.save();
         res.json({ success: true, emails: settings.adminNotificationEmails });
