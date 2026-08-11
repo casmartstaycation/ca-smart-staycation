@@ -44,7 +44,17 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
   function render(){
     const room=document.getElementById('room'),group=document.getElementById('roomGroup');if(!room||!group)return;
     let panel=document.getElementById('unitInfoPanel');
-    if(!panel){panel=document.createElement('div');panel.id='unitInfoPanel';panel.className='unit-info-panel';const formGrid=group.closest('.form-grid');if(formGrid&&formGrid.parentElement)formGrid.parentElement.insertBefore(panel,formGrid.nextSibling);else group.parentElement.appendChild(panel)}
+    if(!panel){
+      panel=document.createElement('div');
+      panel.id='unitInfoPanel';
+      panel.className='unit-info-panel';
+      const formGrid=group.closest('.form-grid');
+      if(formGrid){
+        const calendarGroup=formGrid.querySelector('#calendarGrid')?.closest('.form-group');
+        if(calendarGroup) formGrid.insertBefore(panel,calendarGroup);
+        else formGrid.appendChild(panel);
+      }else group.parentElement.appendChild(panel);
+    }
     if(isParkingOnly()){panel.style.display='none';return}
     panel.style.display='';
     const u=selected();
