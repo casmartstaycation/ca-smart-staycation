@@ -4,6 +4,10 @@
 
 CA Smart Staycation respects your privacy. This policy explains how information may be handled when you use the CA Smart Staycation website and Android application.
 
+**Business:** CA Smart Staycation  
+**Privacy contact:** booking@casmartstaycation.com  
+**Website:** https://casmartstaycation.com
+
 ## Information you provide
 
 When making a booking or contacting CA Smart Staycation, you may provide information such as your name, contact details, stay dates, number of guests, booking preferences, payment information or proof of payment, and other information necessary to process your reservation.
@@ -40,7 +44,7 @@ Reasonable technical and organizational measures are used to protect information
 
 ## Your choices and requests
 
-You may contact CA Smart Staycation to ask about personal information associated with your booking or request correction or deletion where applicable. Some information may need to be retained when required for legitimate business, legal, accounting, or security purposes.
+For privacy questions, correction requests, or deletion requests where applicable, contact **booking@casmartstaycation.com**. Some information may need to be retained when required for legitimate business, legal, accounting, or security purposes.
 
 ## Children's privacy
 
@@ -52,6 +56,8 @@ This policy may be updated when the service, technology, or legal requirements c
 
 ## Contact
 
-For privacy questions or requests, contact CA Smart Staycation through the official contact method provided on the CA Smart Staycation website.
+**CA Smart Staycation**  
+Email: **booking@casmartstaycation.com**  
+Website: **https://casmartstaycation.com**
 
-**Important:** Before submitting this policy to Google Play, the business owner should review and update the contact details, actual hosting/storage providers, retention periods, and data-processing practices so the policy precisely matches the production system.
+This policy should be reviewed whenever the production app, website, backend, storage providers, analytics, or data-processing practices change so that the published policy remains accurate.
