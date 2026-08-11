@@ -10,13 +10,7 @@
     });
   }
 
-  function ornament(ctx, x, y, rotation, scale = 1) {
-    ctx.save(); ctx.translate(x,y); ctx.rotate(rotation); ctx.scale(scale,scale);
-    ctx.strokeStyle="#b08a3c"; ctx.fillStyle="#d8b45b"; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.bezierCurveTo(20,2,34,12,44,32); ctx.bezierCurveTo(58,13,72,5,96,5); ctx.bezierCurveTo(76,20,64,39,58,62); ctx.bezierCurveTo(40,48,23,35,0,30); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(8,8); ctx.bezierCurveTo(30,12,42,25,49,47); ctx.bezierCurveTo(62,30,76,22,91,20); ctx.stroke();
-    ctx.beginPath(); ctx.arc(48,17,4,0,Math.PI*2); ctx.fill(); ctx.restore();
-  }
+ 
 
   function divider(ctx,cx,y,flip=false){
     ctx.save(); ctx.translate(cx,y); if(flip)ctx.scale(1,-1); ctx.strokeStyle="#b08a3c"; ctx.lineWidth=2;
