@@ -53,6 +53,9 @@
     .then(r => { if (!r.ok) throw new Error("Unable to load guest booking module."); return r.text(); })
     .then(code => {
       code = code.replace('`${ADMIN_BOOKING_API}/bookings`', '`${ADMIN_BOOKING_API}/bookings?_=${Date.now()}`');
+      // A booked date is unavailable as a check-in, but it can be a checkout date.
+      // Example: bookings 11–12 and 13–14 allow a new stay from 12–13.
+      code = code.replace('if(blocked||unavailable(x))', 'if(blocked)');
       run(code);
       syncGuestAvailability();
       removeDuplicateCalendarCards();
