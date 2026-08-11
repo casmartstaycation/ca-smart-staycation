@@ -3,8 +3,11 @@ const router = express.Router();
 const Booking = require("../models/Booking");
 const Room = require("../models/Room");
 const Parking = require("../models/Parking");
+const GuestAccount = require("../models/GuestAccount");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const sendEmail = require("../mail/sendEmail");
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "markryantamayo@gmail.com";
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "");
@@ -29,6 +32,10 @@ function requireAdmin(req, res, next) {
 
 function makeReference() {
   return "CA" + new Date().toISOString().slice(2, 10).replace(/-/g, "") + "-" + Math.floor(1000 + Math.random() * 9000);
+}
+
+function makeTemporaryPassword() {
+  return `CA${crypto.randomBytes(5).toString("base64url")}!`;
 }
 
 router.post("/admin/bookings", requireAdmin, async (req, res) => {
@@ -113,6 +120,50 @@ router.post("/admin/bookings", requireAdmin, async (req, res) => {
   } catch (err) {
     console.error("ADMIN CREATE BOOKING ERROR:", err);
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Reset a guest account password from an authenticated booking record.
+// A new temporary password is generated, stored as a bcrypt hash, and emailed when SMTP is configured.
+router.post("/admin/bookings/:id/reset-guest-password", requireAdmin, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).select("email firstName lastName bookingReference").lean();
+    if (!booking || !booking.email) return res.status(404).json({ success: false, message: "Guest booking or email address not found." });
+
+    const email = String(booking.email).trim().toLowerCase();
+    const account = await GuestAccount.findOne({ email }).sort({ createdAt: -1 });
+    if (!account) return res.status(404).json({ success: false, message: "No guest account exists for this booking email." });
+
+    const temporaryPassword = makeTemporaryPassword();
+    account.passwordHash = await bcrypt.hash(temporaryPassword, 12);
+    account.defaultPassword = true;
+    account.resetPasswordTokenHash = null;
+    account.resetPasswordExpiresAt = null;
+    await account.save();
+
+    let emailSent = false;
+    try {
+      const guestName = `${booking.firstName || "Guest"} ${booking.lastName || ""}`.trim();
+      const html = `<!doctype html><html><body><h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>Your guest account password has been reset by CA Smart Staycation.</p><p><strong>Booking Reference:</strong> ${booking.bookingReference || account.bookingReference || "—"}</p><p><strong>Temporary Password:</strong> ${temporaryPassword}</p><p>Please log in and change your password after signing in.</p><p>CA Smart Staycation</p></body></html>`;
+      await sendEmail(email, "Your CA Smart Staycation Guest Account Password", html);
+      emailSent = true;
+    } catch (emailErr) {
+      console.error("ADMIN GUEST PASSWORD EMAIL ERROR:", emailErr);
+    }
+
+    res.json({
+      success: true,
+      email,
+      emailSent,
+      temporaryPassword,
+      mustChangePassword: true,
+      message: emailSent
+        ? "Guest password reset successfully. The temporary password was emailed to the guest."
+        : "Guest password reset successfully, but the email could not be sent. Give the temporary password to the guest securely."
+    });
+  } catch (err) {
+    console.error("ADMIN RESET GUEST PASSWORD ERROR:", err);
+    res.status(500).json({ success: false, message: "Unable to reset the guest password." });
   }
 });
 
