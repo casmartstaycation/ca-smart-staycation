@@ -1,5 +1,6 @@
 const uploadButton = document.getElementById("uploadPayment");
 const fileInput = document.getElementById("paymentProof");
+const booking = JSON.parse(localStorage.getItem("guestBooking") || "null");
 
 function resetUploadButton() {
     if (!uploadButton) return;
@@ -7,11 +8,44 @@ function resetUploadButton() {
     uploadButton.innerHTML = "Submit Payment <span>→</span>";
 }
 
+function money(value) {
+    return `₱${Number(value || 0).toLocaleString("en-PH")}`;
+}
+
+function dateText(value) {
+    if (!value) return "—";
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString("en-PH", {
+        year: "numeric", month: "long", day: "numeric"
+    });
+}
+
+function loadBookingDetails() {
+    if (!booking) return;
+    const set = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+
+    set("bookingReference", booking.bookingReference || "—");
+    set("guestName", booking.guestName || booking.name || booking.fullName || "—");
+    set("bookingType", booking.bookingType || "—");
+    set("roomName", booking.roomName || booking.unitName || booking.accommodation || "—");
+    set("parkingStatus", booking.parkingOnly || booking.parking ? "Included" : "None");
+    set("checkInDate", dateText(booking.checkIn));
+    set("checkOutDate", dateText(booking.checkOut));
+    set("guestCount", Number(booking.adults || booking.guests || 0));
+    set("childrenCount", Number(booking.children || 0));
+    set("totalAmount", money(booking.totalAmount));
+}
+
+loadBookingDetails();
+
 if (fileInput) {
     fileInput.addEventListener("change", () => {
         const file = fileInput.files?.[0];
-        const existing = document.getElementById("paymentProofSelected");
-        if (existing) existing.textContent = file ? `Selected: ${file.name}` : "";
+        const label = document.getElementById("proofFileName");
+        if (label) label.textContent = file ? `Selected: ${file.name}` : "No file selected";
     });
 }
 
@@ -21,7 +55,6 @@ if (uploadButton) {
         uploadButton.disabled = true;
         uploadButton.innerText = "Uploading...";
 
-        const booking = JSON.parse(localStorage.getItem("guestBooking"));
         if (!booking) {
             alert("Booking information not found. Please start a new booking.");
             resetUploadButton();
@@ -68,12 +101,9 @@ if (uploadButton) {
             return;
         }
 
-        // Preserve the existing guest session before navigating away.
-        // The guest dashboard uses this token to authenticate /guest-auth/me.
         const guestToken = localStorage.getItem("guestAuthToken");
         const guestAccount = localStorage.getItem("guestAccount");
         const returnToAccount = "guest-dashboard.html";
-
         const formData = new FormData();
         formData.append("paymentProof", file);
         const url = `https://ca-smart-staycation-muqd.onrender.com/api/bookings/${encodeURIComponent(bookingId)}/payment`;
@@ -81,13 +111,8 @@ if (uploadButton) {
         const timeoutId = setTimeout(() => controller.abort(), 90 * 1000);
 
         try {
-            const response = await fetch(url, {
-                method: "POST",
-                body: formData,
-                signal: controller.signal
-            });
+            const response = await fetch(url, { method: "POST", body: formData, signal: controller.signal });
             clearTimeout(timeoutId);
-
             let result = {};
             try { result = await response.json(); } catch (_) { result = {}; }
 
@@ -104,9 +129,6 @@ if (uploadButton) {
                 paymentStatus: "Pending"
             };
             localStorage.setItem("guestBooking", JSON.stringify(updatedBooking));
-
-            // Never remove or replace the authenticated guest session here.
-            // This is intentionally a direct return to Guest Account Management.
             if (guestToken) localStorage.setItem("guestAuthToken", guestToken);
             if (guestAccount) localStorage.setItem("guestAccount", guestAccount);
 
