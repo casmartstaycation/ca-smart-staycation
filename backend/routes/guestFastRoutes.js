@@ -18,13 +18,10 @@ router.post("/guest-auth/login", async (req, res) => {
     const password = String(req.body.password || "").trim();
     if (!email || !password) return res.status(400).json({ success: false, message: "Email and password are required." });
 
-    // A guest can have more than one booking/account record. Check every account for this email,
-    // newest first, instead of checking only the newest record.
     let accounts = await GuestAccount.find({ email }).sort({ createdAt: -1 });
     let account = null;
     for (const candidate of accounts) {
       if (candidate.passwordHash && await bcrypt.compare(password, candidate.passwordHash)) { account = candidate; break; }
-      // Newly created guest accounts use the booking reference as their temporary password.
       if (candidate.defaultPassword === true && String(candidate.bookingReference || "").trim() === password) {
         candidate.passwordHash = await bcrypt.hash(password, 12);
         await candidate.save();
@@ -33,11 +30,8 @@ router.post("/guest-auth/login", async (req, res) => {
       }
     }
 
-    // If the booking exists but its guest account was never created (for example, a test booking
-    // was made before the payment-proof account creation flow), create the account now using the
-    // booking reference as the temporary password.
     if (!account) {
-      const booking = await Booking.findOne({ email }).sort({ createdAt: -1 });
+      const booking = await Booking.findOne({ email }).sort({ createdAt: -1 }).select("bookingReference email").lean();
       if (booking && booking.bookingReference && password === String(booking.bookingReference).trim()) {
         account = await GuestAccount.findOne({ bookingReference: booking.bookingReference });
         if (!account) {
@@ -55,8 +49,10 @@ router.post("/guest-auth/login", async (req, res) => {
     account.lastLoginAt = new Date();
     await account.save();
     const token = jwt.sign({ accountId: account._id.toString(), email: account.email, bookingReference: account.bookingReference }, JWT_SECRET, { expiresIn: "30d" });
-    const bookings = await lightweightBookingsForEmail(account.email);
-    res.json({ success: true, message: "Login successful.", token, account: publicAccount(account), bookings });
+
+    // Do not load bookings during authentication. The dashboard loads them after the token is issued.
+    // This keeps login fast even when a guest has many bookings or populated room/parking records.
+    res.json({ success: true, message: "Login successful.", token, account: publicAccount(account) });
   } catch (err) { console.error("GUEST FAST LOGIN ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
 });
 
