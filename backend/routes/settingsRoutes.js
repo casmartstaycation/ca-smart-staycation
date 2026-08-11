@@ -8,6 +8,8 @@ router.get("/test", (req, res) => {
 
 const Setting = require("../models/Setting");
 const validEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const DEFAULT_ADMIN_NOTIFICATION_EMAIL = "casmartstaycation@gmail.com";
+const LEGACY_DEFAULT_ADMIN_NOTIFICATION_EMAIL = "markryantamayo@gmail.com";
 
 router.get("/", async (req, res) => {
     let settings = await Setting.findOne();
@@ -26,8 +28,13 @@ router.get("/admin-notification-email", requireAdmin, async (req, res) => {
     try {
         let settings = await Setting.findOne();
         if (!settings) settings = await Setting.create({});
-        const fallback = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "casmartstaycation@gmail.com";
-        const primary = settings.adminNotificationEmail || fallback;
+        const fallback = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || DEFAULT_ADMIN_NOTIFICATION_EMAIL;
+        const configuredEmail = String(settings.adminNotificationEmail || "").trim().toLowerCase();
+        const primary = configuredEmail === LEGACY_DEFAULT_ADMIN_NOTIFICATION_EMAIL || !configuredEmail ? fallback : configuredEmail;
+        if (configuredEmail === LEGACY_DEFAULT_ADMIN_NOTIFICATION_EMAIL) {
+            settings.adminNotificationEmail = fallback;
+            await settings.save();
+        }
         const emails = Array.from(new Set([primary, ...(settings.adminNotificationEmails || [])].filter(validEmail)));
         res.json({ success: true, email: primary, emails });
     } catch (err) {
@@ -60,7 +67,7 @@ router.put("/admin-notification-emails", requireAdmin, async (req, res) => {
         if (invalid) return res.status(400).json({ success: false, message: `Invalid email address: ${invalid}` });
         let settings = await Setting.findOne();
         if (!settings) settings = await Setting.create({});
-        const primary = settings.adminNotificationEmail || process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "casmartstaycation@gmail.com";
+        const primary = settings.adminNotificationEmail || process.env.ADMIN_EMAIL || process.env.EMAIL_USER || DEFAULT_ADMIN_NOTIFICATION_EMAIL;
         settings.adminNotificationEmails = Array.from(new Set([primary, ...emails].filter(validEmail)));
         await settings.save();
         res.json({ success: true, emails: settings.adminNotificationEmails });
