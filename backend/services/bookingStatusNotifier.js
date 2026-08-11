@@ -40,13 +40,7 @@ async function ensureGuestAccount(booking) {
   let account = await GuestAccount.findOne({ bookingReference: booking.bookingReference });
   if (!account) {
     const passwordHash = await bcrypt.hash(String(booking.bookingReference).trim(), 12);
-    account = await GuestAccount.create({
-      guest: null,
-      bookingReference: booking.bookingReference,
-      email,
-      passwordHash,
-      defaultPassword: true
-    });
+    account = await GuestAccount.create({ guest: null, bookingReference: booking.bookingReference, email, passwordHash, defaultPassword: true });
   } else if (account.email !== email) {
     account.email = email;
     await account.save();
@@ -54,7 +48,7 @@ async function ensureGuestAccount(booking) {
   return account;
 }
 
-async function sendNewBookingEmail(booking, account) {
+async function sendNewBookingEmail(booking) {
   if (!booking.email) return;
   const guestEmail = String(booking.email).trim().toLowerCase();
   const guestName = `${booking.firstName || ""} ${booking.lastName || ""}`.trim() || "Guest";
@@ -63,67 +57,74 @@ async function sendNewBookingEmail(booking, account) {
   await sendEmail(guestEmail, `Booking Received — ${booking.bookingReference}`, html);
 }
 
+async function sendGuestStatusEmail(booking, info) {
+  const guestEmail = String(booking.email || "").trim().toLowerCase();
+  if (!guestEmail) return;
+  const guestName = `${booking.firstName || ""} ${booking.lastName || ""}`.trim() || "Guest";
+  await sendEmail(guestEmail, `${info.title} — ${booking.bookingReference}`, `<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>${info.message}</p><p><strong>Booking Reference:</strong> ${booking.bookingReference}<br><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString("en-PH")}<br><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString("en-PH")}<br><strong>Total:</strong> ₱${Number(booking.totalAmount || 0).toLocaleString("en-PH")}</p><p><a href="${LOGIN_URL}">Open Guest Account</a></p>`);
+}
+
+async function sendAdminStatusEmail(booking, info, adminEmail) {
+  if (!adminEmail) return;
+  const guestName = `${booking.firstName || ""} ${booking.lastName || ""}`.trim() || "Guest";
+  const adminMessage = `${booking.bookingReference} — ${guestName}: ${info.message}`;
+  await sendEmail(adminEmail, `Booking Status Update — ${booking.bookingReference}`, `<h2>CA Smart Staycation Admin Notification</h2><p>${adminMessage}</p><p><strong>Booking Status:</strong> ${booking.bookingStatus}<br><strong>Payment Status:</strong> ${booking.paymentStatus}<br><strong>Refund Status:</strong> ${booking.refundStatus || "Not Requested"}<br><strong>Guest Email:</strong> ${booking.email || ""}</p>`);
+}
+
 async function processBookingStatusNotifications() {
   const adminEmail = await getAdminNotificationEmail();
-  const bookings = await Booking.find().select("bookingReference firstName lastName email bookingStatus paymentStatus refundStatus checkIn checkOut totalAmount lastStatusNotificationKey").lean();
+  const bookings = await Booking.find().select("bookingReference firstName lastName email bookingStatus paymentStatus refundStatus checkIn checkOut totalAmount lastStatusNotificationKey lastGuestEmailNotificationKey lastAdminEmailNotificationKey").lean();
+
   for (const booking of bookings) {
     const key = statusKey(booking);
     const isNewBooking = !booking.lastStatusNotificationKey;
-
-    if (isNewBooking) {
-      let account = null;
-      if (booking.email) {
-        try {
-          account = await ensureGuestAccount(booking);
-          await sendNewBookingEmail(booking, account);
-          console.log(`NEW BOOKING EMAIL SENT: ${booking.bookingReference} -> ${booking.email}`);
-        } catch (err) {
-          console.error(`NEW BOOKING EMAIL FAILED (${booking.email}, ${booking.bookingReference}):`, err.message);
-        }
-      }
-      const guestName = `${booking.firstName || ""} ${booking.lastName || ""}`.trim() || "Guest";
-      const adminMessage = `${booking.bookingReference} — ${guestName}: New booking received from ${booking.email || "no email"}.`;
-      if (booking.email) {
-        await Notification.create({ recipientType: "guest", recipientEmail: String(booking.email).trim().toLowerCase(), booking: booking._id, title: "Booking Received", message: `Your booking ${booking.bookingReference} has been received.`, type: "booking-received" });
-      }
-      if (adminEmail) {
-        await Notification.create({ recipientType: "admin", recipientEmail: adminEmail, booking: booking._id, title: `New Booking — ${booking.bookingReference}`, message: adminMessage, type: "booking-received" });
-        try {
-          await sendEmail(adminEmail, `New Booking — ${booking.bookingReference}`, `<h2>CA Smart Staycation Admin Notification</h2><p>${adminMessage}</p><p><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString("en-PH")}<br><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString("en-PH")}<br><strong>Total:</strong> ₱${Number(booking.totalAmount || 0).toLocaleString("en-PH")}</p>`);
-        } catch (err) {
-          console.error(`ADMIN NEW BOOKING EMAIL FAILED (${adminEmail}, ${booking.bookingReference}):`, err.message);
-        }
-      }
-      await Booking.updateOne({ _id: booking._id }, { $set: { lastStatusNotificationKey: key } });
-      continue;
-    }
-
-    if (booking.lastStatusNotificationKey === key) continue;
-
-    const info = statusMessage(booking);
     const guestEmail = String(booking.email || "").trim().toLowerCase();
-    const guestName = `${booking.firstName || ""} ${booking.lastName || ""}`.trim() || "Guest";
-    const adminMessage = `${booking.bookingReference} — ${guestName}: ${info.message}`;
 
-    if (guestEmail) {
-      await Notification.create({ recipientType: "guest", recipientEmail: guestEmail, booking: booking._id, title: info.title, message: info.message, type: info.type });
+    // Web notifications are created once per status state.
+    if (isNewBooking || booking.lastStatusNotificationKey !== key) {
+      const info = isNewBooking ? { title: "Booking Received", message: `Your booking ${booking.bookingReference} has been received.`, type: "booking-received" } : statusMessage(booking);
+      const guestName = `${booking.firstName || ""} ${booking.lastName || ""}`.trim() || "Guest";
+      const adminMessage = `${booking.bookingReference} — ${guestName}: ${isNewBooking ? "New booking received." : info.message}`;
+
+      if (guestEmail) await Notification.create({ recipientType: "guest", recipientEmail: guestEmail, booking: booking._id, title: info.title, message: info.message, type: info.type });
+      if (adminEmail) await Notification.create({ recipientType: "admin", recipientEmail: adminEmail, booking: booking._id, title: isNewBooking ? `New Booking — ${booking.bookingReference}` : `Booking Update — ${booking.bookingReference}`, message: adminMessage, type: info.type });
+      await Booking.updateOne({ _id: booking._id }, { $set: { lastStatusNotificationKey: key } });
+    }
+
+    // Email delivery is tracked independently, so SMTP failures are retried without duplicating web notifications.
+    if (guestEmail && booking.lastGuestEmailNotificationKey !== key) {
       try {
-        await sendEmail(guestEmail, `${info.title} — ${booking.bookingReference}`, `<h2>CA Smart Staycation</h2><p>Dear ${guestName},</p><p>${info.message}</p><p><strong>Booking Reference:</strong> ${booking.bookingReference}<br><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString("en-PH")}<br><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString("en-PH")}<br><strong>Total:</strong> ₱${Number(booking.totalAmount || 0).toLocaleString("en-PH")}</p><p><a href="${LOGIN_URL}">Open Guest Account</a></p>`);
+        if (isNewBooking) {
+          await ensureGuestAccount(booking);
+          await sendNewBookingEmail(booking);
+          console.log(`NEW BOOKING EMAIL SENT: ${booking.bookingReference} -> ${guestEmail}`);
+        } else {
+          const info = statusMessage(booking);
+          await sendGuestStatusEmail(booking, info);
+          console.log(`GUEST STATUS EMAIL SENT: ${booking.bookingReference} -> ${guestEmail} (${info.title})`);
+        }
+        await Booking.updateOne({ _id: booking._id }, { $set: { lastGuestEmailNotificationKey: key } });
       } catch (err) {
-        console.error(`GUEST STATUS EMAIL FAILED (${guestEmail}, ${booking.bookingReference}):`, err.message);
+        console.error(`GUEST EMAIL FAILED (${guestEmail}, ${booking.bookingReference}, key=${key}):`, err.message);
       }
     }
 
-    if (adminEmail) {
-      await Notification.create({ recipientType: "admin", recipientEmail: adminEmail, booking: booking._id, title: `Booking Update — ${booking.bookingReference}`, message: adminMessage, type: info.type });
+    if (adminEmail && booking.lastAdminEmailNotificationKey !== key) {
       try {
-        await sendEmail(adminEmail, `Booking Status Update — ${booking.bookingReference}`, `<h2>CA Smart Staycation Admin Notification</h2><p>${adminMessage}</p><p><strong>Booking Status:</strong> ${booking.bookingStatus}<br><strong>Payment Status:</strong> ${booking.paymentStatus}<br><strong>Refund Status:</strong> ${booking.refundStatus || "Not Requested"}</p>`);
+        if (isNewBooking) {
+          const guestName = `${booking.firstName || ""} ${booking.lastName || ""}`.trim() || "Guest";
+          const adminMessage = `${booking.bookingReference} — ${guestName}: New booking received from ${guestEmail || "no email"}.`;
+          await sendEmail(adminEmail, `New Booking — ${booking.bookingReference}`, `<h2>CA Smart Staycation Admin Notification</h2><p>${adminMessage}</p><p><strong>Check-in:</strong> ${new Date(booking.checkIn).toLocaleDateString("en-PH")}<br><strong>Check-out:</strong> ${new Date(booking.checkOut).toLocaleDateString("en-PH")}<br><strong>Total:</strong> ₱${Number(booking.totalAmount || 0).toLocaleString("en-PH")}</p>`);
+        } else {
+          const info = statusMessage(booking);
+          await sendAdminStatusEmail(booking, info, adminEmail);
+          console.log(`ADMIN STATUS EMAIL SENT: ${booking.bookingReference} -> ${adminEmail} (${info.title})`);
+        }
+        await Booking.updateOne({ _id: booking._id }, { $set: { lastAdminEmailNotificationKey: key } });
       } catch (err) {
-        console.error(`ADMIN STATUS EMAIL FAILED (${adminEmail}, ${booking.bookingReference}):`, err.message);
+        console.error(`ADMIN EMAIL FAILED (${adminEmail}, ${booking.bookingReference}, key=${key}):`, err.message);
       }
     }
-
-    await Booking.updateOne({ _id: booking._id }, { $set: { lastStatusNotificationKey: key } });
   }
 }
 
