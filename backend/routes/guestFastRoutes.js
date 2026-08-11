@@ -12,18 +12,20 @@ function verifyToken(req) { const token = getToken(req); if (!token) throw new E
 function publicAccount(account) { return { id: account._id, email: account.email, bookingReference: account.bookingReference, mustChangePassword: account.defaultPassword === true }; }
 async function lightweightBookingsForEmail(email) { return Booking.find({ email: String(email || "").trim().toLowerCase() }).select("_id bookingReference firstName lastName email mobile bookingType room parking parkingOnly checkIn checkOut adults children totalAmount paymentStatus bookingStatus housekeepingStatus paymentProof paymentProofSubmittedAt paymentDate refundStatus refundAmount refundFee refundPolicyRule cancellationRequestedAt cancellationReason createdAt updatedAt").populate({ path: "room", select: "_id unitNumber unitName category capacity price weekendPrice holidayPrice status" }).populate({ path: "parking", select: "_id parkingNumber parkingName status" }).sort({ createdAt: -1 }).lean(); }
 
+router.get("/guest-auth/ping", (req, res) => res.json({ success: true, message: "Guest authentication service ready." }));
+
 router.post("/guest-auth/login", async (req, res) => {
   try {
     const email = String(req.body.email || "").trim().toLowerCase();
     const password = String(req.body.password || "").trim();
     if (!email || !password) return res.status(400).json({ success: false, message: "Email and password are required." });
 
-    let accounts = await GuestAccount.find({ email }).sort({ createdAt: -1 });
+    const accounts = await GuestAccount.find({ email }).sort({ createdAt: -1 }).select("_id email bookingReference passwordHash defaultPassword");
     let account = null;
     for (const candidate of accounts) {
       if (candidate.passwordHash && await bcrypt.compare(password, candidate.passwordHash)) { account = candidate; break; }
       if (candidate.defaultPassword === true && String(candidate.bookingReference || "").trim() === password) {
-        candidate.passwordHash = await bcrypt.hash(password, 12);
+        candidate.passwordHash = await bcrypt.hash(password, 10);
         await candidate.save();
         account = candidate;
         break;
@@ -33,12 +35,12 @@ router.post("/guest-auth/login", async (req, res) => {
     if (!account) {
       const booking = await Booking.findOne({ email }).sort({ createdAt: -1 }).select("bookingReference email").lean();
       if (booking && booking.bookingReference && password === String(booking.bookingReference).trim()) {
-        account = await GuestAccount.findOne({ bookingReference: booking.bookingReference });
+        account = await GuestAccount.findOne({ bookingReference: booking.bookingReference }).select("_id email bookingReference passwordHash defaultPassword");
         if (!account) {
-          account = await GuestAccount.create({ guest: null, bookingReference: booking.bookingReference, email, passwordHash: await bcrypt.hash(password, 12), defaultPassword: true });
+          account = await GuestAccount.create({ guest: null, bookingReference: booking.bookingReference, email, passwordHash: await bcrypt.hash(password, 10), defaultPassword: true });
         } else {
           account.email = email;
-          account.passwordHash = await bcrypt.hash(password, 12);
+          account.passwordHash = await bcrypt.hash(password, 10);
           account.defaultPassword = true;
           await account.save();
         }
@@ -46,14 +48,11 @@ router.post("/guest-auth/login", async (req, res) => {
     }
 
     if (!account) return res.status(401).json({ success: false, message: "Invalid email or password." });
-    account.lastLoginAt = new Date();
-    await account.save();
-    const token = jwt.sign({ accountId: account._id.toString(), email: account.email, bookingReference: account.bookingReference }, JWT_SECRET, { expiresIn: "30d" });
 
-    // Do not load bookings during authentication. The dashboard loads them after the token is issued.
-    // This keeps login fast even when a guest has many bookings or populated room/parking records.
-    res.json({ success: true, message: "Login successful.", token, account: publicAccount(account) });
-  } catch (err) { console.error("GUEST FAST LOGIN ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
+    // Do not update lastLoginAt here. Authentication should not wait for a second database write.
+    const token = jwt.sign({ accountId: account._id.toString(), email: account.email, bookingReference: account.bookingReference }, JWT_SECRET, { expiresIn: "30d" });
+    return res.json({ success: true, message: "Login successful.", token, account: publicAccount(account) });
+  } catch (err) { console.error("GUEST FAST LOGIN ERROR:", err); return res.status(500).json({ success: false, message: "Unable to complete login right now. Please try again." }); }
 });
 
 router.get("/guest-auth/me", async (req, res) => {
