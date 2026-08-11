@@ -22,13 +22,7 @@
     const c=document.createElement("canvas"),x=c.getContext("2d"); c.width=1600;c.height=760;const W=c.width,H=c.height;
     const bg=x.createLinearGradient(0,0,W,H);bg.addColorStop(0,"#faf5e9");bg.addColorStop(.5,"#fffdf8");bg.addColorStop(1,"#f1e7d0");x.fillStyle=bg;x.fillRect(0,0,W,H);
 
-    // Elegant layered European hotel frame — restrained gold and emerald.
-    x.strokeStyle="#173f35";x.lineWidth=18;x.strokeRect(24,24,W-48,H-48);
-    x.strokeStyle="#d8b45b";x.lineWidth=3;x.strokeRect(43,43,W-86,H-86);
-    x.strokeStyle="#b08a3c";x.lineWidth=1;x.strokeRect(51,51,W-102,H-102);
-    x.strokeStyle="#173f35";x.lineWidth=1;x.strokeRect(57,57,W-114,H-114);
-    
-    divider(x,W/2,64,false);divider(x,W/2,H-64,true);
+
 
     x.textAlign="left";x.fillStyle="#173f35";x.font="bold 23px Georgia";x.fillText("CA SMART STAYCATION",100,112);
     x.fillStyle="#b08a3c";x.font="13px Georgia";x.fillText("SPECIAL GUEST PRIVILEGE",100,135);
