@@ -32,20 +32,20 @@
     const calendar = host.querySelector(".ab-calendar-section");
     if (!bookingType || !room || !calendar) return;
 
-    // Booking Type and Select Accommodation share the first row.
+    // Put Booking Type first and Select Accommodation second.
     bookingType.style.order = "1";
-    room.style.order = "1";
+    room.style.order = "2";
     bookingType.style.gridColumn = "auto";
     room.style.gridColumn = "auto";
 
     // Calendar must be immediately below that row.
-    calendar.style.order = "2";
+    calendar.style.order = "3";
     calendar.style.gridColumn = "1 / -1";
 
     // All remaining booking fields start after the calendar.
     Array.from(host.children).forEach(el => {
       if (el !== bookingType && el !== room && el !== calendar && el.classList.contains("admin-booking-field")) {
-        el.style.order = "3";
+        el.style.order = "4";
       }
     });
   };
