@@ -4,6 +4,25 @@
   function panels(){return {voucher:document.getElementById('voucherAdminCard'),email:document.querySelector('.admin-email-settings')};}
   function keyFromText(text){const t=(text||'').trim().toLowerCase();if(t==='voucher management')return 'voucher';if(t==='admin email notifications')return 'email';if(t==='bookings')return 'bookings';return null;}
   function hashKey(){const h=(location.hash||'').toLowerCase();if(h==='#voucher' || h==='#vouchermanagement' || h==='#vouchermanagementtab')return 'voucher';if(h==='#adminemail' || h==='#adminemailsettings')return 'email';return null;}
+  function enforceNavLayout(){
+    const n=nav();
+    if(!n)return;
+    n.style.setProperty('display','flex','important');
+    n.style.setProperty('align-items','center','important');
+    n.style.setProperty('flex-wrap','nowrap','important');
+    n.style.setProperty('white-space','nowrap','important');
+    n.style.setProperty('overflow-x','auto','important');
+    n.style.setProperty('overflow-y','hidden','important');
+    n.style.setProperty('width','100%','important');
+    n.style.setProperty('box-sizing','border-box','important');
+    n.querySelectorAll(':scope > a,:scope > button').forEach(item=>{
+      item.style.setProperty('flex','0 0 auto','important');
+      item.style.setProperty('white-space','nowrap','important');
+      item.style.setProperty('display','inline-flex','important');
+      item.style.setProperty('align-items','center','important');
+      item.style.setProperty('justify-content','center','important');
+    });
+  }
   function hideEverything(){
     BOOKING_PARTS.forEach(s=>document.querySelectorAll(s).forEach(e=>e.style.setProperty('display','none','important')));
     const p=panels();
@@ -33,6 +52,7 @@
     if(n)n.querySelectorAll('a,button').forEach(a=>a.classList.toggle('active',keyFromText(a.textContent)===key));
     document.body.dataset.adminTab=key;
     const shell=document.getElementById('adminShell');if(shell)shell.dataset.adminTab=key;
+    enforceNavLayout();
     window.dispatchEvent(new CustomEvent('admin-tab-changed',{detail:{key}}));
   }
   function removeDuplicates(){
@@ -45,6 +65,7 @@
   function wire(){
     const n=nav();if(!n)return;
     removeDuplicates();
+    enforceNavLayout();
     n.querySelectorAll('a,button').forEach(a=>{
       if(a.dataset.tabControllerBound)return;
       const key=keyFromText(a.textContent);
@@ -59,6 +80,7 @@
     const fromHash=hashKey();
     const saved=sessionStorage.getItem('caSmartAdminTab');
     activate(fromHash || (saved==='voucher'||saved==='email'?saved:'bookings'));
+    enforceNavLayout();
   }
   function init(){
     const style=document.createElement('style');style.id='adminTabIsolationStyles';style.textContent=`
