@@ -5,7 +5,7 @@ const GuestAccount = require("../models/GuestAccount");
 const bcrypt = require("bcryptjs");
 const sendEmail = require("../mail/sendEmail");
 
-const FALLBACK_ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "markryantamayo@gmail.com";
+const FALLBACK_ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "casmartstaycation@gmail.com";
 const LOGIN_URL = process.env.GUEST_LOGIN_URL || "https://casmartstaycation.github.io/cassbooking/guest-booking/guest-login.html";
 
 function statusKey(booking) {
