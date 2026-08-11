@@ -58,8 +58,39 @@ window.viewBooking = async function(id) {
             ${booking.parking ? documentLink("Driver's License", "driversLicense", Boolean(booking.driversLicense)) : ""}
             <div class="notes"><span>Payment Proof</span><p>${booking.paymentProof ? `<a class="proof" target="_blank" rel="noopener" href="${ADMIN_DETAILS_API}/uploads/payments/${encodeURIComponent(booking.paymentProof)}">Open uploaded payment proof</a>` : "No payment proof uploaded."}</p></div>
             <div class="notes"><span>Notes</span><p>${adminDetailsEscape(booking.notes || "No notes.")}</p></div>
+            ${booking.email ? `<div class="notes"><span>Guest Account</span><p><button type="button" id="resetGuestPasswordBtn" class="refresh">Reset Guest Password</button></p><small id="resetGuestPasswordStatus" aria-live="polite"></small></div>` : ""}
         `;
         document.getElementById("bookingModal").hidden = false;
+
+        const resetButton = document.getElementById("resetGuestPasswordBtn");
+        if (resetButton) {
+            resetButton.addEventListener("click", async () => {
+                if (!confirm(`Reset the guest account password for ${booking.email}?`)) return;
+                resetButton.disabled = true;
+                resetButton.textContent = "Resetting…";
+                const status = document.getElementById("resetGuestPasswordStatus");
+                try {
+                    const token = localStorage.getItem("adminToken") || localStorage.getItem("admin_token") || sessionStorage.getItem("adminToken") || sessionStorage.getItem("admin_token") || "";
+                    const resetResponse = await fetch(`${ADMIN_DETAILS_API}/admin/bookings/${encodeURIComponent(booking._id)}/reset-guest-password`, {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    const resetJson = await resetResponse.json();
+                    if (!resetResponse.ok || !resetJson.success) throw new Error(resetJson.message || "Unable to reset guest password.");
+                    status.textContent = resetJson.emailSent
+                        ? "Password reset and emailed to the guest."
+                        : "Email could not be sent. The temporary password is shown in the alert.";
+                    alert(`Guest password reset successfully.\n\nEmail: ${resetJson.email}\nTemporary password: ${resetJson.temporaryPassword}\n\n${resetJson.emailSent ? "The temporary password was also emailed to the guest." : "Email was not sent; give this temporary password to the guest securely."}\n\nThe guest must change the password after logging in.`);
+                } catch (err) {
+                    console.error("ADMIN RESET GUEST PASSWORD ERROR:", err);
+                    status.textContent = err.message || "Unable to reset guest password.";
+                    alert(err.message || "Unable to reset guest password.");
+                } finally {
+                    resetButton.disabled = false;
+                    resetButton.textContent = "Reset Guest Password";
+                }
+            });
+        }
     } catch (err) {
         console.error("ADMIN BOOKING DETAILS ERROR:", err);
         alert(err.message || "Unable to load booking details.");
