@@ -16,34 +16,30 @@ const transporter = nodemailer.createTransport({
     socketTimeout: 15000
 });
 
-let verificationStarted = false;
+let verificationPromise = null;
 async function verifyEmailTransport() {
-    if (verificationStarted) return;
-    verificationStarted = true;
     if (!emailUser || !emailPass) {
-        console.error("EMAIL CONFIG ERROR: EMAIL_USER and EMAIL_PASS are not configured. Booking emails cannot be sent.");
-        return;
+        throw new Error("EMAIL_USER and EMAIL_PASS are not configured on the server.");
     }
-    try {
-        await transporter.verify();
-        console.log(`EMAIL SMTP READY: ${smtpHost}:${smtpPort} as ${emailUser}`);
-    } catch (err) {
-        console.error("EMAIL SMTP VERIFY FAILED:", err && err.message ? err.message : err);
+    if (!verificationPromise) {
+        verificationPromise = transporter.verify().then(() => {
+            console.log(`EMAIL SMTP READY: ${smtpHost}:${smtpPort} as ${emailUser}`);
+            return true;
+        }).catch(err => {
+            verificationPromise = null;
+            console.error("EMAIL SMTP VERIFY FAILED:", err && err.message ? err.message : err);
+            throw new Error(`Email service is not available: ${err && err.message ? err.message : "SMTP verification failed"}`);
+        });
     }
+    return verificationPromise;
 }
 
 async function sendEmail(to, subject, html) {
-    if (!to) return { sent: false, reason: "missing-recipient" };
-    if (!emailUser || !emailPass) {
-        console.error(`EMAIL NOT SENT: missing EMAIL_USER/EMAIL_PASS (recipient=${to}, subject=${subject})`);
-        return { sent: false, reason: "missing-credentials" };
-    }
-
+    if (!to) throw new Error("Email recipient is missing.");
     await verifyEmailTransport();
-
     try {
         const result = await transporter.sendMail({
-            from: `"CA Smart Staycation" <${emailUser}>`,
+            from: `\"CA Smart Staycation\" <${emailUser}>`,
             to,
             subject,
             html
@@ -52,7 +48,7 @@ async function sendEmail(to, subject, html) {
         return { sent: true, messageId: result.messageId };
     } catch (err) {
         console.error(`EMAIL SEND FAILED: ${subject} -> ${to}:`, err && err.message ? err.message : err);
-        return { sent: false, reason: err && err.message ? err.message : "send-failed" };
+        throw new Error(`Unable to send email: ${err && err.message ? err.message : "SMTP send failed"}`);
     }
 }
 
