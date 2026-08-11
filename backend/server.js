@@ -130,6 +130,8 @@ app.get('/api/bookings/:id', async (req, res) => {
 app.use('/api', require('./routes/adminRoutes'));
 app.use('/api', require('./routes/roomRoutes'));
 app.use('/api', require('./routes/guestRoutes'));
+// Lightweight guest account endpoints must be mounted before the legacy guest-auth routes.
+app.use('/api', require('./routes/guestFastRoutes'));
 app.use('/api', require('./routes/guestAuthRoutes'));
 app.use('/api', require('./routes/paymentRecoveryRoutes'));
 app.use('/api', require('./routes/bookingRoutes'));
