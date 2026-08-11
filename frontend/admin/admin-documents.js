@@ -4,6 +4,10 @@ const ADMIN_DOCUMENTS_API = "https://ca-smart-staycation-muqd.onrender.com/api";
   const originalViewBooking = window.viewBooking;
   if (typeof originalViewBooking !== "function") return;
 
+  const style = document.createElement("style");
+  style.textContent = `.admin-documents-panel{margin-top:18px;padding:18px;border:1px solid #e3e8e5;border-radius:10px;background:#fbfcfb}.admin-documents-heading{margin-bottom:14px}.admin-documents-label{display:block;color:#8b6b2e;font-size:10px;font-weight:800;letter-spacing:1.2px;margin-bottom:5px}.admin-documents-heading h3{margin:0;color:#173f35;font-size:19px}.admin-documents-heading p{margin:5px 0 0;color:#68736e;font-size:12px}.admin-documents-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.admin-document-card{border:1px solid #e1e6e3;border-radius:8px;background:#fff;padding:10px;min-width:0}.admin-document-card.missing{background:#f5f6f5}.admin-document-title{font-weight:700;color:#173f35;font-size:13px;margin-bottom:8px}.admin-document-preview{display:block;width:100%;height:150px;object-fit:contain;background:#f1f3f2;border-radius:6px;border:1px solid #e1e6e3}.admin-document-file{height:150px;display:flex;align-items:center;justify-content:center;text-align:center;background:#f1f3f2;border-radius:6px;color:#68736e;font-size:11px;padding:8px;word-break:break-word}.admin-document-open{display:inline-block;margin-top:9px;color:#1d624d;font-size:12px;font-weight:700;text-decoration:none}.admin-document-missing{color:#a33a35;font-size:12px;padding:10px 0}.admin-vehicle-info{margin-top:12px;padding:10px 12px;background:#fff;border:1px solid #e1e6e3;border-radius:8px;font-size:12px;color:#68736e}.admin-vehicle-info strong{color:#173f35;margin-right:8px}.admin-documents-error{margin-top:18px}@media(max-width:700px){.admin-documents-grid{grid-template-columns:1fr}}`;
+  document.head.appendChild(style);
+
   window.viewBooking = async function (id) {
     originalViewBooking(id);
 
