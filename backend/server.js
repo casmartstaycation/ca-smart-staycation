@@ -21,63 +21,50 @@ function deleteUploadedFile(dir, filename) {
   if (!filename) return;
   const safeName = path.basename(String(filename));
   const filePath = path.join(dir, safeName);
-  try {
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  } catch (err) {
-    console.error(`UPLOAD CLEANUP ERROR (${safeName}):`, err.message);
-  }
+  try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); }
+  catch (err) { console.error(`UPLOAD CLEANUP ERROR (${safeName}):`, err.message); }
 }
-
 function listFiles(dir) {
   try {
     if (!fs.existsSync(dir)) return [];
-    return fs.readdirSync(dir, { withFileTypes: true })
-      .filter(entry => entry.isFile())
-      .map(entry => entry.name);
-  } catch (err) {
-    console.error(`UPLOAD DIRECTORY SCAN ERROR (${dir}):`, err.message);
-    return [];
-  }
+    return fs.readdirSync(dir, { withFileTypes: true }).filter(entry => entry.isFile()).map(entry => entry.name);
+  } catch (err) { console.error(`UPLOAD DIRECTORY SCAN ERROR (${dir}):`, err.message); return []; }
 }
 
 async function cleanupTerminalBookingUploads() {
   try {
-    const bookings = await Booking.find({})
-      .select("_id bookingStatus paymentProof governmentId driversLicense reschedulePaymentProof")
-      .lean();
-
-    const terminalStatuses = new Set(["Cancelled", "Checked Out"]);
+    const bookings = await Booking.find({}).select("_id bookingStatus paymentProof paymentProofHistory governmentId driversLicense reschedulePaymentProof").lean();
+    const terminalStatuses = new Set(["Cancelled", "Checked Out", "Expired"]);
     const referencedPaymentFiles = new Set();
     const referencedDocumentFiles = new Set();
     const terminalBookings = [];
 
     for (const booking of bookings) {
       if (booking.paymentProof) referencedPaymentFiles.add(path.basename(String(booking.paymentProof)));
+      for (const item of (booking.paymentProofHistory || [])) if (item.filename) referencedPaymentFiles.add(path.basename(String(item.filename)));
       if (booking.governmentId) referencedDocumentFiles.add(path.basename(String(booking.governmentId)));
       if (booking.driversLicense) referencedDocumentFiles.add(path.basename(String(booking.driversLicense)));
-      if (booking.reschedulePaymentProof) referencedDocumentFiles.add(path.basename(String(booking.reschedulePaymentProof)));
+      if (booking.reschedulePaymentProof) referencedPaymentFiles.add(path.basename(String(booking.reschedulePaymentProof)));
       if (terminalStatuses.has(String(booking.bookingStatus || "").trim())) terminalBookings.push(booking);
     }
 
     for (const booking of terminalBookings) {
       deleteUploadedFile(paymentUploadDir, booking.paymentProof);
+      for (const item of (booking.paymentProofHistory || [])) deleteUploadedFile(paymentUploadDir, item.filename);
       deleteUploadedFile(guestDocumentUploadDir, booking.governmentId);
       deleteUploadedFile(guestDocumentUploadDir, booking.driversLicense);
-      deleteUploadedFile(guestDocumentUploadDir, booking.reschedulePaymentProof);
-      await Booking.updateOne({ _id: booking._id }, { $set: { paymentProof: "", governmentId: "", driversLicense: "", reschedulePaymentProof: "" } });
+      deleteUploadedFile(paymentUploadDir, booking.reschedulePaymentProof);
+      await Booking.updateOne({ _id: booking._id }, { $set: { paymentProof: "", governmentId: "", driversLicense: "", reschedulePaymentProof: "", paymentProofHistory: [] } });
     }
 
+    // Delete only files that are not referenced by any non-terminal booking.
     const orphanPaymentFiles = listFiles(paymentUploadDir).filter(name => !referencedPaymentFiles.has(name));
     const orphanDocumentFiles = listFiles(guestDocumentUploadDir).filter(name => !referencedDocumentFiles.has(name));
     for (const filename of orphanPaymentFiles) deleteUploadedFile(paymentUploadDir, filename);
     for (const filename of orphanDocumentFiles) deleteUploadedFile(guestDocumentUploadDir, filename);
 
-    if (terminalBookings.length || orphanPaymentFiles.length || orphanDocumentFiles.length) {
-      console.log(`🧹 Upload cleanup: ${terminalBookings.length} terminal booking(s), ${orphanPaymentFiles.length} orphan payment file(s), ${orphanDocumentFiles.length} orphan document file(s).`);
-    }
-  } catch (err) {
-    console.error("TERMINAL/ORPHAN UPLOAD CLEANUP ERROR:", err);
-  }
+    if (terminalBookings.length || orphanPaymentFiles.length || orphanDocumentFiles.length) console.log(`🧹 Upload cleanup: ${terminalBookings.length} terminal booking(s), ${orphanPaymentFiles.length} orphan payment file(s), ${orphanDocumentFiles.length} orphan document file(s).`);
+  } catch (err) { console.error("TERMINAL/ORPHAN UPLOAD CLEANUP ERROR:", err); }
 }
 
 app.use(helmet());
@@ -99,38 +86,25 @@ async function expireUnpaidBookings() {
   } catch (err) { console.error("BOOKING EXPIRATION ERROR:", err); }
 }
 
-// Small booking-list payload for admin tables and calendars. Large document/history fields are never sent here.
 app.get('/api/bookings', async (req, res) => {
   try {
     await expireUnpaidBookings();
-    const bookings = await Booking.find()
-      .select("bookingReference firstName lastName email mobile room parking parkingOnly checkIn checkOut adults children totalAmount paymentStatus bookingStatus housekeepingStatus paymentProof createdAt updatedAt")
-      .populate({ path: "room", select: "unitNumber unitName category capacity price weekendPrice holidayPrice status" })
-      .populate({ path: "parking", select: "parkingNumber parkingName status" })
-      .lean()
-      .sort({ createdAt: -1 });
+    const bookings = await Booking.find().select("bookingReference firstName lastName email mobile room parking parkingOnly checkIn checkOut adults children totalAmount paymentStatus bookingStatus housekeepingStatus paymentProof createdAt updatedAt").populate({ path: "room", select: "unitNumber unitName category capacity price weekendPrice holidayPrice status" }).populate({ path: "parking", select: "parkingNumber parkingName status" }).lean().sort({ createdAt: -1 });
     res.json({ success: true, data: bookings });
-  } catch (err) {
-    console.error("BOOKING LIST ERROR:", err);
-    res.status(500).json({ success: false, message: err.message });
-  }
+  } catch (err) { console.error("BOOKING LIST ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
 });
 
-// Full booking record is available only when a specific booking is requested.
 app.get('/api/bookings/:id', async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id).populate("room").populate("parking").lean();
     if (!booking) return res.status(404).json({ success: false, message: "Booking not found." });
     res.json({ success: true, data: booking });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 app.use('/api', require('./routes/adminRoutes'));
 app.use('/api', require('./routes/roomRoutes'));
 app.use('/api', require('./routes/guestRoutes'));
-// Lightweight guest account endpoints must be mounted before the legacy guest-auth routes.
 app.use('/api', require('./routes/guestFastRoutes'));
 app.use('/api', require('./routes/guestAuthRoutes'));
 app.use('/api', require('./routes/paymentRecoveryRoutes'));
@@ -148,7 +122,5 @@ app.listen(PORT, () => {
   setInterval(expireUnpaidBookings, 60 * 1000);
   setInterval(cleanupTerminalBookingUploads, 60 * 1000);
   setInterval(() => processBookingStatusNotifications().catch(err => console.error("BOOKING STATUS NOTIFICATION ERROR:", err)), 15 * 1000);
-  expireUnpaidBookings();
-  cleanupTerminalBookingUploads();
-  processBookingStatusNotifications().catch(err => console.error("INITIAL BOOKING STATUS NOTIFICATION ERROR:", err));
+  expireUnpaidBookings(); cleanupTerminalBookingUploads(); processBookingStatusNotifications().catch(err => console.error("INITIAL BOOKING STATUS NOTIFICATION ERROR:", err));
 });
