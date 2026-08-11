@@ -22,6 +22,8 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
   `;
   const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
   let units=[];
+  const CACHE_KEY='caSmartStaycationRoomsGallery';
+  const CACHE_TTL=5*60*1000;
   function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]))}
   function isParkingOnly(){return String(document.getElementById('bookingType')?.value||'').toLowerCase()==='parking'}
   function openPhoto(images,startIndex){
@@ -41,20 +43,21 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     document.body.appendChild(m);show();
   }
   function selected(){const id=document.getElementById('room')?.value;return units.find(x=>String(x._id)===String(id))||null}
-  function render(){
-    const room=document.getElementById('room'),group=document.getElementById('roomGroup');if(!room||!group)return;
+  function getPanel(){
     let panel=document.getElementById('unitInfoPanel');
-    if(!panel){
-      panel=document.createElement('div');
-      panel.id='unitInfoPanel';
-      panel.className='unit-info-panel';
-      const formGrid=group.closest('.form-grid');
-      if(formGrid){
-        const calendarGroup=formGrid.querySelector('#calendarGrid')?.closest('.form-group');
-        if(calendarGroup) formGrid.insertBefore(panel,calendarGroup);
-        else formGrid.appendChild(panel);
-      }else group.parentElement.appendChild(panel);
-    }
+    if(panel)return panel;
+    const group=document.getElementById('roomGroup');if(!group)return null;
+    panel=document.createElement('div');panel.id='unitInfoPanel';panel.className='unit-info-panel';
+    const formGrid=group.closest('.form-grid');
+    const calendarGroup=formGrid?.querySelector('#calendarGrid')?.closest('.form-group');
+    if(formGrid&&calendarGroup)formGrid.insertBefore(panel,calendarGroup);
+    else if(formGrid)formGrid.appendChild(panel);
+    else group.parentElement.appendChild(panel);
+    return panel;
+  }
+  function render(){
+    const room=document.getElementById('room');if(!room)return;
+    const panel=getPanel();if(!panel)return;
     if(isParkingOnly()){panel.style.display='none';return}
     panel.style.display='';
     const u=selected();
@@ -62,15 +65,26 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     const images=Array.isArray(u.images)?u.images.map(x=>typeof x==='string'?x:x?.url).filter(Boolean):[];
     const primary=images[0];
     const amenities=Array.isArray(u.amenities)?u.amenities.filter(Boolean):[];
-    panel.innerHTML=`<div class="unit-gallery">${primary?`<img class="unit-primary-photo" src="${esc(primary)}" alt="${esc(u.unitName||u.name||'Accommodation')}" data-photo="0"><div class="unit-photo-thumbs">${images.map((img,i)=>`<img src="${esc(img)}" alt="Photo ${i+1}" data-photo="${i}">`).join('')}</div>`:'<div style="display:flex;align-items:center;justify-content:center;min-height:300px;background:#f5f3ef;border-radius:8px;color:#888">No photos available</div>'}<div class="unit-description"><h3>${esc(u.unitName||u.name||u.unitNumber||'Selected Unit')}</h3><p>${esc(u.description||'No description available for this accommodation.')}</p></div>${amenities.length?`<div class="unit-amenities"><h3>Amenities</h3><div class="unit-amenity-list">${amenities.map(a=>`<span class="unit-amenity">${esc(a)}</span>`).join('')}</div></div>`:''}</div>`;
+    panel.innerHTML=`<div class="unit-gallery">${primary?`<img class="unit-primary-photo" loading="lazy" src="${esc(primary)}" alt="${esc(u.unitName||u.name||'Accommodation')}" data-photo="0"><div class="unit-photo-thumbs">${images.map((img,i)=>`<img loading="lazy" src="${esc(img)}" alt="Photo ${i+1}" data-photo="${i}">`).join('')}</div>`:'<div style="display:flex;align-items:center;justify-content:center;min-height:300px;background:#f5f3ef;border-radius:8px;color:#888">No photos available</div>'}<div class="unit-description"><h3>${esc(u.unitName||u.name||u.unitNumber||'Selected Unit')}</h3><p>${esc(u.description||'No description available for this accommodation.')}</p></div>${amenities.length?`<div class="unit-amenities"><h3>Amenities</h3><div class="unit-amenity-list">${amenities.map(a=>`<span class="unit-amenity">${esc(a)}</span>`).join('')}</div></div>`:''}</div>`;
     panel.querySelectorAll('[data-photo]').forEach(el=>el.addEventListener('click',()=>openPhoto(images,Number(el.dataset.photo))));
   }
-  async function load(){try{const r=await fetch(`${UNIT_GALLERY_API}/rooms`,{cache:'no-store'}),j=await r.json();if(r.ok&&Array.isArray(j.data)){units=j.data;render()}}catch(e){console.warn('Unable to load accommodation photos',e)}}
+  function useCached(){
+    try{const raw=sessionStorage.getItem(CACHE_KEY);if(!raw)return false;const cached=JSON.parse(raw);if(!cached?.timestamp||Date.now()-cached.timestamp>CACHE_TTL||!Array.isArray(cached.data))return false;units=cached.data;render();return true}catch{return false}
+  }
+  async function load(){
+    if(isParkingOnly())return;
+    if(useCached())return;
+    try{
+      const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),8000);
+      const r=await fetch(`${UNIT_GALLERY_API}/rooms`,{cache:'no-store',signal:controller.signal});clearTimeout(timer);
+      const j=await r.json();
+      if(r.ok&&Array.isArray(j.data)){units=j.data;try{sessionStorage.setItem(CACHE_KEY,JSON.stringify({timestamp:Date.now(),data:units}))}catch{}render()}
+    }catch(e){console.warn('Unable to load accommodation photos',e)}
+  }
   document.addEventListener('DOMContentLoaded',()=>{
-    const room=document.getElementById('room');
-    const type=document.getElementById('bookingType');
+    const room=document.getElementById('room');const type=document.getElementById('bookingType');
     if(room)room.addEventListener('change',render);
-    if(type)type.addEventListener('change',render);
-    load();
+    if(type)type.addEventListener('change',()=>{const panel=document.getElementById('unitInfoPanel');if(String(type.value).toLowerCase()==='parking'){if(panel)panel.style.display='none'}else{load();render()}});
+    if(!isParkingOnly())load();
   });
 })();
