@@ -2,18 +2,106 @@
   const API = "https://ca-smart-staycation-muqd.onrender.com/api";
   const token = () => sessionStorage.getItem("caSmartAdminToken") || "";
   const headers = () => ({ "Content-Type": "application/json", Authorization: `Bearer ${token()}` });
-  function addTab(){const nav=document.querySelector(".admin-nav");if(!nav||document.getElementById("voucherManagementTab"))return;const resources=Array.from(nav.querySelectorAll("a")).find(a=>/Units & Parking Management/i.test(a.textContent));const tab=document.createElement("a");tab.id="voucherManagementTab";tab.href="#voucherManagement";tab.textContent="Voucher Management";tab.className="voucher-management-tab";if(resources)resources.insertAdjacentElement("afterend",tab);else nav.appendChild(tab);tab.addEventListener("click",e=>{e.preventDefault();showTab(true)})}
-  function addStyles(){if(document.getElementById("voucherTabStyles"))return;const s=document.createElement("style");s.id="voucherTabStyles";s.textContent=`.voucher-management-tab{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 14px;border-radius:7px;background:#eef3f0;color:#173f35;border:1px solid #d7e1dc;text-decoration:none;font-weight:700}.voucher-management-tab.active{background:#173f35;color:#fff;border-color:#173f35}#voucherAdminCard.voucher-tab-panel{display:none!important;margin-top:18px}#voucherAdminCard.voucher-tab-panel.active{display:block!important}.voucher-delete-btn{background:#fff!important;color:#a1261f!important;border:1px solid #d9b1ad!important}.voucher-delete-btn:hover{background:#fff4f3!important}`;document.head.appendChild(s)}
-  function getCard(){return document.getElementById("voucherAdminCard")}
-  function showTab(active){const card=getCard(),tab=document.getElementById("voucherManagementTab");if(!card||!tab)return;card.classList.add("voucher-tab-panel");card.classList.toggle("active",!!active);tab.classList.toggle("active",!!active);if(active){card.scrollIntoView({behavior:"smooth",block:"start"});setTimeout(addDeleteButtons,100);setTimeout(replaceCertificateButtons,120)}}
-  function hideTab(){const card=getCard(),tab=document.getElementById("voucherManagementTab");if(card){card.classList.add("voucher-tab-panel");card.classList.remove("active")}if(tab)tab.classList.remove("active")}
-  async function deleteVoucher(id,code){if(!confirm(`Delete voucher ${code}? This cannot be undone.`))return;try{const r=await fetch(`${API}/vouchers/${id}`,{method:"DELETE",headers:headers()}),j=await r.json();if(!r.ok)throw new Error(j.message||"Unable to delete voucher.");const refresh=window.loadAdminVouchers;if(typeof refresh==="function")await refresh();setTimeout(addDeleteButtons,100);setTimeout(replaceCertificateButtons,120)}catch(e){alert(e.message||"Unable to delete voucher.")}}
-  function addDeleteButtons(){const list=document.getElementById("voucherAdminList");if(!list)return;list.querySelectorAll(".voucher-admin-item").forEach(row=>{if(row.querySelector(".voucher-delete-btn"))return;const buttons=row.querySelectorAll("button[data-voucher-id]"),id=buttons[0]?.dataset.voucherId;if(!id)return;row.dataset.voucherId=id;const code=row.querySelector("strong")?.textContent?.trim()||"this voucher",actions=row.querySelector(".voucher-admin-actions");if(!actions)return;const btn=document.createElement("button");btn.type="button";btn.className="voucher-delete-btn";btn.textContent="Delete";btn.addEventListener("click",()=>deleteVoucher(id,code));actions.appendChild(btn)})}
-  function loadQr(text){return new Promise((resolve,reject)=>{const img=new Image();img.crossOrigin="anonymous";img.onload=()=>resolve(img);img.onerror=()=>reject(new Error("Unable to load QR code."));img.src=`https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(text)}`})}
-  async function drawLuxuryCertificate(v,guest){const qr=await loadQr("https://casmartstaycation.github.io/cassbooking/"),c=document.createElement("canvas"),x=c.getContext("2d"),W=1800,H=1000;c.width=W;c.height=H;const bg=x.createLinearGradient(0,0,W,H);bg.addColorStop(0,"#f5efe2");bg.addColorStop(.5,"#fffdf8");bg.addColorStop(1,"#eadfc9");x.fillStyle=bg;x.fillRect(0,0,W,H);x.fillStyle="#123d32";x.fillRect(0,0,34,H);x.fillRect(W-34,0,34,H);x.fillRect(0,0,W,34);x.fillRect(0,H-34,W,34);x.strokeStyle="#b89443";x.lineWidth=5;x.strokeRect(52,52,W-104,H-104);x.strokeStyle="#d9bd72";x.lineWidth=2;x.strokeRect(68,68,W-136,H-136);x.strokeStyle="#173f35";x.lineWidth=1;x.strokeRect(80,80,W-160,H-160);function corner(px,py,r){x.save();x.translate(px,py);x.rotate(r);x.strokeStyle="#b89443";x.lineWidth=3;x.beginPath();x.moveTo(0,0);x.bezierCurveTo(35,5,65,28,82,70);x.bezierCurveTo(112,38,145,20,185,18);x.bezierCurveTo(153,43,129,80,119,127);x.bezierCurveTo(78,89,43,63,0,58);x.stroke();x.beginPath();x.arc(92,36,7,0,Math.PI*2);x.fillStyle="#c5a44f";x.fill();x.restore()}corner(88,88,0);corner(W-88,88,Math.PI/2);corner(W-88,H-88,Math.PI);corner(88,H-88,-Math.PI/2);x.textAlign="center";x.fillStyle="#123d32";x.font="bold 25px Georgia";x.fillText("CA SMART STAYCATION",W/2,140);x.fillStyle="#a77d2d";x.font="14px Georgia";x.fillText("AZURE NORTH • PAMPANGA",W/2,168);x.fillStyle="#173f35";x.font="bold 64px Georgia";x.fillText(v.certificateTitle||"SPECIAL GUEST VOUCHER",W/2,265);x.fillStyle="#a77d2d";x.font="bold 82px Georgia";x.fillText(`${v.discountPercent}% OFF`,W/2,365);x.fillStyle="#5c625d";x.font="23px Georgia";x.fillText("A private privilege prepared exclusively for",W/2,420);x.fillStyle="#123d32";x.font="bold 48px Georgia";x.fillText(guest||"Special Guest",W/2,478);x.fillStyle="#a77d2d";x.font="bold 20px Arial";x.fillText(`VOUCHER CODE  •  ${v.code}`,W/2,530);x.fillStyle="#5c625d";x.font="18px Arial";x.fillText(v.maxNights?`Valid for up to ${v.maxNights} night${v.maxNights===1?"":"s"}`:"No night limit",W/2,565);x.fillText(v.expiresAt?`Valid until ${new Date(v.expiresAt).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}`:"No expiration date",W/2,594);x.strokeStyle="#b89443";x.lineWidth=1;x.beginPath();x.moveTo(260,635);x.lineTo(1540,635);x.stroke();x.fillStyle="#123d32";x.font="bold 17px Arial";x.fillText(v.discountPercent===100?"COMPLIMENTARY STAY  •  NON-REFUNDABLE  •  NON-CANCELLABLE":"SPECIAL GUEST PRIVILEGE",W/2,675);x.textAlign="left";x.fillStyle="#123d32";x.font="bold 17px Arial";x.fillText("YOUR STAY AWAITS",170,760);x.fillStyle="#a77d2d";x.font="bold 18px Arial";x.fillText("casmartstaycation.github.io/cassbooking/",170,792);x.fillStyle="#5c625d";x.font="15px Arial";x.fillText("Scan the QR code or visit our booking page.",170,820);x.fillStyle="#a77d2d";x.font="italic 17px Georgia";x.fillText("Elegance • Comfort • Exceptional Stay",170,880);x.fillStyle="#fffdf8";x.fillRect(1355,725,255,205);x.strokeStyle="#b89443";x.lineWidth=2;x.strokeRect(1355,725,255,205);x.drawImage(qr,1372,742,170,170);x.fillStyle="#123d32";x.textAlign="center";x.font="bold 13px Arial";x.fillText("SCAN TO BOOK",1410,918);return c.toDataURL("image/png")}
-  async function generateCertificate(button){const id=button.dataset.voucherId;if(!id)return;try{const r=await fetch(`${API}/vouchers`,{headers:headers(),cache:"no-store"}),j=await r.json();if(!r.ok)throw new Error(j.message||"Unable to load voucher.");const v=(j.data||[]).find(x=>String(x._id)===String(id));if(!v)throw new Error("Voucher not found.");const guest=prompt("Enter the special guest name for this voucher:",v.specialGuestName||"");if(guest===null)return;const update=await fetch(`${API}/vouchers/${id}`,{method:"PUT",headers:headers(),body:JSON.stringify({specialGuestName:guest})});if(!update.ok)throw new Error("Unable to save special guest name.");const a=document.createElement("a");a.href=await drawLuxuryCertificate({...v,specialGuestName:guest},guest);a.download=`${v.code}-luxury-voucher.png`;a.click()}catch(e){alert(e.message||"Unable to generate certificate.")}}
-  function replaceCertificateButtons(){const list=document.getElementById("voucherAdminList");if(!list)return;list.querySelectorAll("button").forEach(old=>{if(!/generate certificate/i.test(old.textContent||""))return;if(old.dataset.luxuryCertificate==="true")return;const button=old.cloneNode(true);button.dataset.luxuryCertificate="true";const id=old.dataset.voucherId||old.closest(".voucher-admin-item")?.dataset.voucherId;if(id)button.dataset.voucherId=id;button.addEventListener("click",()=>generateCertificate(button));old.replaceWith(button)})}
-  function patchLoader(){if(typeof window.loadAdminVouchers!=="function"||window.loadAdminVouchers.__patched)return;const original=window.loadAdminVouchers;async function wrapped(){const result=await original();setTimeout(addDeleteButtons,0);setTimeout(replaceCertificateButtons,20);return result}wrapped.__patched=true;window.loadAdminVouchers=wrapped}
-  function init(){addStyles();addTab();patchLoader();hideTab();setTimeout(()=>{addTab();patchLoader();hideTab();replaceCertificateButtons()},500);setTimeout(()=>{addTab();patchLoader();hideTab();replaceCertificateButtons()},1500)}
-  document.addEventListener("DOMContentLoaded",init);const observer=new MutationObserver(()=>{addStyles();addTab();patchLoader();const card=getCard(),tab=document.getElementById("voucherManagementTab");if(card&&tab&&!tab.classList.contains("active"))hideTab();addDeleteButtons();replaceCertificateButtons()});observer.observe(document.documentElement,{childList:true,subtree:true});
+
+  function addTab() {
+    const nav = document.querySelector(".admin-nav");
+    if (!nav || document.getElementById("voucherManagementTab")) return;
+    const resources = Array.from(nav.querySelectorAll("a")).find(a => /Units & Parking Management/i.test(a.textContent));
+    const tab = document.createElement("a");
+    tab.id = "voucherManagementTab";
+    tab.href = "#voucherManagement";
+    tab.textContent = "Voucher Management";
+    tab.className = "voucher-management-tab";
+    if (resources) resources.insertAdjacentElement("afterend", tab); else nav.appendChild(tab);
+    tab.addEventListener("click", e => { e.preventDefault(); showTab(true); });
+  }
+
+  function addStyles() {
+    if (document.getElementById("voucherTabStyles")) return;
+    const s = document.createElement("style"); s.id = "voucherTabStyles";
+    s.textContent = `.voucher-management-tab{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 14px;border-radius:7px;background:#eef3f0;color:#173f35;border:1px solid #d7e1dc;text-decoration:none;font-weight:700}.voucher-management-tab.active{background:#173f35;color:#fff;border-color:#173f35}#voucherAdminCard.voucher-tab-panel{display:none!important;margin-top:18px}#voucherAdminCard.voucher-tab-panel.active{display:block!important}.voucher-delete-btn{background:#fff!important;color:#a1261f!important;border:1px solid #d9b1ad!important}.voucher-delete-btn:hover{background:#fff4f3!important}`;
+    document.head.appendChild(s);
+  }
+
+  function getCard() { return document.getElementById("voucherAdminCard"); }
+
+  function showTab(active) {
+    const card = getCard();
+    const tab = document.getElementById("voucherManagementTab");
+    if (!card || !tab) return;
+    card.classList.add("voucher-tab-panel");
+    card.classList.toggle("active", !!active);
+    tab.classList.toggle("active", !!active);
+    if (active) setTimeout(addDeleteButtons, 100);
+  }
+
+  function hideTab() {
+    const card = getCard();
+    const tab = document.getElementById("voucherManagementTab");
+    if (card) { card.classList.add("voucher-tab-panel"); card.classList.remove("active"); }
+    if (tab) tab.classList.remove("active");
+  }
+
+  async function deleteVoucher(id, code) {
+    if (!confirm(`Delete voucher ${code}? This cannot be undone.`)) return;
+    try {
+      const r = await fetch(`${API}/vouchers/${id}`, { method: "DELETE", headers: headers() });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.message || "Unable to delete voucher.");
+      const refresh = window.loadAdminVouchers;
+      if (typeof refresh === "function") await refresh();
+      setTimeout(addDeleteButtons, 100);
+    } catch (e) { alert(e.message || "Unable to delete voucher."); }
+  }
+
+  function addDeleteButtons() {
+    const list = document.getElementById("voucherAdminList");
+    if (!list) return;
+    list.querySelectorAll(".voucher-admin-item").forEach(row => {
+      if (row.querySelector(".voucher-delete-btn")) return;
+      const buttons = row.querySelectorAll("button[data-voucher-id]");
+      const id = buttons[0]?.dataset.voucherId;
+      if (!id) return;
+      row.dataset.voucherId = id;
+      const code = row.querySelector("strong")?.textContent?.trim() || "this voucher";
+      const actions = row.querySelector(".voucher-admin-actions");
+      if (!actions) return;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "voucher-delete-btn";
+      btn.textContent = "Delete";
+      btn.addEventListener("click", () => deleteVoucher(id, code));
+      actions.appendChild(btn);
+    });
+  }
+
+  function patchLoader() {
+    if (typeof window.loadAdminVouchers !== "function" || window.loadAdminVouchers.__patched) return;
+    const original = window.loadAdminVouchers;
+    async function wrapped() {
+      const result = await original();
+      setTimeout(addDeleteButtons, 0);
+      return result;
+    }
+    wrapped.__patched = true;
+    window.loadAdminVouchers = wrapped;
+  }
+
+  function init() {
+    addStyles();
+    addTab();
+    patchLoader();
+    hideTab();
+    setTimeout(() => { addTab(); patchLoader(); hideTab(); }, 500);
+    setTimeout(() => { addTab(); patchLoader(); hideTab(); }, 1500);
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+  const observer = new MutationObserver(() => {
+    addStyles(); addTab(); patchLoader();
+    const card = getCard(); const tab = document.getElementById("voucherManagementTab");
+    if (card && tab && !tab.classList.contains("active")) hideTab();
+    addDeleteButtons();
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 })();
