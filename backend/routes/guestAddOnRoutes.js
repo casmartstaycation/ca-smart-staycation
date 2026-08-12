@@ -7,8 +7,15 @@ const jwt = require("jsonwebtoken");
 const Booking = require("../models/Booking");
 
 const router = express.Router();
-const uploadDir = path.join(__dirname, "../uploads/payments");
+
+// Render can write to the repository's uploads directory, but Vercel's deployed
+// filesystem is read-only. Use /tmp for temporary serverless uploads there.
+const uploadRoot = process.env.VERCEL
+  ? path.join("/tmp", "ca-smart-staycation-uploads")
+  : path.join(__dirname, "../uploads");
+const uploadDir = path.join(uploadRoot, "payments");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
 const storage = multer.diskStorage({ destination: (_req, _file, cb) => cb(null, uploadDir), filename: (_req, file, cb) => cb(null, `addon-${Date.now()}-${crypto.randomBytes(5).toString("hex")}${path.extname(file.originalname).toLowerCase()}`) });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 }, fileFilter: (_req, file, cb) => cb(null, ["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.mimetype)) });
 const GUEST_JWT_SECRET = process.env.JWT_SECRET || "ca-smart-staycation-guest-secret";
