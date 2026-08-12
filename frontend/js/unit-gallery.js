@@ -1,4 +1,4 @@
-const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
+const UNIT_GALLERY_API="https://ca-smart-staycation.vercel.app/api";
 (function(){
   const css=`
     .unit-info-panel{display:block;position:relative;clear:both;margin-top:18px;padding:0;width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow:visible;grid-column:1/-1}
@@ -40,93 +40,15 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
   const CACHE_TTL=5*60*1000;
   function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]))}
   function isParkingOnly(){return String(document.getElementById('bookingType')?.value||'').trim().toLowerCase()==='parking'}
-  function hideAccommodationUI(){
-    const panel=document.getElementById('unitInfoPanel');
-    if(panel){panel.style.display='none';panel.innerHTML='';}
-    const roomGroup=document.getElementById('roomGroup');
-    if(roomGroup)roomGroup.style.display='none';
-    const calendarGroup=document.querySelector('#calendarGrid')?.closest('.form-group');
-    if(calendarGroup)calendarGroup.style.display='';
-  }
-  function showAccommodationUI(){
-    const roomGroup=document.getElementById('roomGroup');
-    if(roomGroup)roomGroup.style.display='';
-    const panel=document.getElementById('unitInfoPanel');
-    if(panel)panel.style.display='block';
-  }
-  function openPhoto(images,startIndex){
-    if(!images.length)return;
-    let index=startIndex;
-    const m=document.createElement('div');m.className='unit-lightbox';
-    m.innerHTML=`<button type="button" class="unit-close" aria-label="Close">×</button><button type="button" class="unit-nav unit-prev" aria-label="Previous photo">‹</button><img alt="Accommodation photo"><button type="button" class="unit-nav unit-next" aria-label="Next photo">›</button>`;
-    const img=m.querySelector('img');
-    const show=()=>{index=(index+images.length)%images.length;img.src=images[index];img.alt=`Accommodation photo ${index+1} of ${images.length}`};
-    const close=()=>{document.removeEventListener('keydown',keyHandler);m.remove()};
-    const keyHandler=e=>{if(!document.body.contains(m))return;if(e.key==='ArrowLeft'){e.preventDefault();index--;show()}else if(e.key==='ArrowRight'){e.preventDefault();index++;show()}else if(e.key==='Escape'){e.preventDefault();close()}};
-    m.querySelector('.unit-prev').onclick=e=>{e.stopPropagation();index--;show()};
-    m.querySelector('.unit-next').onclick=e=>{e.stopPropagation();index++;show()};
-    m.querySelector('.unit-close').onclick=close;
-    m.onclick=e=>{if(e.target===m)close()};
-    document.addEventListener('keydown',keyHandler);
-    document.body.appendChild(m);show();
-  }
+  function hideAccommodationUI(){const panel=document.getElementById('unitInfoPanel');if(panel){panel.style.display='none';panel.innerHTML='';}const roomGroup=document.getElementById('roomGroup');if(roomGroup)roomGroup.style.display='none';const calendarGroup=document.querySelector('#calendarGrid')?.closest('.form-group');if(calendarGroup)calendarGroup.style.display='';}
+  function showAccommodationUI(){const roomGroup=document.getElementById('roomGroup');if(roomGroup)roomGroup.style.display='';const panel=document.getElementById('unitInfoPanel');if(panel)panel.style.display='block';}
+  function openPhoto(images,startIndex){if(!images.length)return;let index=startIndex;const m=document.createElement('div');m.className='unit-lightbox';m.innerHTML=`<button type="button" class="unit-close" aria-label="Close">×</button><button type="button" class="unit-nav unit-prev" aria-label="Previous photo">‹</button><img alt="Accommodation photo"><button type="button" class="unit-nav unit-next" aria-label="Next photo">›</button>`;const img=m.querySelector('img');const show=()=>{index=(index+images.length)%images.length;img.src=images[index];img.alt=`Accommodation photo ${index+1} of ${images.length}`};const close=()=>{document.removeEventListener('keydown',keyHandler);m.remove()};const keyHandler=e=>{if(!document.body.contains(m))return;if(e.key==='ArrowLeft'){e.preventDefault();index--;show()}else if(e.key==='ArrowRight'){e.preventDefault();index++;show()}else if(e.key==='Escape'){e.preventDefault();close()}};m.querySelector('.unit-prev').onclick=e=>{e.stopPropagation();index--;show()};m.querySelector('.unit-next').onclick=e=>{e.stopPropagation();index++;show()};m.querySelector('.unit-close').onclick=close;m.onclick=e=>{if(e.target===m)close()};document.addEventListener('keydown',keyHandler);document.body.appendChild(m);show();}
   function selected(){const id=document.getElementById('room')?.value;return units.find(x=>String(x._id)===String(id))||null}
-  function getPanel(){
-    let panel=document.getElementById('unitInfoPanel');
-    if(panel)return panel;
-    const group=document.getElementById('roomGroup');if(!group)return null;
-    panel=document.createElement('div');panel.id='unitInfoPanel';panel.className='unit-info-panel';
-    group.insertAdjacentElement('afterend',panel);
-    return panel;
-  }
-  function render(){
-    if(isParkingOnly()){hideAccommodationUI();return}
-    const room=document.getElementById('room');if(!room)return;
-    const panel=getPanel();if(!panel)return;
-    showAccommodationUI();
-    const u=selected();
-    if(!u){panel.innerHTML='<p style="margin:0;color:#888">Select an accommodation to view photos.</p>';return}
-    const images=Array.isArray(u.images)?u.images.map(x=>typeof x==='string'?x:x?.url).filter(Boolean):[];
-    const primary=images[0];
-    const amenities=Array.isArray(u.amenities)?u.amenities.filter(Boolean):[];
-    panel.innerHTML=`<div class="unit-gallery">${primary?`<img class="unit-primary-photo" loading="lazy" src="${esc(primary)}" alt="${esc(u.unitName||u.name||'Accommodation')}" data-photo="0"><div class="unit-photo-thumbs">${images.map((img,i)=>`<img loading="lazy" src="${esc(img)}" alt="Photo ${i+1}" data-photo="${i}">`).join('')}</div>`:'<div style="display:flex;align-items:center;justify-content:center;min-height:220px;background:#f5f3ef;border-radius:8px;color:#888">No photos available</div>'}<div class="unit-description"><h3>${esc(u.unitName||u.name||u.unitNumber||'Selected Unit')}</h3><p>${esc(u.description||'No description available for this accommodation.')}</p></div>${amenities.length?`<div class="unit-amenities"><h3>Amenities</h3><div class="unit-amenity-list">${amenities.map(a=>`<span class="unit-amenity">${esc(a)}</span>`).join('')}</div></div>`:''}</div>`;
-    panel.querySelectorAll('[data-photo]').forEach(el=>el.addEventListener('click',()=>openPhoto(images,Number(el.dataset.photo))));
-    moveCalendarAfterAmenities(panel);
-  }
-  function moveCalendarAfterAmenities(panel){
-    const calendarGroup=document.querySelector('#calendarGrid')?.closest('.form-group');
-    if(!calendarGroup||!panel||isParkingOnly())return;
-    panel.insertAdjacentElement('afterend',calendarGroup);
-    calendarGroup.classList.add('calendar-after-amenities');
-  }
-  function useCached(){
-    if(isParkingOnly())return false;
-    try{const raw=sessionStorage.getItem(CACHE_KEY);if(!raw)return false;const cached=JSON.parse(raw);if(!cached?.timestamp||Date.now()-cached.timestamp>CACHE_TTL||!Array.isArray(cached.data))return false;units=cached.data;render();return true}catch{return false}
-  }
-  async function load(){
-    if(isParkingOnly()){loadingRequest++;hideAccommodationUI();return}
-    const requestId=++loadingRequest;
-    if(useCached())return;
-    try{
-      const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),8000);
-      const r=await fetch(`${UNIT_GALLERY_API}/rooms`,{cache:'no-store',signal:controller.signal});clearTimeout(timer);
-      const j=await r.json();
-      if(requestId!==loadingRequest||isParkingOnly()){if(isParkingOnly())hideAccommodationUI();return}
-      if(r.ok&&Array.isArray(j.data)){units=j.data;try{sessionStorage.setItem(CACHE_KEY,JSON.stringify({timestamp:Date.now(),data:units}))}catch{}render()}
-    }catch(e){if(!isParkingOnly())console.warn('Unable to load accommodation photos',e)}
-  }
-  function syncBookingType(){
-    const parking=isParkingOnly();
-    loadingRequest++;
-    if(parking){hideAccommodationUI();return}
-    showAccommodationUI();
-    load();
-    render();
-  }
-  document.addEventListener('DOMContentLoaded',()=>{
-    const room=document.getElementById('room');const type=document.getElementById('bookingType');
-    if(room)room.addEventListener('change',()=>{if(!isParkingOnly())render();else hideAccommodationUI()});
-    if(type){type.addEventListener('change',syncBookingType);syncBookingType()}
-    else if(!isParkingOnly())load();
-  });
+  function getPanel(){let panel=document.getElementById('unitInfoPanel');if(panel)return panel;const group=document.getElementById('roomGroup');if(!group)return null;panel=document.createElement('div');panel.id='unitInfoPanel';panel.className='unit-info-panel';group.insertAdjacentElement('afterend',panel);return panel;}
+  function render(){if(isParkingOnly()){hideAccommodationUI();return}const room=document.getElementById('room');if(!room)return;const panel=getPanel();if(!panel)return;showAccommodationUI();const u=selected();if(!u){panel.innerHTML='<p style="margin:0;color:#888">Select an accommodation to view photos.</p>';return}const images=Array.isArray(u.images)?u.images.map(x=>typeof x==='string'?x:x?.url).filter(Boolean):[];const primary=images[0];const amenities=Array.isArray(u.amenities)?u.amenities.filter(Boolean):[];panel.innerHTML=`<div class="unit-gallery">${primary?`<img class="unit-primary-photo" loading="lazy" src="${esc(primary)}" alt="${esc(u.unitName||u.name||'Accommodation')}" data-photo="0"><div class="unit-photo-thumbs">${images.map((img,i)=>`<img loading="lazy" src="${esc(img)}" alt="Photo ${i+1}" data-photo="${i}">`).join('')}</div>`:'<div style="display:flex;align-items:center;justify-content:center;min-height:220px;background:#f5f3ef;border-radius:8px;color:#888">No photos available</div>'}<div class="unit-description"><h3>${esc(u.unitName||u.name||u.unitNumber||'Selected Unit')}</h3><p>${esc(u.description||'No description available for this accommodation.')}</p></div>${amenities.length?`<div class="unit-amenities"><h3>Amenities</h3><div class="unit-amenity-list">${amenities.map(a=>`<span class="unit-amenity">${esc(a)}</span>`).join('')}</div></div>`:''}</div>`;panel.querySelectorAll('[data-photo]').forEach(el=>el.addEventListener('click',()=>openPhoto(images,Number(el.dataset.photo))));moveCalendarAfterAmenities(panel);}
+  function moveCalendarAfterAmenities(panel){const calendarGroup=document.querySelector('#calendarGrid')?.closest('.form-group');if(!calendarGroup||!panel||isParkingOnly())return;panel.insertAdjacentElement('afterend',calendarGroup);calendarGroup.classList.add('calendar-after-amenities');}
+  function useCached(){if(isParkingOnly())return false;try{const raw=sessionStorage.getItem(CACHE_KEY);if(!raw)return false;const cached=JSON.parse(raw);if(!cached?.timestamp||Date.now()-cached.timestamp>CACHE_TTL||!Array.isArray(cached.data))return false;units=cached.data;render();return true}catch{return false}}
+  async function load(){if(isParkingOnly()){loadingRequest++;hideAccommodationUI();return}const requestId=++loadingRequest;if(useCached())return;try{const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),8000);const r=await fetch(`${UNIT_GALLERY_API}/rooms`,{cache:'no-store',signal:controller.signal});clearTimeout(timer);const j=await r.json();if(requestId!==loadingRequest||isParkingOnly()){if(isParkingOnly())hideAccommodationUI();return}if(r.ok&&Array.isArray(j.data)){units=j.data;try{sessionStorage.setItem(CACHE_KEY,JSON.stringify({timestamp:Date.now(),data:units}))}catch{}render()}}catch(e){if(!isParkingOnly())console.warn('Unable to load accommodation photos',e)}}
+  function syncBookingType(){const parking=isParkingOnly();loadingRequest++;if(parking){hideAccommodationUI();return}showAccommodationUI();load();render();}
+  document.addEventListener('DOMContentLoaded',()=>{const room=document.getElementById('room');const type=document.getElementById('bookingType');if(room)room.addEventListener('change',()=>{if(!isParkingOnly())render();else hideAccommodationUI()});if(type){type.addEventListener('change',syncBookingType);syncBookingType()}else if(!isParkingOnly())load();});
 })();
