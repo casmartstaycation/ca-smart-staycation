@@ -17,7 +17,33 @@ function deleteUploadedFile(dir, filename) { if (!filename) return; const safeNa
 function listFiles(dir) { try { if (!fs.existsSync(dir)) return []; return fs.readdirSync(dir, { withFileTypes: true }).filter(entry => entry.isFile()).map(entry => entry.name); } catch (err) { console.error(`UPLOAD DIRECTORY SCAN ERROR (${dir}):`, err.message); return []; } }
 async function cleanupTerminalBookingUploads() { try { const bookings = await Booking.find({}).select("_id bookingStatus paymentProof paymentProofHistory governmentId driversLicense reschedulePaymentProof addOnRequests").lean(); const terminalStatuses = new Set(["Cancelled", "Checked Out", "Expired"]); const referencedPaymentFiles = new Set(); const referencedDocumentFiles = new Set(); const terminalBookings = []; for (const booking of bookings) { if (booking.paymentProof) referencedPaymentFiles.add(path.basename(String(booking.paymentProof))); for (const item of (booking.paymentProofHistory || [])) if (item.filename) referencedPaymentFiles.add(path.basename(String(item.filename))); for (const item of (booking.addOnRequests || [])) if (item.paymentProof) referencedPaymentFiles.add(path.basename(String(item.paymentProof))); if (booking.governmentId) referencedDocumentFiles.add(path.basename(String(booking.governmentId))); if (booking.driversLicense) referencedDocumentFiles.add(path.basename(String(booking.driversLicense))); if (booking.reschedulePaymentProof) referencedPaymentFiles.add(path.basename(String(booking.reschedulePaymentProof))); if (terminalStatuses.has(String(booking.bookingStatus || "").trim())) terminalBookings.push(booking); } for (const booking of terminalBookings) { deleteUploadedFile(paymentUploadDir, booking.paymentProof); for (const item of (booking.paymentProofHistory || [])) deleteUploadedFile(paymentUploadDir, item.filename); for (const item of (booking.addOnRequests || [])) deleteUploadedFile(paymentUploadDir, item.paymentProof); deleteUploadedFile(guestDocumentUploadDir, booking.governmentId); deleteUploadedFile(guestDocumentUploadDir, booking.driversLicense); deleteUploadedFile(paymentUploadDir, booking.reschedulePaymentProof); await Booking.updateOne({ _id: booking._id }, { $set: { paymentProof: "", governmentId: "", driversLicense: "", reschedulePaymentProof: "", paymentProofHistory: [], addOnRequests: [] } }); } const orphanPaymentFiles = listFiles(paymentUploadDir).filter(name => !referencedPaymentFiles.has(name)); const orphanDocumentFiles = listFiles(guestDocumentUploadDir).filter(name => !referencedDocumentFiles.has(name)); for (const filename of orphanPaymentFiles) deleteUploadedFile(paymentUploadDir, filename); for (const filename of orphanDocumentFiles) deleteUploadedFile(guestDocumentUploadDir, filename); if (terminalBookings.length || orphanPaymentFiles.length || orphanDocumentFiles.length) console.log(`🧹 Upload cleanup: ${terminalBookings.length} terminal booking(s), ${orphanPaymentFiles.length} orphan payment file(s), ${orphanDocumentFiles.length} orphan document file(s).`); } catch (err) { console.error("TERMINAL/ORPHAN UPLOAD CLEANUP ERROR:", err); } }
 app.use(helmet());
-app.use(cors({ origin: ["https://casmartstaycation.com", "https://www.casmartstaycation.com", "https://casmartstaycation.github.io", "http://localhost:3000", "http://127.0.0.1:5500", "http://localhost:5500"], credentials: true }));
+const allowedOrigins = new Set([
+  "https://casmartstaycation.com",
+  "https://www.casmartstaycation.com",
+  "https://casmartstaycation.github.io",
+  "http://localhost:3000",
+  "http://127.0.0.1:5500",
+  "http://localhost:5500"
+]);
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (allowedOrigins.has(origin)) return true;
+  try {
+    const url = new URL(origin);
+    return url.protocol === "https:" && url.hostname.endsWith(".vercel.app");
+  } catch (_) {
+    return false;
+  }
+}
+app.use(cors({
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) return callback(null, true);
+    return callback(new Error(`CORS blocked origin: ${origin}`));
+  },
+  credentials: true,
+  methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Accept"]
+}));
 app.use(morgan('dev')); app.use(express.json({ limit: '10mb' })); app.use(express.urlencoded({ extended: true, limit: '10mb' })); app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 mongoose.connect(process.env.MONGODB_URI).then(() => console.log("✅ MongoDB Connected")).catch(err => console.error("MongoDB Error:", err));
 app.get('/', (req, res) => res.json({ status: 'success', message: 'CA Smart Staycation API is running' })); app.get('/api/health', (req, res) => res.json({ status: 'success', message: 'CA Smart Staycation API is running', timestamp: new Date() }));
