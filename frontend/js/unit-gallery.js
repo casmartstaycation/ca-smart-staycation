@@ -61,13 +61,8 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     panel=document.createElement('div');panel.id='unitInfoPanel';panel.className='unit-info-panel';
     const formGrid=group.closest('.form-grid');
     const formCard=formGrid?.closest('.form-card');
-    /* Keep the gallery OUTSIDE the CSS grid. The previous implementation made
-       the gallery a grid item beside the calendar, which caused mobile overlap. */
-    if(formGrid&&formCard){
-      formGrid.insertAdjacentElement('afterend',panel);
-    } else if(group.parentElement){
-      group.parentElement.insertAdjacentElement('afterend',panel);
-    }
+    if(formGrid&&formCard){formGrid.insertAdjacentElement('afterend',panel)}
+    else if(group.parentElement){group.parentElement.insertAdjacentElement('afterend',panel)}
     return panel;
   }
   function render(){
@@ -82,6 +77,18 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     const amenities=Array.isArray(u.amenities)?u.amenities.filter(Boolean):[];
     panel.innerHTML=`<div class="unit-gallery">${primary?`<img class="unit-primary-photo" loading="lazy" src="${esc(primary)}" alt="${esc(u.unitName||u.name||'Accommodation')}" data-photo="0"><div class="unit-photo-thumbs">${images.map((img,i)=>`<img loading="lazy" src="${esc(img)}" alt="Photo ${i+1}" data-photo="${i}">`).join('')}</div>`:'<div style="display:flex;align-items:center;justify-content:center;min-height:220px;background:#f5f3ef;border-radius:8px;color:#888">No photos available</div>'}<div class="unit-description"><h3>${esc(u.unitName||u.name||u.unitNumber||'Selected Unit')}</h3><p>${esc(u.description||'No description available for this accommodation.')}</p></div>${amenities.length?`<div class="unit-amenities"><h3>Amenities</h3><div class="unit-amenity-list">${amenities.map(a=>`<span class="unit-amenity">${esc(a)}</span>`).join('')}</div></div>`:''}</div>`;
     panel.querySelectorAll('[data-photo]').forEach(el=>el.addEventListener('click',()=>openPhoto(images,Number(el.dataset.photo))));
+    moveCalendarAfterAmenities(panel);
+  }
+  function moveCalendarAfterAmenities(panel){
+    const calendarGroup=document.querySelector('#calendarGrid')?.closest('.form-group');
+    if(!calendarGroup||!panel)return;
+    const amenities=panel.querySelector('.unit-amenities');
+    if(amenities){
+      amenities.insertAdjacentElement('afterend',calendarGroup);
+    }else{
+      panel.insertAdjacentElement('afterend',calendarGroup);
+    }
+    calendarGroup.classList.add('calendar-after-amenities');
   }
   function useCached(){
     try{const raw=sessionStorage.getItem(CACHE_KEY);if(!raw)return false;const cached=JSON.parse(raw);if(!cached?.timestamp||Date.now()-cached.timestamp>CACHE_TTL||!Array.isArray(cached.data))return false;units=cached.data;render();return true}catch{return false}
