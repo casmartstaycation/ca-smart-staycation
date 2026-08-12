@@ -35,10 +35,23 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
   `;
   const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
   let units=[];
+  let loadingRequest=0;
   const CACHE_KEY='caSmartStaycationRoomsGallery';
   const CACHE_TTL=5*60*1000;
   function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]))}
   function isParkingOnly(){return String(document.getElementById('bookingType')?.value||'').toLowerCase()==='parking'}
+  function hideAccommodationUI(){
+    const panel=document.getElementById('unitInfoPanel');
+    if(panel){panel.style.display='none';panel.innerHTML='';}
+    const roomGroup=document.getElementById('roomGroup');
+    if(roomGroup)roomGroup.style.display='none';
+  }
+  function showAccommodationUI(){
+    const roomGroup=document.getElementById('roomGroup');
+    if(roomGroup)roomGroup.style.display='';
+    const panel=document.getElementById('unitInfoPanel');
+    if(panel)panel.style.display='block';
+  }
   function openPhoto(images,startIndex){
     if(!images.length)return;
     let index=startIndex;
@@ -67,8 +80,8 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
   function render(){
     const room=document.getElementById('room');if(!room)return;
     const panel=getPanel();if(!panel)return;
-    if(isParkingOnly()){panel.style.display='none';return}
-    panel.style.display='block';
+    if(isParkingOnly()){hideAccommodationUI();return}
+    showAccommodationUI();
     const u=selected();
     if(!u){panel.innerHTML='<p style="margin:0;color:#888">Select an accommodation to view photos.</p>';return}
     const images=Array.isArray(u.images)?u.images.map(x=>typeof x==='string'?x:x?.url).filter(Boolean):[];
@@ -88,61 +101,25 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     try{const raw=sessionStorage.getItem(CACHE_KEY);if(!raw)return false;const cached=JSON.parse(raw);if(!cached?.timestamp||Date.now()-cached.timestamp>CACHE_TTL||!Array.isArray(cached.data))return false;units=cached.data;render();return true}catch{return false}
   }
   async function load(){
-    if(isParkingOnly())return;
+    if(isParkingOnly()){hideAccommodationUI();return}
+    const requestId=++loadingRequest;
     if(useCached())return;
     try{
       const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),8000);
       const r=await fetch(`${UNIT_GALLERY_API}/rooms`,{cache:'no-store',signal:controller.signal});clearTimeout(timer);
       const j=await r.json();
+      if(requestId!==loadingRequest||isParkingOnly()){if(isParkingOnly())hideAccommodationUI();return}
       if(r.ok&&Array.isArray(j.data)){units=j.data;try{sessionStorage.setItem(CACHE_KEY,JSON.stringify({timestamp:Date.now(),data:units}))}catch{}render()}
-    }catch(e){console.warn('Unable to load accommodation photos',e)}
+    }catch(e){if(!isParkingOnly())console.warn('Unable to load accommodation photos',e)}
   }
-
-  /* =========================================
-     BOOKING SUMMARY FIX
-     The property capacity is 4, but the room rate includes only 2 guests.
-     Guests 3 and 4 are each charged the configured extra-adult fee per night.
-  ========================================= */
-  function refreshGuestSummary(){
-    const type=String(document.getElementById('bookingType')?.value||'unit').toLowerCase();
-    const checkIn=document.getElementById('checkIn')?.value;
-    const checkOut=document.getElementById('checkOut')?.value;
-    const roomId=document.getElementById('room')?.value;
-    const guestCount=Number(document.getElementById('guests')?.value||1);
-    if(!checkIn||!checkOut)return;
-    const parseDate=value=>{const d=new Date(String(value)+'T00:00:00');return Number.isNaN(d.getTime())?null:d};
-    const start=parseDate(checkIn),end=parseDate(checkOut);
-    if(!start||!end)return;
-    const nights=Math.ceil((end-start)/86400000);
-    if(nights<=0)return;
-    const fee=Number(settings?.extraAdultFee??300);
-    const parkingRate=Number(settings?.parkingRate??500);
-    const deposit=Number(settings?.securityDeposit??1000);
-    let roomTotal=0,extraTotal=0,parkingTotal=0,security=0;
-    if(type==='parking'){
-      parkingTotal=parkingRate*nights;
-    }else{
-      const room=Array.isArray(rooms)?rooms.find(r=>String(r._id)===String(roomId)):null;
-      if(!room)return;
-      roomTotal=nights*Number(room.price||0);
-      const includedGuests=2;
-      extraTotal=Math.max(0,Math.min(4,guestCount)-includedGuests)*fee*nights;
-      if(type==='both')parkingTotal=parkingRate*nights;
-      security=deposit;
-    }
-    const total=roomTotal+extraTotal+parkingTotal+security;
-    const set=(id,value)=>{const el=document.getElementById(id);if(el)el.innerText='₱'+Number(value).toLocaleString()};
-    set('roomAmount',roomTotal);set('extraGuestAmount',extraTotal);set('parkingAmount',parkingTotal);set('securityDepositAmount',security);set('totalAmount',total);
+  function syncBookingType(){
+    if(isParkingOnly()){loadingRequest++;hideAccommodationUI();return}
+    showAccommodationUI();load();render();
   }
-
   document.addEventListener('DOMContentLoaded',()=>{
-    const room=document.getElementById('room');const type=document.getElementById('bookingType');const guests=document.getElementById('guests');
-    if(room)room.addEventListener('change',()=>{render();refreshGuestSummary()});
-    if(guests)guests.addEventListener('change',refreshGuestSummary);
-    if(type)type.addEventListener('change',()=>{const panel=document.getElementById('unitInfoPanel');if(String(type.value).toLowerCase()==='parking'){if(panel)panel.style.display='none'}else{load();render()}refreshGuestSummary()});
-    const checkIn=document.getElementById('checkIn');const checkOut=document.getElementById('checkOut');
-    if(checkIn)checkIn.addEventListener('change',refreshGuestSummary);if(checkOut)checkOut.addEventListener('change',refreshGuestSummary);
-    if(!isParkingOnly())load();
-    setTimeout(refreshGuestSummary,0);
+    const room=document.getElementById('room');const type=document.getElementById('bookingType');
+    if(room)room.addEventListener('change',render);
+    if(type){type.addEventListener('change',syncBookingType);syncBookingType()}
+    else if(!isParkingOnly())load();
   });
 })();
