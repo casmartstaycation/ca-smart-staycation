@@ -1,44 +1,29 @@
-/* CA Smart Staycation API routing.
- * Use same-origin /api when the site is served from the Vercel custom domain.
- * Keep the Vercel deployment URL as a fallback for GitHub Pages/local previews.
- */
+/* CA Smart Staycation API routing: same-origin API on Vercel. */
 (function () {
   'use strict';
-
+  const SAME_ORIGIN_API = '/api';
   const VERCEL_API = 'https://ca-smart-staycation.vercel.app/api';
   const LEGACY_API = 'https://ca-smart-staycation-muqd.onrender.com/api';
-  const SAME_ORIGIN_API = '/api';
-  const hostname = window.location.hostname;
-  const useSameOrigin = hostname === 'casmartstaycation.com' || hostname === 'www.casmartstaycation.com';
-  const API_BASE = useSameOrigin ? SAME_ORIGIN_API : VERCEL_API;
   const originalFetch = window.fetch.bind(window);
 
-  function redirectUrl(url) {
-    if (!url) return url;
-
-    if (url.startsWith(LEGACY_API)) {
-      return API_BASE + url.slice(LEGACY_API.length);
-    }
+  window.fetch = function (input, init) {
+    let url = '';
+    let isString = typeof input === 'string';
+    if (isString) url = input;
+    else if (input && typeof input.url === 'string') url = input.url;
 
     if (url.startsWith(VERCEL_API)) {
-      return API_BASE + url.slice(VERCEL_API.length);
-    }
-
-    return url;
-  }
-
-  window.fetch = function (input, init) {
-    if (typeof input === 'string') {
-      input = redirectUrl(input);
-    } else if (input && typeof input.url === 'string') {
-      const redirected = redirectUrl(input.url);
-      if (redirected !== input.url) {
-        input = new Request(redirected, input);
-      }
+      const relative = SAME_ORIGIN_API + url.slice(VERCEL_API.length);
+      if (isString) input = relative;
+      else input = new Request(relative, input);
+    } else if (url.startsWith(LEGACY_API)) {
+      const relative = SAME_ORIGIN_API + url.slice(LEGACY_API.length);
+      if (isString) input = relative;
+      else input = new Request(relative, input);
     }
 
     return originalFetch(input, init);
   };
 
-  window.CA_SMART_API = API_BASE;
+  window.CA_SMART_API = SAME_ORIGIN_API;
 })();
