@@ -25,26 +25,17 @@ function parseBookingDate(value) { if (!value) return null; const s=String(value
 function isTerminalBooking(b) { return ["cancelled","checked out","expired"].includes(String(b?.bookingStatus||"").trim().toLowerCase()); }
 function idOf(value) { if (!value) return ""; if (typeof value === "object") return String(value._id || value.id || ""); return String(value); }
 function bookingHasAccommodation(b) { return !!idOf(b?.room) || !!idOf(b?.unit); }
-function bookingHasParking(b) {
-    if (!b) return false;
-    if (b.parkingOnly === true || String(b.parkingOnly).toLowerCase() === "true") return true;
-    if (idOf(b.parking) || idOf(b.parkingSlot) || !!String(b.parkingNumber ?? "").trim()) return true;
-    const type = String(b.bookingType ?? b.type ?? b.bookingCategory ?? "").trim().toLowerCase().replace(/[\s_-]/g, "");
-    return type === "parking" || type === "parkingonly";
-}
-function datesOverlap(target, start, end) { return !!(start && end && target >= start && target < end); }
-function bookingOverlapsDates(b, start, end) {
-    const s=parseBookingDate(b?.checkIn),e=parseBookingDate(b?.checkOut);
-    return !!(s&&e&&start&&end&&start<e&&end>s);
-}
-function setMinimumDates() { const a=document.getElementById("checkIn"),b=document.getElementById("checkOut"); if(!a||!b)return; const t=new Date();t.setHours(0,0,0,0);a.min=formatLocalDate(t);b.min=formatLocalDate(t); }
+function bookingHasParking(b) { if (!b) return false; if (b.parkingOnly === true || String(b.parkingOnly).toLowerCase() === "true") return true; if (idOf(b.parking) || idOf(b.parkingSlot) || !!String(b.parkingNumber ?? "").trim()) return true; const type=String(b.bookingType??b.type??b.bookingCategory??"").trim().toLowerCase().replace(/[\s_-]/g,""); return type==="parking"||type==="parkingonly"||type==="both"||type==="accommodationparking"; }
+function datesOverlap(target,start,end){return !!(start&&end&&target>=start&&target<end);}
+function bookingOverlapsDates(b,start,end){const s=parseBookingDate(b?.checkIn),e=parseBookingDate(b?.checkOut);return !!(s&&e&&start&&end&&start<e&&end>s);}
+function setMinimumDates(){const a=document.getElementById("checkIn"),b=document.getElementById("checkOut");if(!a||!b)return;const t=new Date();t.setHours(0,0,0,0);a.min=formatLocalDate(t);b.min=formatLocalDate(t);}
 
-document.addEventListener("DOMContentLoaded", async () => { try { setMinimumDates(); await loadSettings(); await loadRooms(); await loadParkingSlots(); await loadBookedDates(); setupEvents(); const form=document.getElementById("guestBookingForm"); if(form)form.addEventListener("submit",submitBooking); renderCalendar(); } catch(e){console.error(e);} });
+document.addEventListener("DOMContentLoaded",async()=>{try{setMinimumDates();await loadSettings();await loadRooms();await loadParkingSlots();await loadBookedDates();setupEvents();const form=document.getElementById("guestBookingForm");if(form)form.addEventListener("submit",submitBooking);renderCalendar();}catch(e){console.error(e);}});
 window.addEventListener("load",renderCalendar);
 async function loadSettings(){try{const r=await fetch(`${API}/settings`,{cache:"no-store"}),j=await r.json();if(r.ok&&j.data)settings={...settings,...j.data};}catch(e){console.warn("Unable to load settings. Using defaults.");}}
 async function loadRooms(){try{const r=await fetch(`${API}/rooms`,{cache:"no-store"}),j=await r.json();rooms=Array.isArray(j.data)?j.data:[];const s=document.getElementById("room");if(!s)return;s.innerHTML='<option value="">Select Accommodation</option>';rooms.forEach(x=>{const n=x.unitNumber||x.roomNumber||"",name=x.unitName||x.roomName||"Room";s.innerHTML+=`<option value="${x._id}">${n} - ${name}</option>`;});}catch(e){console.error("loadRooms ERROR:",e);}}
 async function loadParkingSlots(){try{const r=await fetch(`${API}/parking`,{cache:"no-store"}),j=await r.json();if(!r.ok)throw new Error(j.message||"Unable to load parking slots.");parkingSlots=Array.isArray(j.data)?j.data:[];const preferred=parkingSlots.find(x=>String(x.parkingNumber||"").trim().toUpperCase()==="SLOT 9"||String(x.parkingName||"").trim().toUpperCase()==="BAY 4");const p=preferred||parkingSlots[0]||null;selectedParkingId=p?._id||null;selectedParkingNumber=p?.parkingNumber||null;}catch(e){parkingSlots=[];selectedParkingId=null;selectedParkingNumber=null;console.error("Failed to load parking slots:",e);}}
-async function loadBookedDates(){try{const r=await fetch(`${API}/bookings`,{cache:"no-store",headers:{Accept:"application/json"}}),j=await r.json().catch(()=>({}));bookedDates=r.ok?(Array.isArray(j.data)?j.data:(Array.isArray(j)?j:[])):[];renderCalendar();}catch(e){console.error("Failed to load booked dates:",e);bookedDates=[];renderCalendar();}}
+async function loadBookedDates(){try{const r=await fetch(`${API}/bookings`,{cache:"no-store",headers:{Accept:"application/json"}}),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||`Booking API returned ${r.status}`);const incoming=Array.isArray(j.data)?j.data:(Array.isArray(j)?j:[]);bookedDates=incoming.filter(b=>!isTerminalBooking(b));renderCalendar();return true;}catch(e){console.error("Failed to load booked dates:",e);renderCalendar();return false;}}
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadBookedDates();});
 window.addEventListener("focus",()=>loadBookedDates());
 
@@ -55,45 +46,9 @@ function calculateTotal(){const type=document.getElementById("bookingType").valu
 function updateSummary(a,b,c,d,e){const ids=[["roomAmount",a],["extraGuestAmount",b],["parkingAmount",c],["securityDepositAmount",d],["totalAmount",e]];ids.forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.innerText="₱"+Number(v).toLocaleString();});}
 
 async function submitBooking(event){event.preventDefault();try{const room=document.getElementById("room").value,checkIn=document.getElementById("checkIn").value,checkOut=document.getElementById("checkOut").value,guests=Number(document.getElementById("guests").value),firstName=document.getElementById("firstName").value.trim(),lastName=document.getElementById("lastName").value.trim(),email=document.getElementById("email").value.trim(),mobile=document.getElementById("mobile").value.trim(),bookingType=document.getElementById("bookingType").value;let parking=null;if(bookingType==="both"||bookingType==="parking"){parking=selectedParkingId;if(!parking){alert("Parking is currently unavailable. Please try again shortly.");return;}}if(!checkIn||!checkOut||!firstName||!lastName||!email||!mobile){alert("Please complete all required fields.");return;}if(bookingType!=="parking"&&!room){alert("Please select an accommodation.");return;}if(bookingType==="parking"||bookingType==="both"){if(!document.getElementById("vehicleBrand").value.trim()||!document.getElementById("vehicleModel").value.trim()||!document.getElementById("vehicleColor").value.trim()||!document.getElementById("plateNumber").value.trim()){alert("Please complete all vehicle information.");return;}}
-const start=parseBookingDate(checkIn),end=parseBookingDate(checkOut);
-// Resource synchronization rules:
-// 1) Accommodation-only conflicts with accommodation-only AND accommodation+parking.
-// 2) Accommodation+parking conflicts with ANY accommodation booking for the selected room AND ANY parking booking.
-// 3) Parking-only conflicts with parking-only AND accommodation+parking.
-const roomUnavailable=bookingType!=="parking"&&bookedDates.some(b=>{if(isTerminalBooking(b)||!bookingHasAccommodation(b))return false;return bookingOverlapsDates(b,start,end)&&idOf(b.room)===String(room);});
-if(roomUnavailable){alert("The selected accommodation is already booked for one or more of those dates.");await loadBookedDates();return;}
-const parkingUnavailable=(bookingType==="parking"||bookingType==="both")&&bookedDates.some(b=>{if(isTerminalBooking(b)||!bookingHasParking(b))return false;return bookingOverlapsDates(b,start,end);});
-if(parkingUnavailable){alert("Parking slot is already reserved for the selected dates.");await loadBookedDates();return;}
-const bookingData={vehicleBrand:document.getElementById("vehicleBrand")?.value||"",vehicleModel:document.getElementById("vehicleModel")?.value||"",vehicleColor:document.getElementById("vehicleColor")?.value||"",plateNumber:document.getElementById("plateNumber")?.value||"",firstName,lastName,email,mobile,address:document.getElementById("address").value.trim(),bookingReference:"BK"+Date.now(),room:bookingType==="parking"?null:room,checkIn,checkOut,guests,parking,parkingOnly:bookingType==="parking",bookingType,totalAmount:parseFloat(document.getElementById("totalAmount").innerText.replace("₱","").replace(/,/g,""))};const res=await fetch(`${API}/bookings`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(bookingData)}),json=await res.json();if(!res.ok){alert(json.message||"Booking failed.");console.error(json);return;}const booking={...(json.data||{}),firstName,lastName,room,parking,parkingOnly:bookingType==="parking",bookingType,checkIn,checkOut,guests,children:Number(document.getElementById("children").value)||0,totalAmount:bookingData.totalAmount};localStorage.setItem("guestBooking",JSON.stringify(booking));localStorage.setItem("bookingReference",booking.bookingReference||"");window.location.href="guest-booking/booking-success.html";}catch(err){console.error(err);alert("Unable to connect to server.");}}
+const start=parseBookingDate(checkIn),end=parseBookingDate(checkOut);const roomUnavailable=bookingType!=="parking"&&bookedDates.some(b=>{if(isTerminalBooking(b)||!bookingHasAccommodation(b))return false;return bookingOverlapsDates(b,start,end)&&idOf(b.room)===String(room);});if(roomUnavailable){alert("The selected accommodation is already booked for one or more of those dates.");await loadBookedDates();return;}const parkingUnavailable=(bookingType==="parking"||bookingType==="both")&&bookedDates.some(b=>{if(isTerminalBooking(b)||!bookingHasParking(b))return false;return bookingOverlapsDates(b,start,end);});if(parkingUnavailable){alert("Parking slot is already reserved for the selected dates.");await loadBookedDates();return;}const bookingData={vehicleBrand:document.getElementById("vehicleBrand")?.value||"",vehicleModel:document.getElementById("vehicleModel")?.value||"",vehicleColor:document.getElementById("vehicleColor")?.value||"",plateNumber:document.getElementById("plateNumber")?.value||"",firstName,lastName,email,mobile,address:document.getElementById("address").value.trim(),bookingReference:"BK"+Date.now(),room:bookingType==="parking"?null:room,checkIn,checkOut,guests,parking,parkingOnly:bookingType==="parking",bookingType,totalAmount:parseFloat(document.getElementById("totalAmount").innerText.replace("₱","").replace(/,/g,""))};const res=await fetch(`${API}/bookings`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(bookingData)}),json=await res.json();if(!res.ok){alert(json.message||"Booking failed.");console.error(json);return;}const booking={...(json.data||{}),firstName,lastName,room,parking,parkingOnly:bookingType==="parking",bookingType,checkIn,checkOut,guests,children:Number(document.getElementById("children").value)||0,totalAmount:bookingData.totalAmount};localStorage.setItem("guestBooking",JSON.stringify(booking));localStorage.setItem("bookingReference",booking.bookingReference||"");window.location.href="guest-booking/booking-success.html";}catch(err){console.error(err);alert("Unable to connect to server. Please check your internet connection and try again.");}}
 
-function isDateBooked(date){
-    const rawType=String(document.getElementById("bookingType")?.value||"unit").trim().toLowerCase();
-    const type=rawType.replace(/[\s_-]/g,"");
-    const selectedRoom=String(document.getElementById("room")?.value||"");
-    const target=new Date(date);target.setHours(0,0,0,0);
-    for(const b of bookedDates){
-        if(isTerminalBooking(b))continue;
-        const s=parseBookingDate(b.checkIn),e=parseBookingDate(b.checkOut);
-        if(!datesOverlap(target,s,e))continue;
-        const accommodation=bookingHasAccommodation(b);
-        const parking=bookingHasParking(b);
-        const bookedRoom=idOf(b.room);
-
-        // Each resource has its own synchronized availability pool.
-        // Accommodation pool = accommodation-only + accommodation+parking.
-        // Parking pool = parking-only + accommodation+parking.
-        // Therefore a combined booking blocks both resources.
-        if(type==="parking"||type==="parkingonly"){
-            if(parking)return true;
-        }else if(type==="both"){
-            if(parking)return true;
-            if(accommodation&&bookedRoom===selectedRoom)return true;
-        }else{
-            if(accommodation&&bookedRoom===selectedRoom)return true;
-        }
-    }
-    return false;
-}
+function isDateBooked(date){const rawType=String(document.getElementById("bookingType")?.value||"unit").trim().toLowerCase(),type=rawType.replace(/[\s_-]/g,""),selectedRoom=String(document.getElementById("room")?.value||""),target=new Date(date);target.setHours(0,0,0,0);for(const b of bookedDates){if(isTerminalBooking(b))continue;const s=parseBookingDate(b.checkIn),e=parseBookingDate(b.checkOut);if(!datesOverlap(target,s,e))continue;const accommodation=bookingHasAccommodation(b),parking=bookingHasParking(b),bookedRoom=idOf(b.room);if(type==="parking"||type==="parkingonly"){if(parking)return true;}else if(type==="both"){if(parking)return true;if(accommodation&&bookedRoom===selectedRoom)return true;}else{if(accommodation&&bookedRoom===selectedRoom)return true;}}return false;}
 
 function renderCalendar(){const grid=document.getElementById("calendarGrid"),title=document.getElementById("calendarTitle");if(!grid||!title)return;grid.innerHTML="";const first=new Date(currentYear,currentMonth,1),last=new Date(currentYear,currentMonth+1,0);title.textContent=first.toLocaleString("en-US",{month:"long",year:"numeric"});for(let i=0;i<first.getDay();i++){const e=document.createElement("div");e.className="calendar-day empty";grid.appendChild(e);}const today=new Date();today.setHours(0,0,0,0);for(let day=1;day<=last.getDate();day++){const date=new Date(currentYear,currentMonth,day);date.setHours(0,0,0,0);const cell=document.createElement("div");cell.className="calendar-day";cell.textContent=day;if(date<today)cell.classList.add("disabled");else if(isDateBooked(date)){cell.classList.add("booked");cell.title="Already booked";}else{cell.addEventListener("click",()=>{if(!selectedCheckIn||selectedCheckOut){selectedCheckIn=new Date(date);selectedCheckOut=null;}else if(date>selectedCheckIn){let blocked=false;const t=new Date(selectedCheckIn);t.setDate(t.getDate()+1);while(t<date){if(isDateBooked(t)){blocked=true;break;}t.setDate(t.getDate()+1);}if(blocked||isDateBooked(date)){alert("Your selected stay contains booked dates.");selectedCheckIn=null;selectedCheckOut=null;document.getElementById("checkIn").value="";document.getElementById("checkOut").value="";renderCalendar();return;}selectedCheckOut=new Date(date);}else{selectedCheckIn=new Date(date);selectedCheckOut=null;}document.getElementById("checkIn").value=selectedCheckIn?formatLocalDate(selectedCheckIn):"";document.getElementById("checkOut").value=selectedCheckOut?formatLocalDate(selectedCheckOut):"";calculateTotal();renderCalendar();});}if(selectedCheckIn&&date.getTime()===selectedCheckIn.getTime())cell.classList.add("checkin");if(selectedCheckOut&&date.getTime()===selectedCheckOut.getTime())cell.classList.add("checkout");if(selectedCheckIn&&selectedCheckOut&&date>selectedCheckIn&&date<selectedCheckOut)cell.classList.add("selected-range");grid.appendChild(cell);}}
 
