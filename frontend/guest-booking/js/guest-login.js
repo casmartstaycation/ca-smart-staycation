@@ -1,10 +1,9 @@
-const API = "https://ca-smart-staycation-muqd.onrender.com/api";
+const API = "https://ca-smart-staycation.vercel.app/api";
 
 const form = document.getElementById("guestLoginForm");
 const button = document.getElementById("loginButton");
 
-// Warm the Render service using a real health endpoint. The previous
-// guest-auth/ping URL did not exist, so it could not reliably warm the API.
+// Warm the Vercel serverless API using the real health endpoint.
 let apiWarmup = fetch(`${API}/health`, { method: "GET", cache: "no-store" }).catch(() => null);
 
 form.addEventListener("submit", async (e) => {
@@ -21,8 +20,7 @@ form.addEventListener("submit", async (e) => {
     button.disabled = true;
     button.innerText = "Connecting...";
 
-    // If Render is waking from sleep, let the health request finish before
-    // starting authentication. This avoids racing two requests during cold start.
+    // Give the Vercel function a chance to finish its cold start before login.
     try { await Promise.race([apiWarmup, new Promise(resolve => setTimeout(resolve, 12000))]); } catch (_) {}
 
     const controller = new AbortController();
@@ -52,7 +50,6 @@ form.addEventListener("submit", async (e) => {
             alert(result.message || "Invalid email or password.");
             button.disabled = false;
             button.innerText = "Login";
-            // Start another warmup for the next attempt.
             apiWarmup = fetch(`${API}/health`, { method: "GET", cache: "no-store" }).catch(() => null);
             return;
         }
