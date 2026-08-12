@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const API='https://ca-smart-staycation-muqd.onrender.com/api/rooms';
+const API='https://casmartstaycation.com/api/rooms';
 const CACHE='caSmartStaycationRoomsGallery';
 const TTL=24*60*60*1000;
 const TIMEOUT=15000;
