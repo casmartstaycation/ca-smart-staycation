@@ -1,6 +1,33 @@
 const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
 (function(){
   const css=`
+    /* Force hero responsiveness from the page's own JavaScript so mobile browsers
+       cannot retain the desktop hero dimensions. */
+    @media(max-width:600px){
+      .hero{min-height:0!important;height:auto!important;max-height:none!important;padding:92px 0 48px!important;display:flex!important;align-items:center!important;overflow:hidden!important;box-sizing:border-box!important}
+      .hero-overlay{width:100%!important;max-width:100%!important;margin:0!important;padding:0 10px!important;display:flex!important;justify-content:center!important;align-items:center!important;box-sizing:border-box!important;overflow:visible!important}
+      .hero-content{width:100%!important;max-width:520px!important;margin:0 auto!important;padding:22px 16px!important;box-sizing:border-box!important;transform:none!important;overflow:hidden!important;border-radius:16px!important}
+      .hero .eyebrow{font-size:9px!important;line-height:1.3!important;letter-spacing:2px!important;margin:0 0 11px!important;white-space:normal!important;overflow-wrap:anywhere!important}
+      .hero h2{font-size:clamp(28px,8.5vw,42px)!important;line-height:1.08!important;margin:0!important;max-width:100%!important;white-space:normal!important;overflow-wrap:normal!important}
+      .hero .hero-description{width:100%!important;max-width:100%!important;margin:17px 0 22px!important;font-size:13px!important;line-height:1.5!important;overflow-wrap:anywhere!important}
+      .hero .gold-button{display:block!important;width:100%!important;max-width:100%!important;margin:0!important;padding:13px 16px!important;text-align:center!important;box-sizing:border-box!important}
+      .hero-content a[href="guest-booking/guest-login.html"]{display:block!important;width:100%!important;max-width:100%!important;margin:12px 0 0!important;padding:4px 0!important;text-align:center!important;box-sizing:border-box!important;overflow-wrap:anywhere!important;line-height:1.4!important}
+    }
+    @media(max-width:380px){
+      .hero{padding:82px 0 40px!important}
+      .hero-overlay{padding:0 7px!important}
+      .hero-content{padding:19px 12px!important}
+      .hero .eyebrow{font-size:8px!important;letter-spacing:1.7px!important}
+      .hero h2{font-size:29px!important}
+      .hero .hero-description{font-size:12.5px!important}
+    }
+    @media(max-width:340px){
+      .hero{padding:76px 0 34px!important}
+      .hero-content{padding:17px 10px!important}
+      .hero h2{font-size:26px!important}
+      .hero .hero-description{font-size:12px!important}
+      .hero-content a[href="guest-booking/guest-login.html"]{font-size:12px!important}
+    }
     .unit-info-panel{display:block;position:relative;clear:both;margin-top:18px;padding:0;width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow:visible;grid-column:1/-1}
     .unit-gallery{display:flex;flex-direction:column;align-items:stretch;position:relative;width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow:hidden}
     .unit-primary-photo{display:block;position:relative;width:100%;max-width:100%;height:auto;aspect-ratio:21/9;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid #ddd;box-sizing:border-box}
@@ -61,9 +88,6 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     if(panel)return panel;
     const group=document.getElementById('roomGroup');if(!group)return null;
     panel=document.createElement('div');panel.id='unitInfoPanel';panel.className='unit-info-panel';
-    // Put the gallery directly after the accommodation selector inside the
-    // booking-details grid. This makes the real DOM order:
-    // accommodation -> gallery -> description -> amenities -> calendar -> guests.
     group.insertAdjacentElement('afterend',panel);
     return panel;
   }
@@ -84,8 +108,6 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
   function moveCalendarAfterAmenities(panel){
     const calendarGroup=document.querySelector('#calendarGrid')?.closest('.form-group');
     if(!calendarGroup||!panel)return;
-    // Move the existing calendar into the same booking-details grid, directly
-    // after the gallery panel. Guests and children already follow it in the grid.
     panel.insertAdjacentElement('afterend',calendarGroup);
     calendarGroup.classList.add('calendar-after-amenities');
   }
