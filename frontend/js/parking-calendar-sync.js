@@ -4,7 +4,7 @@
    the same dates in Parking Only and Accommodation + Parking modes. */
 (function(){
 'use strict';
-const API='https://ca-smart-staycation.vercel.app/api';
+const API='/api';
 let bookings=[];
 const TERMINAL=new Set(['cancelled','checked out','expired']);
 function terminal(b){return TERMINAL.has(String(b?.bookingStatus||'').trim().toLowerCase());}
