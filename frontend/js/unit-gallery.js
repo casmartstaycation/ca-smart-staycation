@@ -1,7 +1,7 @@
 const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
 (function(){
   const css=`
-    .unit-info-panel{display:block;position:relative;clear:both;margin-top:18px;padding:0;width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow:visible}
+    .unit-info-panel{display:block;position:relative;clear:both;margin-top:18px;padding:0;width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow:visible;grid-column:1/-1}
     .unit-gallery{display:flex;flex-direction:column;align-items:stretch;position:relative;width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow:hidden}
     .unit-primary-photo{display:block;position:relative;width:100%;max-width:100%;height:auto;aspect-ratio:21/9;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid #ddd;box-sizing:border-box}
     .unit-photo-thumbs{display:flex;gap:8px;overflow-x:auto;margin-top:10px;padding-bottom:3px;width:100%;max-width:100%;box-sizing:border-box}
@@ -12,7 +12,7 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     .unit-amenities{margin-top:12px;padding:18px;border:1px solid #e2ddd5;border-radius:8px;background:#fff;box-sizing:border-box;width:100%;max-width:100%;min-width:0;overflow:hidden}
     .unit-amenity-list{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
     .unit-amenity{padding:7px 10px;border:1px solid #ddd;border-radius:6px;background:#f8f6f2;font-size:13px;color:#444;max-width:100%;overflow-wrap:anywhere}
-    .calendar-after-amenities{width:100%;max-width:100%;min-width:0;box-sizing:border-box;clear:both;margin-top:18px}
+    .calendar-after-amenities{display:block;grid-column:1/-1;width:100%;max-width:100%;min-width:0;box-sizing:border-box;clear:both;margin-top:18px}
     .unit-lightbox{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;background:#000d;z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;overflow:hidden}
     .unit-lightbox img{display:block;width:auto;max-width:94vw;max-height:88vh;max-height:88dvh;height:auto;object-fit:contain;border-radius:8px}
     .unit-lightbox button{position:absolute;background:none;border:0;color:#fff;cursor:pointer}
@@ -20,13 +20,13 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     .unit-lightbox .unit-nav{top:50%;transform:translateY(-50%);font-size:52px;padding:12px 18px}
     .unit-lightbox .unit-prev{left:12px}.unit-lightbox .unit-next{right:12px}
     @media(max-width:700px){
-      .unit-info-panel{display:block;position:relative;clear:both;float:none;left:auto;right:auto;top:auto;bottom:auto;transform:none;margin:14px 0 0;padding:0;width:100%;max-width:100%;min-width:0;grid-column:auto;box-sizing:border-box;overflow:visible}
+      .unit-info-panel{display:block;position:relative;clear:both;float:none;left:auto;right:auto;top:auto;bottom:auto;transform:none;margin:14px 0 0;padding:0;width:100%;max-width:100%;min-width:0;grid-column:1/-1;box-sizing:border-box;overflow:visible}
       .unit-gallery{display:flex;position:relative;float:none;left:auto;right:auto;top:auto;bottom:auto;transform:none;width:100%;max-width:100%;min-width:0;height:auto;box-sizing:border-box;overflow:hidden}
       .unit-primary-photo{display:block;position:relative;left:auto;right:auto;top:auto;bottom:auto;transform:none;width:100%;max-width:100%;height:auto;max-height:240px;aspect-ratio:16/10;object-fit:cover;box-sizing:border-box;margin:0}
       .unit-photo-thumbs{display:flex;position:relative;left:auto;right:auto;width:100%;max-width:100%;min-width:0;height:64px;max-height:64px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;box-sizing:border-box}
       .unit-photo-thumbs img{width:68px;min-width:68px;max-width:68px;height:52px;max-height:52px;flex:0 0 68px}
       .unit-description,.unit-amenities{width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow:hidden;overflow-wrap:anywhere}
-      .calendar-after-amenities{display:block;width:100%;max-width:100%;min-width:0;clear:both;margin-top:18px;box-sizing:border-box}
+      .calendar-after-amenities{display:block;grid-column:1/-1;width:100%;max-width:100%;min-width:0;clear:both;margin-top:18px;box-sizing:border-box}
     }
     @media(max-width:340px){
       .unit-primary-photo{max-height:210px}
@@ -61,10 +61,10 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     if(panel)return panel;
     const group=document.getElementById('roomGroup');if(!group)return null;
     panel=document.createElement('div');panel.id='unitInfoPanel';panel.className='unit-info-panel';
-    const formGrid=group.closest('.form-grid');
-    const formCard=formGrid?.closest('.form-card');
-    if(formGrid&&formCard){formGrid.insertAdjacentElement('afterend',panel)}
-    else if(group.parentElement){group.parentElement.insertAdjacentElement('afterend',panel)}
+    // Put the gallery directly after the accommodation selector inside the
+    // booking-details grid. This makes the real DOM order:
+    // accommodation -> gallery -> description -> amenities -> calendar -> guests.
+    group.insertAdjacentElement('afterend',panel);
     return panel;
   }
   function render(){
@@ -84,9 +84,8 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
   function moveCalendarAfterAmenities(panel){
     const calendarGroup=document.querySelector('#calendarGrid')?.closest('.form-group');
     if(!calendarGroup||!panel)return;
-    // The gallery panel contains the description and amenities. Move the entire
-    // calendar form-group after the whole gallery panel so it is structurally
-    // below the amenities, not merely visually repositioned.
+    // Move the existing calendar into the same booking-details grid, directly
+    // after the gallery panel. Guests and children already follow it in the grid.
     panel.insertAdjacentElement('afterend',calendarGroup);
     calendarGroup.classList.add('calendar-after-amenities');
   }
