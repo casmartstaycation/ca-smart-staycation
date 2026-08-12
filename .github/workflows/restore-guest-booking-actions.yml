@@ -1,0 +1,59 @@
+name: Restore guest booking actions
+on:
+  push:
+    paths:
+      - '.github/workflows/restore-guest-booking-actions.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore guest booking actions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          # Backend: Waiting for Payment is a cancellable guest-booking state.
+          p = Path('backend/routes/guestAuthRoutes.js')
+          s = p.read_text()
+          s = s.replace(
+              'const ACTIVE_STATUSES = ["Reserved", "Pending Payment Verification", "Payment Rejected"];',
+              'const ACTIVE_STATUSES = ["Waiting for Payment", "Reserved", "Pending Payment Verification", "Payment Rejected"];'
+          )
+          p.write_text(s)
+
+          # Frontend: restore Cancel Booking and Upload Payment Proof actions.
+          p = Path('frontend/guest-booking/guest-dashboard.html')
+          s = p.read_text()
+          s = s.replace(
+              '.secondary{background:#c9a44c!important}.addon-btn',
+              '.secondary{background:#c9a44c!important}.danger{background:#b42318!important}.upload-payment{background:#0b5d4d!important}.addon-btn'
+          )
+
+          replacement = r'''function renderBookings(items){const el=document.getElementById("bookingsList");if(!items.length){el.innerHTML='<div class="empty">No bookings found.</div>';return}el.innerHTML=items.map(b=>{const active=["Waiting for Payment","Reserved","Pending Payment Verification","Payment Rejected"].includes(b.bookingStatus)&&new Date(b.checkIn).getTime()>Date.now();const canUpload=["Waiting for Payment","Payment Rejected"].includes(b.bookingStatus);return `<div class="booking-card" data-id="${esc(b._id)}"><div class="booking-summary"><div><div class="reference">${esc(b.bookingReference||"N/A")}</div><div>${esc(b.bookingType||"Booking")} · ${dateText(b.checkIn)} → ${dateText(b.checkOut)}</div><div class="meta">Status: ${esc(b.bookingStatus||"—")}</div></div><strong>₱${Number(b.totalAmount||0).toLocaleString()}</strong></div><div class="details"><p><strong>Guests:</strong> ${Number(b.adults||0)} adult(s), ${Number(b.children||0)} child(ren)</p><p><strong>Payment:</strong> ${esc(b.paymentStatus||"Pending")}</p>${b.bookingStatus==="Waiting for Payment"?'<p class="meta">Payment proof is required before this booking can be confirmed.</p>':b.bookingStatus==="Payment Rejected"?'<p class="meta">Your previous payment proof was rejected. Please upload a new proof of payment.</p>':""}${active?`<div class="addon-panel"><h4>Booking Actions</h4><div class="booking-actions">${canUpload?`<button class="upload-payment" onclick="uploadPayment(${JSON.stringify(b).replace(/"/g,'&quot;')})">Upload Payment Proof</button>`:""}<button class="danger" onclick="cancelBooking('${esc(b._id)}',this)">Cancel Booking</button></div><h4>Additional Guest & Amenities</h4><p>You may request additional guests or a complete additional set of towel, toiletries, bedsheet and blanket during your stay.</p><p><strong>₱300 per additional guest</strong> and <strong>₱300 per complete additional set</strong>. Payment proof is required.</p><button class="addon-btn" onclick="openAddon('${esc(b._id)}')">Request Additional Guest / Amenities</button></div>`:""}</div><div class="booking-actions"><button class="secondary" onclick="const c=this.closest('.booking-card');c.classList.toggle('open');this.textContent=c.classList.contains('open')?'Hide Details':'View Details'">View Details</button></div></div>`}).join("")}
+async function cancelBooking(id,button){if(!confirm("Are you sure you want to cancel this booking?"))return;button.disabled=true;button.textContent="Cancelling...";try{const r=await fetch(`${API}/guest-auth/bookings/${encodeURIComponent(id)}/cancel`,{method:"POST",headers:{...auth(),"Content-Type":"application/json"},body:JSON.stringify({reason:"Guest requested cancellation"})});const d=await r.json();if(!r.ok)throw Error(d.message||"Unable to cancel this booking.");alert(d.message||"Booking cancelled successfully.");await loadAccount()}catch(e){alert(e.message);button.disabled=false;button.textContent="Cancel Booking"}}
+function uploadPayment(booking){localStorage.setItem("guestBooking",JSON.stringify(booking));location.href="payment.html"}
+function fillBookingSelect'''
+
+          s2 = re.sub(r'function renderBookings\(items\)\{.*?function fillBookingSelect', replacement, s, count=1, flags=re.S)
+          if s2 == s:
+              raise SystemExit('Could not locate renderBookings block')
+          p.write_text(s2)
+          PY
+      - name: Verify
+        run: |
+          grep -q 'Cancel Booking' frontend/guest-booking/guest-dashboard.html
+          grep -q 'Upload Payment Proof' frontend/guest-booking/guest-dashboard.html
+          grep -q 'Waiting for Payment' frontend/guest-booking/guest-dashboard.html
+          grep -q 'Waiting for Payment' backend/routes/guestAuthRoutes.js
+      - name: Commit patch and remove workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/guest-booking/guest-dashboard.html backend/routes/guestAuthRoutes.js .github/workflows/restore-guest-booking-actions.yml
+          git rm .github/workflows/restore-guest-booking-actions.yml
+          git diff --cached --quiet || git commit -m 'Restore guest booking cancel and payment upload buttons'
+          git push
