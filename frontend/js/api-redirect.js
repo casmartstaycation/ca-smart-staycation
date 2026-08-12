@@ -1,11 +1,10 @@
-/* CA Smart Staycation API routing: always use the live Vercel API. */
+/* CA Smart Staycation API routing: use the verified Vercel API directly. */
 (function () {
   'use strict';
 
-  // The apex domain can currently serve an old GitHub Pages response for /api/*.
-  // The www domain is the verified Vercel production domain, so API calls are
-  // explicitly routed there instead of relying on the apex-domain redirect.
-  const CANONICAL_API = 'https://www.casmartstaycation.com/api';
+  // Use the verified Vercel deployment directly. This avoids the
+  // casmartstaycation.com -> www redirect path for API calls while the
+  // backend CORS configuration allows the site's origins.
   const VERCEL_API = 'https://ca-smart-staycation.vercel.app/api';
   const LEGACY_API = 'https://ca-smart-staycation-muqd.onrender.com/api';
   const originalFetch = window.fetch.bind(window);
@@ -20,23 +19,17 @@
       url = input.url;
     }
 
-    // Route relative /api/* requests away from the apex domain, which can
-    // still return the old GitHub Pages 404, to the verified Vercel domain.
+    // Route all relative API requests directly to the verified Vercel API.
     if (url.startsWith('/api')) {
-      const absolute = CANONICAL_API + url.slice('/api'.length);
+      const absolute = VERCEL_API + url.slice('/api'.length);
       input = isString ? absolute : new Request(absolute, input);
-    } else if (url.startsWith(VERCEL_API)) {
-      const relative = CANONICAL_API + url.slice(VERCEL_API.length);
-      if (isString) input = relative;
-      else input = new Request(relative, input);
     } else if (url.startsWith(LEGACY_API)) {
-      const relative = CANONICAL_API + url.slice(LEGACY_API.length);
-      if (isString) input = relative;
-      else input = new Request(relative, input);
+      const absolute = VERCEL_API + url.slice(LEGACY_API.length);
+      input = isString ? absolute : new Request(absolute, input);
     }
 
     return originalFetch(input, init);
   };
 
-  window.CA_SMART_API = CANONICAL_API;
+  window.CA_SMART_API = VERCEL_API;
 })();
