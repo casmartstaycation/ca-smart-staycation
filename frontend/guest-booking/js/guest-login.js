@@ -1,10 +1,19 @@
-const API = "https://ca-smart-staycation.vercel.app/api";
+// Use the same Vercel origin when the guest portal is served by Vercel.
+// Fall back to the production Vercel API when this page is served from GitHub Pages/local hosting.
+const API = /(^|\.)vercel\.app$/i.test(window.location.hostname)
+    ? `${window.location.origin}/api`
+    : "https://ca-smart-staycation.vercel.app/api";
 
 const form = document.getElementById("guestLoginForm");
 const button = document.getElementById("loginButton");
 
-// Warm the Vercel serverless API using the real health endpoint.
-let apiWarmup = fetch(`${API}/health`, { method: "GET", cache: "no-store" }).catch(() => null);
+const warmApi = () => fetch(`${API}/health`, {
+    method: "GET",
+    cache: "no-store",
+    headers: { "Accept": "application/json" }
+}).catch(() => null);
+
+let apiWarmup = warmApi();
 
 form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -20,8 +29,13 @@ form.addEventListener("submit", async (e) => {
     button.disabled = true;
     button.innerText = "Connecting...";
 
-    // Give the Vercel function a chance to finish its cold start before login.
-    try { await Promise.race([apiWarmup, new Promise(resolve => setTimeout(resolve, 12000))]); } catch (_) {}
+    try {
+        // Allow the serverless function to finish a cold start, but don't block forever.
+        await Promise.race([
+            apiWarmup,
+            new Promise(resolve => setTimeout(resolve, 12000))
+        ]);
+    } catch (_) {}
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20000);
@@ -31,7 +45,10 @@ form.addEventListener("submit", async (e) => {
 
         const response = await fetch(`${API}/guest-auth/login`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Accept": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
             body: JSON.stringify({ email, password }),
             cache: "no-store",
             signal: controller.signal
@@ -43,14 +60,14 @@ form.addEventListener("submit", async (e) => {
         try {
             result = await response.json();
         } catch (_) {
-            throw new Error("The server returned an invalid response.");
+            throw new Error(`The server returned an invalid response (${response.status}).`);
         }
 
         if (!response.ok) {
             alert(result.message || "Invalid email or password.");
             button.disabled = false;
             button.innerText = "Login";
-            apiWarmup = fetch(`${API}/health`, { method: "GET", cache: "no-store" }).catch(() => null);
+            apiWarmup = warmApi();
             return;
         }
 
@@ -64,14 +81,16 @@ form.addEventListener("submit", async (e) => {
         }
     } catch (err) {
         clearTimeout(timeout);
-        console.error(err);
+        console.error("Guest login request failed:", err);
+
         if (err.name === "AbortError") {
             alert("The server is taking too long to respond. Please try again in a few seconds.");
         } else {
             alert("Unable to connect to the server. Please try again.");
         }
+
         button.disabled = false;
         button.innerText = "Login";
-        apiWarmup = fetch(`${API}/health`, { method: "GET", cache: "no-store" }).catch(() => null);
+        apiWarmup = warmApi();
     }
 });
