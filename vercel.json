@@ -7,10 +7,6 @@
   },
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/[...path].js"
-    },
-    {
       "source": "/",
       "destination": "/frontend/index.html"
     },
