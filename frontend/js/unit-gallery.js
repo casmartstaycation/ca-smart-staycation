@@ -61,9 +61,6 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     if(panel)return panel;
     const group=document.getElementById('roomGroup');if(!group)return null;
     panel=document.createElement('div');panel.id='unitInfoPanel';panel.className='unit-info-panel';
-    // Put the gallery directly after the accommodation selector inside the
-    // booking-details grid. This makes the real DOM order:
-    // accommodation -> gallery -> description -> amenities -> calendar -> guests.
     group.insertAdjacentElement('afterend',panel);
     return panel;
   }
@@ -84,8 +81,6 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
   function moveCalendarAfterAmenities(panel){
     const calendarGroup=document.querySelector('#calendarGrid')?.closest('.form-group');
     if(!calendarGroup||!panel)return;
-    // Move the existing calendar into the same booking-details grid, directly
-    // after the gallery panel. Guests and children already follow it in the grid.
     panel.insertAdjacentElement('afterend',calendarGroup);
     calendarGroup.classList.add('calendar-after-amenities');
   }
@@ -102,10 +97,52 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
       if(r.ok&&Array.isArray(j.data)){units=j.data;try{sessionStorage.setItem(CACHE_KEY,JSON.stringify({timestamp:Date.now(),data:units}))}catch{}render()}
     }catch(e){console.warn('Unable to load accommodation photos',e)}
   }
+
+  /* =========================================
+     BOOKING SUMMARY FIX
+     The property capacity is 4, but the room rate includes only 2 guests.
+     Guests 3 and 4 are each charged the configured extra-adult fee per night.
+  ========================================= */
+  function refreshGuestSummary(){
+    const type=String(document.getElementById('bookingType')?.value||'unit').toLowerCase();
+    const checkIn=document.getElementById('checkIn')?.value;
+    const checkOut=document.getElementById('checkOut')?.value;
+    const roomId=document.getElementById('room')?.value;
+    const guestCount=Number(document.getElementById('guests')?.value||1);
+    if(!checkIn||!checkOut)return;
+    const parseDate=value=>{const d=new Date(String(value)+'T00:00:00');return Number.isNaN(d.getTime())?null:d};
+    const start=parseDate(checkIn),end=parseDate(checkOut);
+    if(!start||!end)return;
+    const nights=Math.ceil((end-start)/86400000);
+    if(nights<=0)return;
+    const fee=Number(settings?.extraAdultFee??300);
+    const parkingRate=Number(settings?.parkingRate??500);
+    const deposit=Number(settings?.securityDeposit??1000);
+    let roomTotal=0,extraTotal=0,parkingTotal=0,security=0;
+    if(type==='parking'){
+      parkingTotal=parkingRate*nights;
+    }else{
+      const room=Array.isArray(rooms)?rooms.find(r=>String(r._id)===String(roomId)):null;
+      if(!room)return;
+      roomTotal=nights*Number(room.price||0);
+      const includedGuests=2;
+      extraTotal=Math.max(0,Math.min(4,guestCount)-includedGuests)*fee*nights;
+      if(type==='both')parkingTotal=parkingRate*nights;
+      security=deposit;
+    }
+    const total=roomTotal+extraTotal+parkingTotal+security;
+    const set=(id,value)=>{const el=document.getElementById(id);if(el)el.innerText='₱'+Number(value).toLocaleString()};
+    set('roomAmount',roomTotal);set('extraGuestAmount',extraTotal);set('parkingAmount',parkingTotal);set('securityDepositAmount',security);set('totalAmount',total);
+  }
+
   document.addEventListener('DOMContentLoaded',()=>{
-    const room=document.getElementById('room');const type=document.getElementById('bookingType');
-    if(room)room.addEventListener('change',render);
-    if(type)type.addEventListener('change',()=>{const panel=document.getElementById('unitInfoPanel');if(String(type.value).toLowerCase()==='parking'){if(panel)panel.style.display='none'}else{load();render()}});
+    const room=document.getElementById('room');const type=document.getElementById('bookingType');const guests=document.getElementById('guests');
+    if(room)room.addEventListener('change',()=>{render();refreshGuestSummary()});
+    if(guests)guests.addEventListener('change',refreshGuestSummary);
+    if(type)type.addEventListener('change',()=>{const panel=document.getElementById('unitInfoPanel');if(String(type.value).toLowerCase()==='parking'){if(panel)panel.style.display='none'}else{load();render()}refreshGuestSummary()});
+    const checkIn=document.getElementById('checkIn');const checkOut=document.getElementById('checkOut');
+    if(checkIn)checkIn.addEventListener('change',refreshGuestSummary);if(checkOut)checkOut.addEventListener('change',refreshGuestSummary);
     if(!isParkingOnly())load();
+    setTimeout(refreshGuestSummary,0);
   });
 })();
