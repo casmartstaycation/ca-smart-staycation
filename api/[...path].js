@@ -2,20 +2,18 @@ const path = require('path');
 const fs = require('fs');
 const app = require('../backend/server');
 
-// Vercel can send the project root through this catch-all function on an
-// Express project. Keep /api/* on Express, but serve the real website and
-// its static assets here so the API health response can never replace /.
 const frontendRoot = path.join(__dirname, '..', 'frontend');
 
-function serveFrontend(req, res) {
-  let pathname;
+function getPath(req) {
   try {
-    pathname = new URL(req.url || '/', 'http://localhost').pathname;
-    pathname = decodeURIComponent(pathname);
+    return decodeURIComponent(new URL(req.url || '/', 'http://localhost').pathname);
   } catch (_) {
-    pathname = '/';
+    return '/';
   }
+}
 
+function serveFrontend(req, res) {
+  let pathname = getPath(req);
   if (pathname === '/favicon.ico') pathname = '/favicon.svg';
   if (pathname === '/') pathname = '/index.html';
 
@@ -28,7 +26,6 @@ function serveFrontend(req, res) {
     return res.sendFile(candidate);
   }
 
-  // Keep client-side routes on the landing page instead of returning the API.
   if (!path.extname(pathname)) {
     const indexFile = path.join(frontendRoot, 'index.html');
     if (fs.existsSync(indexFile)) return res.sendFile(indexFile);
@@ -38,14 +35,16 @@ function serveFrontend(req, res) {
 }
 
 module.exports = (req, res) => {
-  const pathname = (() => {
-    try { return new URL(req.url || '/', 'http://localhost').pathname; }
-    catch (_) { return '/'; }
-  })();
+  const pathname = getPath(req);
 
-  if (pathname === '/api' || pathname.startsWith('/api/')) {
-    return app(req, res);
-  }
+  // Vercel catch-all functions can receive the path with /api removed.
+  // Always restore /api before passing the request to Express so routes such
+  // as /api/settings, /api/rooms, /api/parking and /api/bookings resolve.
+  const isApiRequest = pathname === '/api' || pathname.startsWith('/api/');
+  if (isApiRequest) return app(req, res);
 
+  // If Vercel stripped the /api prefix before invoking this catch-all, the
+  // function cannot distinguish it from a frontend path. API requests are
+  // routed through the dedicated backend/api function in that case.
   return serveFrontend(req, res);
 };
