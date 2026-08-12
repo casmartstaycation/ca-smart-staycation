@@ -39,12 +39,14 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
   const CACHE_KEY='caSmartStaycationRoomsGallery';
   const CACHE_TTL=5*60*1000;
   function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]))}
-  function isParkingOnly(){return String(document.getElementById('bookingType')?.value||'').toLowerCase()==='parking'}
+  function isParkingOnly(){return String(document.getElementById('bookingType')?.value||'').trim().toLowerCase()==='parking'}
   function hideAccommodationUI(){
     const panel=document.getElementById('unitInfoPanel');
     if(panel){panel.style.display='none';panel.innerHTML='';}
     const roomGroup=document.getElementById('roomGroup');
     if(roomGroup)roomGroup.style.display='none';
+    const calendarGroup=document.querySelector('#calendarGrid')?.closest('.form-group');
+    if(calendarGroup)calendarGroup.style.display='';
   }
   function showAccommodationUI(){
     const roomGroup=document.getElementById('roomGroup');
@@ -78,9 +80,9 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     return panel;
   }
   function render(){
+    if(isParkingOnly()){hideAccommodationUI();return}
     const room=document.getElementById('room');if(!room)return;
     const panel=getPanel();if(!panel)return;
-    if(isParkingOnly()){hideAccommodationUI();return}
     showAccommodationUI();
     const u=selected();
     if(!u){panel.innerHTML='<p style="margin:0;color:#888">Select an accommodation to view photos.</p>';return}
@@ -93,15 +95,16 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
   }
   function moveCalendarAfterAmenities(panel){
     const calendarGroup=document.querySelector('#calendarGrid')?.closest('.form-group');
-    if(!calendarGroup||!panel)return;
+    if(!calendarGroup||!panel||isParkingOnly())return;
     panel.insertAdjacentElement('afterend',calendarGroup);
     calendarGroup.classList.add('calendar-after-amenities');
   }
   function useCached(){
+    if(isParkingOnly())return false;
     try{const raw=sessionStorage.getItem(CACHE_KEY);if(!raw)return false;const cached=JSON.parse(raw);if(!cached?.timestamp||Date.now()-cached.timestamp>CACHE_TTL||!Array.isArray(cached.data))return false;units=cached.data;render();return true}catch{return false}
   }
   async function load(){
-    if(isParkingOnly()){hideAccommodationUI();return}
+    if(isParkingOnly()){loadingRequest++;hideAccommodationUI();return}
     const requestId=++loadingRequest;
     if(useCached())return;
     try{
@@ -113,12 +116,16 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     }catch(e){if(!isParkingOnly())console.warn('Unable to load accommodation photos',e)}
   }
   function syncBookingType(){
-    if(isParkingOnly()){loadingRequest++;hideAccommodationUI();return}
-    showAccommodationUI();load();render();
+    const parking=isParkingOnly();
+    loadingRequest++;
+    if(parking){hideAccommodationUI();return}
+    showAccommodationUI();
+    load();
+    render();
   }
   document.addEventListener('DOMContentLoaded',()=>{
     const room=document.getElementById('room');const type=document.getElementById('bookingType');
-    if(room)room.addEventListener('change',render);
+    if(room)room.addEventListener('change',()=>{if(!isParkingOnly())render();else hideAccommodationUI()});
     if(type){type.addEventListener('change',syncBookingType);syncBookingType()}
     else if(!isParkingOnly())load();
   });
