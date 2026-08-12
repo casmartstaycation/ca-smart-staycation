@@ -1,14 +1,9 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "api/[...path].js": {
-      "maxDuration": 60
-    }
-  },
-  "rewrites": [
+  "redirects": [
     {
-      "source": "/((?!api(?:/|$)).*)",
-      "destination": "/api/[...path]"
+      "source": "/(.*)",
+      "destination": "https://www.casmartstaycation.com/:1",
+      "permanent": true
     }
   ]
 }
