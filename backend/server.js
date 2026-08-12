@@ -38,7 +38,6 @@ async function cleanupTerminalBookingUploads() {
     const referencedPaymentFiles = new Set();
     const referencedDocumentFiles = new Set();
     const terminalBookings = [];
-
     for (const booking of bookings) {
       if (booking.paymentProof) referencedPaymentFiles.add(path.basename(String(booking.paymentProof)));
       for (const item of (booking.paymentProofHistory || [])) if (item.filename) referencedPaymentFiles.add(path.basename(String(item.filename)));
@@ -47,7 +46,6 @@ async function cleanupTerminalBookingUploads() {
       if (booking.reschedulePaymentProof) referencedPaymentFiles.add(path.basename(String(booking.reschedulePaymentProof)));
       if (terminalStatuses.has(String(booking.bookingStatus || "").trim())) terminalBookings.push(booking);
     }
-
     for (const booking of terminalBookings) {
       deleteUploadedFile(paymentUploadDir, booking.paymentProof);
       for (const item of (booking.paymentProofHistory || [])) deleteUploadedFile(paymentUploadDir, item.filename);
@@ -56,13 +54,10 @@ async function cleanupTerminalBookingUploads() {
       deleteUploadedFile(paymentUploadDir, booking.reschedulePaymentProof);
       await Booking.updateOne({ _id: booking._id }, { $set: { paymentProof: "", governmentId: "", driversLicense: "", reschedulePaymentProof: "", paymentProofHistory: [] } });
     }
-
     const orphanPaymentFiles = listFiles(paymentUploadDir).filter(name => !referencedPaymentFiles.has(name));
     const orphanDocumentFiles = listFiles(guestDocumentUploadDir).filter(name => !referencedDocumentFiles.has(name));
     for (const filename of orphanPaymentFiles) deleteUploadedFile(paymentUploadDir, filename);
     for (const filename of orphanDocumentFiles) deleteUploadedFile(guestDocumentUploadDir, filename);
-
-    if (terminalBookings.length || orphanPaymentFiles.length || orphanDocumentFiles.length) console.log(`🧹 Upload cleanup: ${terminalBookings.length} terminal booking(s), ${orphanPaymentFiles.length} orphan payment file(s), ${orphanDocumentFiles.length} orphan document file(s).`);
   } catch (err) { console.error("TERMINAL/ORPHAN UPLOAD CLEANUP ERROR:", err); }
 }
 
@@ -74,8 +69,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Vercel serverless functions reuse the module between requests. Cache one MongoDB
-// connection promise and make every API request wait for it before touching models.
 const mongoUri = process.env.MONGODB_URI;
 let mongoConnectionPromise = null;
 function connectMongoDB() {
@@ -99,7 +92,8 @@ function connectMongoDB() {
   return mongoConnectionPromise;
 }
 
-app.get('/', (req, res) => res.json({ status: 'success', message: 'CA Smart Staycation API is running' }));
+// This Express app is mounted behind /api on Vercel. The website root must never
+// be handled by Express because the frontend is served from /frontend/index.html.
 app.get('/api/health', async (req, res) => {
   try {
     await connectMongoDB();
@@ -109,7 +103,6 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Protect database-backed API routes from Mongoose buffering timeouts.
 app.use('/api', async (req, res, next) => {
   try {
     await connectMongoDB();
@@ -157,8 +150,6 @@ app.use('/api', require('./routes/messagingRoutes'));
 app.use('/api/settings', settingsRoutes);
 app.use((req, res) => res.status(404).json({ status: 'error', message: 'Route not found' }));
 
-// Render used a persistent Express listener. Vercel needs the Express app exported
-// as a serverless handler instead, so only listen locally/on Render.
 if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
