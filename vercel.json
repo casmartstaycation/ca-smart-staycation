@@ -11,6 +11,10 @@
       "dest": "/api/[...path].js"
     },
     {
+      "src": "/favicon.ico",
+      "dest": "/frontend/favicon.svg"
+    },
+    {
       "src": "/(.*)",
       "dest": "/frontend/$1"
     }
