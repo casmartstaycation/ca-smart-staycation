@@ -16,7 +16,7 @@
     },
     {
       "source": "/favicon.ico",
-      "destination": "/frontend/favicon.ico"
+      "destination": "/frontend/favicon.svg"
     },
     {
       "source": "/:path*",
