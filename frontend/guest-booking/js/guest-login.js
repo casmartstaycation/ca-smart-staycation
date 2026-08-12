@@ -1,8 +1,5 @@
-// Use the same Vercel origin when the guest portal is served by Vercel.
-// Fall back to the production Vercel API when this page is served from GitHub Pages/local hosting.
-const API = /(^|\.)vercel\.app$/i.test(window.location.hostname)
-    ? `${window.location.origin}/api`
-    : "https://ca-smart-staycation.vercel.app/api";
+// Use same-origin API when hosted on casmartstaycation.com; fall back to Vercel or public API for other hosts.
+const API = window.CA_SMART_API || (/(^|\.)casmartstaycation\.com$/i.test(window.location.hostname) ? '/api' : (/(^|\.)vercel\.app$/i.test(window.location.hostname) ? `${window.location.origin}/api` : 'https://ca-smart-staycation.vercel.app/api'));
 
 const form = document.getElementById("guestLoginForm");
 const button = document.getElementById("loginButton");
