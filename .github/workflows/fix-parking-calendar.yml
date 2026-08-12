@@ -1,10 +1,33 @@
-name: Parking calendar fix helper
+name: Parking calendar booked-mark verification
 
 on:
+  push:
+    paths:
+      - 'frontend/js/script.js'
+      - 'frontend/js/parking-calendar-sync.js'
+      - 'tests/parking-calendar.test.js'
+  pull_request:
+    paths:
+      - 'frontend/js/script.js'
+      - 'frontend/js/parking-calendar-sync.js'
+      - 'tests/parking-calendar.test.js'
   workflow_dispatch:
 
 jobs:
-  status:
+  test-parking-calendar:
+    name: Verify parking booked-mark logic
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Parking calendar fix is already applied in main."
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Ensure legacy broken script is quarantined
+        run: |
+          if [ -f "frontend/js/script.js.before-repair" ]; then
+            echo "ERROR: frontend/js/script.js.before-repair must not exist (use .bak extension)."
+            exit 1
+          fi
+          echo "OK: legacy script is quarantined."
+      - name: Run parking calendar unit tests
+        run: node tests/parking-calendar.test.js
