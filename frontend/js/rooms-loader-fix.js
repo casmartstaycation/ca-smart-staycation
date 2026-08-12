@@ -3,7 +3,9 @@
 
   // Use the verified production API directly. Both desktop and mobile browsers
   // must use the same endpoint; do not depend on a frontend/Vercel /api proxy.
-  const API = 'https://casmartstaycation.com/api';
+-  const API = 'https://casmartstaycation.com/api';
++  // Prefer same-origin requests to avoid CORS and cross-host redirects.
++  const API = window.CA_SMART_API || '/api';
 
   async function loadRoomsSafely(){
     const select = document.getElementById('room');
@@ -21,11 +23,12 @@
       const timer = setTimeout(() => controller.abort(), 10000);
 
       // Keep this request identical for desktop and mobile.
-      const res = await fetch(`${API}/rooms`, {
-        cache: 'no-store',
-        headers: { Accept: 'application/json' },
-        signal: controller.signal
-      });
+-      const res = await fetch(`${API}/rooms`, {
++      const res = await fetch(`${API}/rooms`, {
+         cache: 'no-store',
+         headers: { Accept: 'application/json' },
+         signal: controller.signal
+       });
 
       clearTimeout(timer);
 
