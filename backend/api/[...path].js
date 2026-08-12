@@ -11,9 +11,16 @@ function applyCors(req, res) {
   const isVercelOrigin = origin && /^https:\/\/[-a-z0-9]+\.vercel\.app$/i.test(origin);
 
   if (origin && (allowed.has(origin) || isVercelOrigin)) {
+    // Set standard CORS response headers. These are applied early so they
+    // are present on any response produced by the function (including errors
+    // or programmatic redirects created within the function).
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Vary', 'Origin');
+
+    // Helpful preflight and caching controls
+    res.setHeader('Access-Control-Max-Age', '600');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Location');
   }
 
   res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS');
