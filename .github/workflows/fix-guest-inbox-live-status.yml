@@ -1,0 +1,38 @@
+name: Fix guest inbox live status
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch guest dashboard inbox polling
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/guest-booking/guest-dashboard.html')
+          s = p.read_text(encoding='utf-8')
+          old = 'loadAccount();\n'
+          new = '''loadAccount();\n\n// Keep guest notifications and messages synchronized with the backend.\n// The backend already exposes /guest/inbox; polling prevents the tab/badges\n// from becoming stale while the guest account remains open.\nlet inboxPollBusy = false;\nasync function refreshGuestInboxLive() {\n  if (inboxPollBusy || !TOKEN || document.visibilityState === "hidden") return;\n  inboxPollBusy = true;\n  try {\n    await loadInbox();\n  } finally {\n    inboxPollBusy = false;\n  }\n}\nsetInterval(refreshGuestInboxLive, 10000);\ndocument.addEventListener("visibilitychange", () => {\n  if (document.visibilityState === "visible") refreshGuestInboxLive();\n});\n'''
+          if old not in s:
+              raise SystemExit('Expected loadAccount() marker was not found; no changes made.')
+          if 'refreshGuestInboxLive' in s:
+              raise SystemExit('Live inbox patch already exists; no changes needed.')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/guest-booking/guest-dashboard.html
+          git diff --cached --quiet || git commit -m "Fix live guest notification and message status"
+          git push
+      - name: Remove repair workflow
+        if: always()
+        run: |
+          rm -f .github/workflows/fix-guest-inbox-live-status.yml
+          git add .github/workflows/fix-guest-inbox-live-status.yml
+          git diff --cached --quiet || git commit -m "Remove temporary inbox repair workflow"
+          git push
