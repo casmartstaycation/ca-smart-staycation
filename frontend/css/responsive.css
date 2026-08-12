@@ -394,3 +394,216 @@ button, input, select, textarea {
     font-size: clamp(28px, 7vw, 46px);
   }
 }
+
+/* =========================================
+   FINAL MOBILE SAFETY PASS
+   Prevent overflow on 320px–430px phones
+========================================= */
+
+@media (max-width: 600px) {
+  *,
+  *::before,
+  *::after {
+    max-width: 100%;
+  }
+
+  body,
+  main,
+  section,
+  form,
+  .booking-container,
+  .form-card,
+  .form-grid,
+  .form-group,
+  .summary-box,
+  .booking-calendar-card,
+  .calendar-grid,
+  .calendar-weekdays {
+    min-width: 0;
+  }
+
+  .header {
+    display: flex;
+    flex-wrap: nowrap;
+  }
+
+  .header > div:last-child {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .header-button {
+    max-width: 34vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hero-content,
+  .booking-container,
+  .form-card,
+  .upload-box,
+  .summary-box {
+    overflow: hidden;
+  }
+
+  .hero h2,
+  .hero-description,
+  .booking-heading h2,
+  .step-title h3,
+  .step-title p,
+  .booking-info-card,
+  .summary-box,
+  label,
+  small,
+  p,
+  h1,
+  h2,
+  h3,
+  h4 {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .step-title > div {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .summary-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .summary-row span:first-child,
+  .summary-row strong:first-child {
+    min-width: 0;
+  }
+
+  .summary-row span:last-child,
+  .summary-row strong:last-child {
+    max-width: 45vw;
+  }
+
+  .booking-calendar-card {
+    border-radius: 10px;
+  }
+
+  .calendar-weekdays,
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .calendar-weekdays span,
+  .calendar-day {
+    width: auto;
+    min-width: 0;
+  }
+
+  .calendar-day {
+    aspect-ratio: 1 / 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .upload-box label,
+  .upload-box strong,
+  .upload-box small {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  #governmentIdName {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .form-action p {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .continue-button {
+    display: block;
+    max-width: 100%;
+  }
+}
+
+/* Extra-small phones: 320px and below */
+@media (max-width: 340px) {
+  .header {
+    padding: 8px;
+    gap: 5px;
+  }
+
+  .logo-area {
+    gap: 5px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+    font-size: 12px;
+  }
+
+  .logo-area h1 {
+    font-size: 13px;
+  }
+
+  .header-button {
+    padding: 6px 5px;
+    font-size: 8px;
+    max-width: 31vw;
+  }
+
+  .hero {
+    min-height: 650px;
+  }
+
+  .hero-overlay {
+    padding: 0 7px;
+  }
+
+  .hero-content {
+    padding: 18px 11px;
+  }
+
+  .hero h2 {
+    font-size: 28px;
+  }
+
+  .hero-description {
+    font-size: 13px;
+  }
+
+  .booking-container {
+    width: calc(100% - 8px);
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .form-card {
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+
+  .step-title h3 {
+    font-size: 18px;
+  }
+
+  .step-title p {
+    font-size: 10px;
+  }
+
+  .calendar-weekdays span {
+    font-size: 8px;
+  }
+
+  .calendar-day {
+    font-size: 10px;
+  }
+}
