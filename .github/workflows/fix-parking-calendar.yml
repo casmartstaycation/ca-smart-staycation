@@ -29,5 +29,20 @@ jobs:
             exit 1
           fi
           echo "OK: legacy script is quarantined."
+      - name: Check parking logic signatures exist in script.js
+        run: |
+          # Ensure isDateBooked, bookingHasParking, bookingOverlapsDates are present
+          for fn in "isDateBooked" "bookingHasParking" "bookingOverlapsDates"; do
+            if ! grep -q "$fn" frontend/js/script.js; then
+              echo "ERROR: $fn not found in frontend/js/script.js — test helpers may be out of sync."
+              exit 1
+            fi
+          done
+          # Ensure parking type check is still present
+          if ! grep -q 'type==="parking"' frontend/js/script.js; then
+            echo 'ERROR: parking type check (type==="parking") missing from isDateBooked in script.js'
+            exit 1
+          fi
+          echo "OK: all required parking logic signatures present in script.js."
       - name: Run parking calendar unit tests
         run: node tests/parking-calendar.test.js

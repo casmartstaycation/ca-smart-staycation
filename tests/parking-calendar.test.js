@@ -22,6 +22,11 @@ const document = {
 global.document = document;
 
 // --- Helpers extracted from frontend/js/script.js (kept in sync) ---
+// WARNING: These are manually duplicated from frontend/js/script.js because
+// that file is written for a browser environment and cannot be require()'d
+// directly. If you change the booking logic in script.js, you MUST update
+// these helpers too. The CI workflow checks that key function signatures
+// still exist in script.js to catch obvious drift (see fix-parking-calendar.yml).
 function idOf(v) {
   if (!v) return '';
   if (typeof v === 'object') return String(v._id || v.id || '');
