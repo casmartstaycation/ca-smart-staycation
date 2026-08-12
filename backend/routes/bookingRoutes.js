@@ -16,7 +16,7 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 const storage = multer.diskStorage({ destination(req, file, cb) { cb(null, uploadDir); }, filename(req, file, cb) { cb(null, Date.now() + path.extname(file.originalname).toLowerCase()); } });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 }, fileFilter(req, file, cb) { const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"]; if (!allowed.includes(file.mimetype)) return cb(new Error("Payment proof must be JPG, PNG, WEBP, or PDF.")); cb(null, true); } });
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "markryantamayo@gmail.com";
-const API_PUBLIC_URL = process.env.API_PUBLIC_URL || "https://ca-smart-staycation-muqd.onrender.com/api";
+const API_PUBLIC_URL = process.env.API_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}/api` : "/api");
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "");
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || (ADMIN_PASSWORD ? crypto.createHash("sha256").update(`ca-smart-admin:${ADMIN_PASSWORD}`).digest("hex") : "");
 const PAYMENT_WINDOW_MS = 60 * 60 * 1000;
