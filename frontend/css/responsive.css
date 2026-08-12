@@ -16,594 +16,291 @@ button, input, select, textarea {
   min-width: 0;
 }
 
-/* Tablet and smaller laptops */
 @media (max-width: 900px) {
-  .header {
-    height: auto;
-    min-height: 72px;
-    padding: 10px 24px;
-    gap: 12px;
-  }
-
-  .logo-area {
-    min-width: 0;
-  }
-
-  .logo-area h1 {
-    font-size: clamp(20px, 3vw, 26px);
-  }
-
-  .logo-area p {
-    font-size: 9px;
-    letter-spacing: 1px;
-  }
-
-  .logo-icon {
-    width: 48px;
-    height: 48px;
-    font-size: 18px;
-    flex: 0 0 48px;
-  }
-
-  .hero {
-    min-height: 760px;
-    padding-top: 105px;
-  }
-
-  .hero-overlay {
-    padding: 0 30px;
-  }
-
-  .hero-content {
-    max-width: 680px;
-    padding: 28px 30px;
-    transform: none;
-  }
-
-  .booking-container {
-    width: min(94%, 1120px);
-    padding: 40px 30px;
-    margin-top: -60px;
-  }
+  .header { height: auto; min-height: 72px; padding: 10px 24px; gap: 12px; }
+  .logo-area { min-width: 0; }
+  .logo-area h1 { font-size: clamp(20px, 3vw, 26px); }
+  .logo-area p { font-size: 9px; letter-spacing: 1px; }
+  .logo-icon { width: 48px; height: 48px; font-size: 18px; flex: 0 0 48px; }
+  .hero { min-height: 760px; padding-top: 105px; }
+  .hero-overlay { padding: 0 30px; }
+  .hero-content { max-width: 680px; padding: 28px 30px; transform: none; }
+  .booking-container { width: min(94%, 1120px); padding: 40px 30px; margin-top: -60px; }
 }
 
-/* Phones */
 @media (max-width: 600px) {
-  body {
-    font-size: 15px;
+  body { font-size: 15px; }
+  .header { position: absolute; width: 100%; min-height: 0; padding: 10px 14px; align-items: center; }
+  .header > div:last-child { gap: 6px !important; justify-content: flex-end !important; }
+  .logo-area { gap: 8px; flex: 1 1 auto; }
+  .logo-icon { width: 40px; height: 40px; flex-basis: 40px; font-size: 16px; }
+  .logo-area h1 { font-size: 17px; line-height: 1.15; white-space: normal; }
+  .logo-area p { display: none; }
+  .header-button { padding: 8px 9px; font-size: 10px; letter-spacing: .2px; white-space: nowrap; }
+  .hero { min-height: 690px; padding-top: 95px; align-items: center; }
+  .hero-overlay { padding: 0 14px; }
+  .hero-content { width: 100%; max-width: none; padding: 24px 18px; border-radius: 16px; transform: none; }
+  .eyebrow { font-size: 9px; letter-spacing: 2px; margin-bottom: 12px; }
+  .hero h2 { font-size: clamp(32px, 10vw, 48px); line-height: 1.08; }
+  .hero-description { margin: 18px 0 24px; font-size: 14px; line-height: 1.5; }
+  .gold-button { width: 100%; text-align: center; padding: 13px 18px; }
+  .hero-content a[href*="guest-login"] { display: block !important; margin: 13px 0 0 !important; text-align: center; font-size: 13px; }
+  .booking-container { width: calc(100% - 20px); margin: -35px auto 35px; padding: 28px 12px; border-radius: 18px; }
+  .booking-heading { margin-bottom: 28px; padding: 0 5px; }
+  .section-label { font-size: 9px; letter-spacing: 2.5px; }
+  .booking-heading h2 { font-size: clamp(30px, 9vw, 42px); }
+  .booking-heading p { font-size: 13px; }
+  .form-card { padding: 20px 14px; margin-bottom: 18px; border-radius: 14px; }
+  .form-card:hover { transform: none; }
+  .step-title { gap: 10px; padding-bottom: 16px; margin-bottom: 18px; }
+  .step-title > span { width: 36px; height: 36px; font-size: 14px; }
+  .step-title h3 { font-size: 20px; }
+  .step-title p { font-size: 11px; line-height: 1.4; }
+  .form-grid { grid-template-columns: 1fr; gap: 16px; min-width: 0; }
+  .full-width { grid-column: auto; }
+  input, select, textarea { width: 100%; max-width: 100%; padding: 13px 12px; font-size: 16px; }
+  textarea { min-height: 100px; }
+  .upload-box { padding: 28px 12px; }
+  .upload-box strong { font-size: 16px; }
+  .summary-box { overflow-wrap: anywhere; }
+  .summary-row { gap: 10px; }
+  .summary-row span:last-child, .summary-row strong:last-child { text-align: right; white-space: nowrap; }
+  .booking-info-card { padding: 14px; }
+  #vehicleSection { padding: 0 2px; }
+  .form-action { padding: 0 2px; }
+  .continue-button { width: 100%; min-height: 50px; padding: 13px 18px; }
+  footer { padding: 35px 16px; text-align: center; }
+}
+
+@media (max-width: 380px) {
+  .header { padding-left: 9px; padding-right: 9px; }
+  .logo-icon { width: 36px; height: 36px; flex-basis: 36px; font-size: 14px; }
+  .logo-area h1 { font-size: 15px; }
+  .header-button { padding: 7px 7px; font-size: 9px; }
+  .hero-overlay { padding: 0 9px; }
+  .hero-content { padding: 20px 14px; }
+  .hero h2 { font-size: 31px; }
+  .booking-container { width: calc(100% - 12px); padding-left: 8px; padding-right: 8px; }
+  .form-card { padding-left: 11px; padding-right: 11px; }
+}
+
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 550px) {
+  .hero { min-height: 620px; }
+  .hero-content { padding: 20px 24px; }
+  .hero h2 { font-size: clamp(28px, 7vw, 46px); }
+}
+
+/* =========================================================
+   MOBILE GALLERY + CALENDAR HARDENING
+   Prevent dynamically injected gallery/calendar elements from
+   escaping the booking card or covering the viewport.
+========================================================= */
+@media (max-width: 600px) {
+  .booking-container,
+  .booking-container form,
+  .booking-container .form-card,
+  .booking-container .form-grid,
+  .booking-container .form-group {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
   }
 
-  .header {
-    position: absolute;
-    width: 100%;
-    min-height: 0;
-    padding: 10px 14px;
-    align-items: center;
+  /* The gallery is injected dynamically into the booking form. */
+  #unitInfoPanel,
+  .unit-info-panel,
+  .unit-gallery {
+    position: static !important;
+    float: none !important;
+    clear: both !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 14px 0 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    transform: none !important;
   }
 
-  .header > div:last-child {
-    gap: 6px !important;
-    justify-content: flex-end !important;
-  }
-
-  .logo-area {
-    gap: 8px;
-    flex: 1 1 auto;
-  }
-
-  .logo-icon {
-    width: 40px;
-    height: 40px;
-    flex-basis: 40px;
-    font-size: 16px;
-  }
-
-  .logo-area h1 {
-    font-size: 17px;
-    line-height: 1.15;
-    white-space: normal;
-  }
-
-  .logo-area p {
-    display: none;
-  }
-
-  .header-button {
-    padding: 8px 9px;
-    font-size: 10px;
-    letter-spacing: .2px;
-    white-space: nowrap;
-  }
-
-  .hero {
-    min-height: 690px;
-    padding-top: 95px;
-    align-items: center;
-  }
-
-  .hero-overlay {
-    padding: 0 14px;
-  }
-
-  .hero-content {
-    width: 100%;
-    max-width: none;
-    padding: 24px 18px;
-    border-radius: 16px;
-    transform: none;
-  }
-
-  .eyebrow {
-    font-size: 9px;
-    letter-spacing: 2px;
-    margin-bottom: 12px;
-  }
-
-  .hero h2 {
-    font-size: clamp(32px, 10vw, 48px);
-    line-height: 1.08;
-  }
-
-  .hero-description {
-    margin: 18px 0 24px;
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  .gold-button {
-    width: 100%;
-    text-align: center;
-    padding: 13px 18px;
-  }
-
-  .hero-content a[href*="guest-login"] {
+  .unit-primary-photo {
     display: block !important;
-    margin: 13px 0 0 !important;
-    text-align: center;
-    font-size: 13px;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: 260px !important;
+    aspect-ratio: 16 / 10 !important;
+    object-fit: cover !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    transform: none !important;
   }
 
-  .booking-container {
-    width: calc(100% - 20px);
-    margin: -35px auto 35px;
-    padding: 28px 12px;
-    border-radius: 18px;
+  .unit-photo-thumbs {
+    display: flex !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 64px !important;
+    max-height: 64px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    flex-wrap: nowrap !important;
+    gap: 7px !important;
+    margin: 8px 0 0 !important;
+    padding: 0 0 4px !important;
+    box-sizing: border-box !important;
+    transform: none !important;
   }
 
-  .booking-heading {
-    margin-bottom: 28px;
-    padding: 0 5px;
+  .unit-photo-thumbs img {
+    width: 68px !important;
+    min-width: 68px !important;
+    max-width: 68px !important;
+    height: 52px !important;
+    max-height: 52px !important;
+    flex: 0 0 68px !important;
+    object-fit: cover !important;
   }
 
-  .section-label {
-    font-size: 9px;
-    letter-spacing: 2.5px;
+  .unit-description,
+  .unit-amenities {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
   }
 
-  .booking-heading h2 {
-    font-size: clamp(30px, 9vw, 42px);
-  }
-
-  .booking-heading p {
-    font-size: 13px;
-  }
-
-  .form-card {
-    padding: 20px 14px;
-    margin-bottom: 18px;
-    border-radius: 14px;
-  }
-
-  .form-card:hover {
-    transform: none;
-  }
-
-  .step-title {
-    gap: 10px;
-    padding-bottom: 16px;
-    margin-bottom: 18px;
-  }
-
-  .step-title > span {
-    width: 36px;
-    height: 36px;
-    font-size: 14px;
-  }
-
-  .step-title h3 {
-    font-size: 20px;
-  }
-
-  .step-title p {
-    font-size: 11px;
-    line-height: 1.4;
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .full-width {
-    grid-column: auto;
-  }
-
-  input,
-  select,
-  textarea {
-    width: 100%;
-    padding: 13px 12px;
-    font-size: 16px;
-  }
-
-  textarea {
-    min-height: 100px;
-  }
-
+  /* Keep the calendar below the gallery, never beside/under it visually. */
   .booking-calendar-card {
-    width: 100%;
-    overflow: hidden;
+    position: static !important;
+    display: block !important;
+    float: none !important;
+    clear: both !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    transform: none !important;
+  }
+
+  .calendar-header,
+  .calendar-weekdays,
+  .calendar-grid {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
   }
 
   .calendar-header {
-    gap: 6px;
-    padding: 10px 6px;
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    padding: 8px 5px !important;
+    margin: 0 !important;
   }
 
   .calendar-header h3 {
-    font-size: 16px;
-    text-align: center;
-    flex: 1;
-    min-width: 0;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    margin: 0 !important;
+    font-size: 15px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   .calendar-header button {
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    flex: 0 0 34px !important;
+    box-sizing: border-box !important;
   }
 
   .calendar-weekdays,
   .calendar-grid {
-    width: 100%;
-  }
-
-  .calendar-weekdays span {
-    font-size: 10px;
-  }
-
-  .calendar-day {
-    min-width: 0;
-    min-height: 38px;
-    font-size: 12px;
-  }
-
-  .upload-box {
-    padding: 28px 12px;
-  }
-
-  .upload-box strong {
-    font-size: 16px;
-  }
-
-  .summary-box {
-    overflow-wrap: anywhere;
-  }
-
-  .summary-row {
-    gap: 10px;
-  }
-
-  .summary-row span:last-child,
-  .summary-row strong:last-child {
-    text-align: right;
-    white-space: nowrap;
-  }
-
-  .booking-info-card {
-    padding: 14px;
-  }
-
-  #vehicleSection {
-    padding: 0 2px;
-  }
-
-  .form-action {
-    padding: 0 2px;
-  }
-
-  .continue-button {
-    width: 100%;
-    min-height: 50px;
-    padding: 13px 18px;
-  }
-
-  footer {
-    padding: 35px 16px;
-    text-align: center;
-  }
-}
-
-/* Very small phones: 320–380px */
-@media (max-width: 380px) {
-  .header {
-    padding-left: 9px;
-    padding-right: 9px;
-  }
-
-  .logo-icon {
-    width: 36px;
-    height: 36px;
-    flex-basis: 36px;
-    font-size: 14px;
-  }
-
-  .logo-area h1 {
-    font-size: 15px;
-  }
-
-  .header-button {
-    padding: 7px 7px;
-    font-size: 9px;
-  }
-
-  .hero-overlay {
-    padding: 0 9px;
-  }
-
-  .hero-content {
-    padding: 20px 14px;
-  }
-
-  .hero h2 {
-    font-size: 31px;
-  }
-
-  .booking-container {
-    width: calc(100% - 12px);
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-
-  .form-card {
-    padding-left: 11px;
-    padding-right: 11px;
-  }
-
-  .calendar-weekdays span {
-    font-size: 9px;
-  }
-
-  .calendar-day {
-    min-height: 34px;
-    font-size: 11px;
-  }
-}
-
-/* Landscape phones */
-@media (max-width: 900px) and (orientation: landscape) and (max-height: 550px) {
-  .hero {
-    min-height: 620px;
-  }
-
-  .hero-content {
-    padding: 20px 24px;
-  }
-
-  .hero h2 {
-    font-size: clamp(28px, 7vw, 46px);
-  }
-}
-
-/* =========================================
-   FINAL MOBILE SAFETY PASS
-   Prevent overflow on 320px–430px phones
-========================================= */
-
-@media (max-width: 600px) {
-  *,
-  *::before,
-  *::after {
-    max-width: 100%;
-  }
-
-  body,
-  main,
-  section,
-  form,
-  .booking-container,
-  .form-card,
-  .form-grid,
-  .form-group,
-  .summary-box,
-  .booking-calendar-card,
-  .calendar-grid,
-  .calendar-weekdays {
-    min-width: 0;
-  }
-
-  .header {
-    display: flex;
-    flex-wrap: nowrap;
-  }
-
-  .header > div:last-child {
-    flex: 0 1 auto;
-    min-width: 0;
-  }
-
-  .header-button {
-    max-width: 34vw;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .hero-content,
-  .booking-container,
-  .form-card,
-  .upload-box,
-  .summary-box {
-    overflow: hidden;
-  }
-
-  .hero h2,
-  .hero-description,
-  .booking-heading h2,
-  .step-title h3,
-  .step-title p,
-  .booking-info-card,
-  .summary-box,
-  label,
-  small,
-  p,
-  h1,
-  h2,
-  h3,
-  h4 {
-    overflow-wrap: anywhere;
-    word-break: normal;
-  }
-
-  .step-title > div {
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-
-  .summary-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-  }
-
-  .summary-row span:first-child,
-  .summary-row strong:first-child {
-    min-width: 0;
-  }
-
-  .summary-row span:last-child,
-  .summary-row strong:last-child {
-    max-width: 45vw;
-  }
-
-  .booking-calendar-card {
-    border-radius: 10px;
-  }
-
-  .calendar-weekdays,
-  .calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    gap: 0 !important;
   }
 
   .calendar-weekdays span,
   .calendar-day {
-    width: auto;
-    min-width: 0;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .calendar-day {
-    aspect-ratio: 1 / 1;
-    min-height: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    aspect-ratio: 1 / 1 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 12px !important;
+    overflow: hidden !important;
   }
 
-  .upload-box label,
-  .upload-box strong,
-  .upload-box small {
-    max-width: 100%;
-    overflow-wrap: anywhere;
+  /* Never allow a gallery lightbox image to create page overflow. */
+  .unit-lightbox {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    padding: 12px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
 
-  #governmentIdName {
-    max-width: 100%;
-    overflow-wrap: anywhere;
-  }
-
-  .form-action p {
-    font-size: 12px;
-    line-height: 1.45;
-  }
-
-  .continue-button {
-    display: block;
-    max-width: 100%;
+  .unit-lightbox img {
+    display: block !important;
+    width: auto !important;
+    max-width: 94vw !important;
+    max-height: 80dvh !important;
+    height: auto !important;
+    object-fit: contain !important;
   }
 }
 
-/* Extra-small phones: 320px and below */
 @media (max-width: 340px) {
-  .header {
-    padding: 8px;
-    gap: 5px;
-  }
-
-  .logo-area {
-    gap: 5px;
-  }
-
-  .logo-icon {
-    width: 32px;
-    height: 32px;
-    flex-basis: 32px;
-    font-size: 12px;
-  }
-
-  .logo-area h1 {
-    font-size: 13px;
-  }
-
-  .header-button {
-    padding: 6px 5px;
-    font-size: 8px;
-    max-width: 31vw;
-  }
-
-  .hero {
-    min-height: 650px;
-  }
-
-  .hero-overlay {
-    padding: 0 7px;
-  }
-
-  .hero-content {
-    padding: 18px 11px;
-  }
-
-  .hero h2 {
-    font-size: 28px;
-  }
-
-  .hero-description {
-    font-size: 13px;
-  }
-
-  .booking-container {
-    width: calc(100% - 8px);
-    padding-left: 6px;
-    padding-right: 6px;
-  }
-
-  .form-card {
-    padding-left: 9px;
-    padding-right: 9px;
-  }
-
-  .step-title h3 {
-    font-size: 18px;
-  }
-
-  .step-title p {
-    font-size: 10px;
-  }
-
-  .calendar-weekdays span {
-    font-size: 8px;
-  }
-
-  .calendar-day {
-    font-size: 10px;
-  }
+  .header { padding: 8px; gap: 5px; }
+  .logo-area { gap: 5px; }
+  .logo-icon { width: 32px; height: 32px; flex-basis: 32px; font-size: 12px; }
+  .logo-area h1 { font-size: 13px; }
+  .header-button { padding: 6px 5px; font-size: 8px; max-width: 31vw; }
+  .hero { min-height: 650px; }
+  .hero-overlay { padding: 0 7px; }
+  .hero-content { padding: 18px 11px; }
+  .hero h2 { font-size: 28px; }
+  .hero-description { font-size: 13px; }
+  .booking-container { width: calc(100% - 8px); padding-left: 6px; padding-right: 6px; }
+  .form-card { padding-left: 9px; padding-right: 9px; }
+  .calendar-day { font-size: 10px; }
+  .unit-photo-thumbs img { width: 60px !important; min-width: 60px !important; flex-basis: 60px !important; }
 }
