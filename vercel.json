@@ -11,6 +11,14 @@
       "destination": "/frontend/index.html"
     },
     {
+      "source": "/index.html",
+      "destination": "/frontend/index.html"
+    },
+    {
+      "source": "/favicon.ico",
+      "destination": "/frontend/favicon.ico"
+    },
+    {
       "source": "/:path*",
       "destination": "/frontend/:path*"
     }
