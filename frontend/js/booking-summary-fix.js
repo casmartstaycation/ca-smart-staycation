@@ -1,71 +1,41 @@
 (function(){
   'use strict';
-  const INCLUDED_GUESTS = 2;
-  const EXTRA_GUEST_FEE = 300;
-  const SECURITY_DEPOSIT = 1000;
-  const PARKING_RATE = 500;
-  const ROOM_RATE = 2800;
-
-  function money(n){return `₱${Number(n||0).toLocaleString('en-PH')}`;}
-  function dateValue(id){
-    const el=document.getElementById(id);
-    if(!el?.value)return null;
-    const d=new Date(`${el.value}T00:00:00`);
-    return Number.isNaN(d.getTime())?null:d;
-  }
-  function nights(){
-    const a=dateValue('checkIn'),b=dateValue('checkOut');
-    if(!a||!b||b<=a)return 0;
-    return Math.round((b-a)/86400000);
-  }
-  function bookingType(){return String(document.getElementById('bookingType')?.value||'unit').toLowerCase();}
-  function guests(){return Math.max(0,Number(document.getElementById('guests')?.value||0));}
-  function selectedRoom(){
-    const select=document.getElementById('room');
-    if(!select)return null;
-    const option=select.options[select.selectedIndex];
-    return option?.value?option:null;
-  }
-  function roomRate(){
-    const option=selectedRoom();
-    const raw=option?.dataset?.price||option?.dataset?.rate;
-    const parsed=Number(raw);
-    return Number.isFinite(parsed)&&parsed>=0?parsed:ROOM_RATE;
-  }
-  function parkingAmount(n){
-    const type=bookingType();
-    return (type==='parking'||type==='both') ? PARKING_RATE*n : 0;
-  }
+  const INCLUDED_GUESTS=2, EXTRA_GUEST_FEE=300, SECURITY_DEPOSIT=1000, PARKING_RATE=500, ROOM_RATE=2800;
+  const money=n=>'₱'+Number(n||0).toLocaleString('en-PH');
+  const value=id=>document.getElementById(id)?.value||'';
+  function date(id){const v=value(id);if(!v)return null;const d=new Date(v+'T00:00:00');return Number.isNaN(d.getTime())?null:d;}
+  function nights(){const a=date('checkIn'),b=date('checkOut');return a&&b&&b>a?Math.round((b-a)/86400000):0;}
+  function type(){return String(value('bookingType')||'unit').toLowerCase();}
+  function room(){const id=value('room');return Array.isArray(window.rooms)?window.rooms.find(r=>String(r._id)===String(id)):null;}
+  function set(id,n){const e=document.getElementById(id);if(e)e.textContent=money(n);}
   function calculate(){
-    const type=bookingType();
-    const n=nights();
-    const hasAccommodation=type==='unit'||type==='both';
-    const roomAmount=hasAccommodation ? roomRate()*n : 0;
-    const extraGuests=hasAccommodation ? Math.max(0,guests()-INCLUDED_GUESTS) : 0;
-    const extraAmount=extraGuests*EXTRA_GUEST_FEE*n;
-    const parking=parkingAmount(n);
-    const deposit=hasAccommodation ? SECURITY_DEPOSIT : 0;
-    const total=roomAmount+extraAmount+parking+deposit;
-    const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=money(value);};
-    set('roomAmount',roomAmount);
-    set('extraGuestAmount',extraAmount);
-    set('parkingAmount',parking);
-    set('securityDepositAmount',deposit);
-    set('totalAmount',total);
+    const t=type(), n=nights(), accommodation=t==='unit'||t==='both';
+    let roomTotal=0, extraTotal=0, parkingTotal=0, deposit=0;
+    if(n>0){
+      if(accommodation){
+        const r=room(), rate=Number(r?.price);
+        roomTotal=(Number.isFinite(rate)&&rate>=0?rate:ROOM_RATE)*n;
+        const guestCount=Math.max(0,Number(value('guests')||0));
+        extraTotal=Math.max(0,guestCount-INCLUDED_GUESTS)*EXTRA_GUEST_FEE*n;
+        deposit=SECURITY_DEPOSIT;
+      }
+      if(t==='parking'||t==='both') parkingTotal=PARKING_RATE*n;
+    }
+    const total=roomTotal+extraTotal+parkingTotal+deposit;
+    set('roomAmount',roomTotal);set('extraGuestAmount',extraTotal);set('parkingAmount',parkingTotal);set('securityDepositAmount',deposit);set('totalAmount',total);
     return total;
   }
+  // Replace the original calculation so calls from calendar/booking-type code
+  // cannot overwrite this corrected summary with the old capacity-based logic.
+  window.calculateTotal=calculate;
+  window.caBookingSummaryCalculate=calculate;
   function bind(){
     ['bookingType','room','guests','children','checkIn','checkOut'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(!el)return;
-      el.addEventListener('change',calculate);
-      el.addEventListener('input',calculate);
+      const e=document.getElementById(id);if(!e)return;
+      e.addEventListener('change',calculate);e.addEventListener('input',calculate);
     });
     calculate();
-    window.setTimeout(calculate,100);
-    window.setTimeout(calculate,500);
-    window.setTimeout(calculate,1500);
+    [100,500,1500].forEach(ms=>setTimeout(calculate,ms));
   }
-  window.caBookingSummaryCalculate=calculate;
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
