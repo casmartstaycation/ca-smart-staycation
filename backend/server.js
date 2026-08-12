@@ -26,4 +26,18 @@ app.get('/api/bookings', async (req, res) => { try { await expireUnpaidBookings(
 app.get('/api/parking/availability', async (req, res) => { try { await expireUnpaidBookings(); const bookings = await Booking.find({ bookingStatus: { $nin: ["Cancelled", "Checked Out", "Expired"] }, checkIn: { $ne: null }, checkOut: { $ne: null }, $or: [{ parkingOnly: true }, { parking: { $ne: null } }] }).select("bookingReference parking parkingOnly checkIn checkOut bookingStatus").lean().sort({ checkIn: 1 }); res.json({ success: true, data: bookings }); } catch (err) { console.error("PARKING AVAILABILITY ERROR:", err); res.status(500).json({ success: false, message: err.message }); } });
 app.get('/api/bookings/:id', async (req, res) => { try { const booking = await Booking.findById(req.params.id).populate("room").populate("parking").lean(); if (!booking) return res.status(404).json({ success: false, message: "Booking not found." }); res.json({ success: true, data: booking }); } catch (err) { res.status(500).json({ success: false, message: err.message }); } });
 app.use('/api', require('./routes/adminRoutes')); app.use('/api', require('./routes/roomRoutes')); app.use('/api', require('./routes/guestRoutes')); app.use('/api', require('./routes/guestFastRoutes')); app.use('/api', require('./routes/guestAddOnRoutes')); app.use('/api', require('./routes/fastGuestLoginRoutes')); app.use('/api', require('./routes/guestAuthRoutes')); app.use('/api', require('./routes/paymentRecoveryRoutes')); app.use('/api', require('./routes/bookingRoutes')); app.use('/api', require('./routes/guestDocumentRoutes')); app.use('/api', require('./routes/parkingRoutes')); app.use('/api', require('./routes/voucherRoutes')); app.use('/api', require('./routes/messagingRoutes')); app.use('/api/settings', settingsRoutes); app.use((req, res) => res.status(404).json({ status: 'error', message: 'Route not found' }));
-const PORT = process.env.PORT || 3000; app.listen(PORT, () => { console.log(`🚀 CA Smart Staycation API running on port ${PORT}`); setInterval(expireUnpaidBookings, 60 * 1000); setInterval(cleanupTerminalBookingUploads, 60 * 1000); setInterval(() => processBookingStatusNotifications().catch(err => console.error("BOOKING STATUS NOTIFICATION ERROR:", err)), 15 * 1000); expireUnpaidBookings(); cleanupTerminalBookingUploads(); processBookingStatusNotifications().catch(err => console.error("INITIAL BOOKING STATUS NOTIFICATION ERROR:", err)); });
+
+module.exports = app;
+
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`🚀 CA Smart Staycation API running on port ${PORT}`);
+    setInterval(expireUnpaidBookings, 60 * 1000);
+    setInterval(cleanupTerminalBookingUploads, 60 * 1000);
+    setInterval(() => processBookingStatusNotifications().catch(err => console.error("BOOKING STATUS NOTIFICATION ERROR:", err)), 15 * 1000);
+    expireUnpaidBookings();
+    cleanupTerminalBookingUploads();
+    processBookingStatusNotifications().catch(err => console.error("INITIAL BOOKING STATUS NOTIFICATION ERROR:", err));
+  });
+}
