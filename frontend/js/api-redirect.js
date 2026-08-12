@@ -6,6 +6,7 @@
   // and lets Vercel route /api/* to the deployed backend function.
   const LEGACY_API = 'https://ca-smart-staycation-muqd.onrender.com/api';
   const VERCEL_API = 'https://ca-smart-staycation.vercel.app/api';
+  const PROD_API = 'https://casmartstaycation.com/api';
   const originalFetch = window.fetch.bind(window);
 
   window.fetch = function (input, init) {
@@ -25,6 +26,11 @@
       input = isString ? `/api${path}` : new Request(`/api${path}`, input);
     } else if (url.startsWith(VERCEL_API)) {
       const path = url.slice(VERCEL_API.length) || '';
+      input = isString ? `/api${path}` : new Request(`/api${path}`, input);
+    } else if (url.startsWith(PROD_API)) {
+      // Defensive: rewrite any requests that still point to the production
+      // canonical host (casmartstaycation.com) to a same-origin /api path.
+      const path = url.slice(PROD_API.length) || '';
       input = isString ? `/api${path}` : new Request(`/api${path}`, input);
     }
 
