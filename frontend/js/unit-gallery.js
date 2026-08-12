@@ -12,6 +12,7 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     .unit-amenities{margin-top:12px;padding:18px;border:1px solid #e2ddd5;border-radius:8px;background:#fff;box-sizing:border-box;width:100%;max-width:100%;min-width:0;overflow:hidden}
     .unit-amenity-list{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
     .unit-amenity{padding:7px 10px;border:1px solid #ddd;border-radius:6px;background:#f8f6f2;font-size:13px;color:#444;max-width:100%;overflow-wrap:anywhere}
+    .calendar-after-amenities{width:100%;max-width:100%;min-width:0;box-sizing:border-box;clear:both;margin-top:18px}
     .unit-lightbox{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;background:#000d;z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;overflow:hidden}
     .unit-lightbox img{display:block;width:auto;max-width:94vw;max-height:88vh;max-height:88dvh;height:auto;object-fit:contain;border-radius:8px}
     .unit-lightbox button{position:absolute;background:none;border:0;color:#fff;cursor:pointer}
@@ -25,6 +26,7 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
       .unit-photo-thumbs{display:flex;position:relative;left:auto;right:auto;width:100%;max-width:100%;min-width:0;height:64px;max-height:64px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;box-sizing:border-box}
       .unit-photo-thumbs img{width:68px;min-width:68px;max-width:68px;height:52px;max-height:52px;flex:0 0 68px}
       .unit-description,.unit-amenities{width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow:hidden;overflow-wrap:anywhere}
+      .calendar-after-amenities{display:block;width:100%;max-width:100%;min-width:0;clear:both;margin-top:18px;box-sizing:border-box}
     }
     @media(max-width:340px){
       .unit-primary-photo{max-height:210px}
@@ -82,12 +84,10 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
   function moveCalendarAfterAmenities(panel){
     const calendarGroup=document.querySelector('#calendarGrid')?.closest('.form-group');
     if(!calendarGroup||!panel)return;
-    const amenities=panel.querySelector('.unit-amenities');
-    if(amenities){
-      amenities.insertAdjacentElement('afterend',calendarGroup);
-    }else{
-      panel.insertAdjacentElement('afterend',calendarGroup);
-    }
+    // The gallery panel contains the description and amenities. Move the entire
+    // calendar form-group after the whole gallery panel so it is structurally
+    // below the amenities, not merely visually repositioned.
+    panel.insertAdjacentElement('afterend',calendarGroup);
     calendarGroup.classList.add('calendar-after-amenities');
   }
   function useCached(){
