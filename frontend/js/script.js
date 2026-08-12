@@ -3,7 +3,7 @@
    GUEST BOOKING WEBSITE
 ========================================= */
 
-const API = "https://ca-smart-staycation-muqd.onrender.com/api";
+const API = "https://ca-smart-staycation.vercel.app/api";
 const governmentIdInput = document.getElementById("governmentId");
 const governmentIdName = document.getElementById("governmentIdName");
 if (governmentIdInput && governmentIdName) governmentIdInput.addEventListener("change", function () { governmentIdName.textContent = this.files?.length ? this.files[0].name : "No file selected"; });
