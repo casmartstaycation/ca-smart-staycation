@@ -1,0 +1,37 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.casmartstaycation.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.casmartstaycation.app'
+        minSdk 23
+        targetSdk 36
+        versionCode 3
+        versionName '1.2'
+    }
+
+    signingConfigs {
+        playRelease {
+            def keystorePath = System.getenv("KEYSTORE_PATH")
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            def hasSigningSecrets = System.getenv("KEYSTORE_PATH") && System.getenv("KEYSTORE_PASSWORD") && System.getenv("KEY_ALIAS") && System.getenv("KEY_PASSWORD")
+            if (hasSigningSecrets) {
+                signingConfig signingConfigs.playRelease
+            }
+        }
+    }
+}

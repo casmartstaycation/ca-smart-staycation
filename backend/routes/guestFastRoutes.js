@@ -19,22 +19,15 @@ function verifyToken(req) {
 }
 
 function publicAccount(account) {
-  return {
-    id: account._id,
-    email: account.email,
-    bookingReference: account.bookingReference,
-    mustChangePassword: account.defaultPassword === true
-  };
+  return { id: account._id, email: account.email, bookingReference: account.bookingReference, mustChangePassword: account.defaultPassword === true };
 }
 
-// Keep the guest dashboard payload small. Do not send document/history blobs or room images.
 async function lightweightBookingsForEmail(email) {
   return Booking.find({ email: String(email || "").trim().toLowerCase() })
     .select("_id bookingReference firstName lastName email mobile bookingType room parking parkingOnly checkIn checkOut adults children totalAmount paymentStatus bookingStatus housekeepingStatus paymentProof paymentProofSubmittedAt paymentDate refundStatus refundAmount refundFee refundPolicyRule cancellationRequestedAt cancellationReason createdAt updatedAt")
     .populate({ path: "room", select: "_id unitNumber unitName category capacity price weekendPrice holidayPrice status" })
     .populate({ path: "parking", select: "_id parkingNumber parkingName status" })
-    .sort({ createdAt: -1 })
-    .lean();
+    .sort({ createdAt: -1 }).lean();
 }
 
 router.post("/guest-auth/login", async (req, res) => {
@@ -42,28 +35,17 @@ router.post("/guest-auth/login", async (req, res) => {
     const email = String(req.body.email || "").trim().toLowerCase();
     const password = String(req.body.password || "").trim();
     if (!email || !password) return res.status(400).json({ success: false, message: "Email and password are required." });
-
-    // Normally there is one account per email. Query the newest account first so login
-    // does not scan every historical account for the same email.
     const account = await GuestAccount.findOne({ email }).sort({ createdAt: -1 });
-    if (!account || !(await bcrypt.compare(password, account.passwordHash))) {
-      return res.status(401).json({ success: false, message: "Invalid email or password." });
+    if (!account) return res.status(401).json({ success: false, message: "Invalid email or password." });
+    let validPassword = await bcrypt.compare(password, account.passwordHash);
+    if (!validPassword && account.defaultPassword === true && String(account.bookingReference || "").trim() === password) {
+      account.passwordHash = await bcrypt.hash(password, 12); account.defaultPassword = true; await account.save(); validPassword = true;
     }
-
+    if (!validPassword) return res.status(401).json({ success: false, message: "Invalid email or password." });
     await GuestAccount.updateOne({ _id: account._id }, { $set: { lastLoginAt: new Date() } });
-
-    const token = jwt.sign(
-      { accountId: account._id.toString(), email: account.email, bookingReference: account.bookingReference },
-      JWT_SECRET,
-      { expiresIn: "30d" }
-    );
-
-    // Login should return immediately. The dashboard fetches bookings once after navigation.
+    const token = jwt.sign({ accountId: account._id.toString(), email: account.email, bookingReference: account.bookingReference }, JWT_SECRET, { expiresIn: "30d" });
     res.json({ success: true, message: "Login successful.", token, account: publicAccount(account) });
-  } catch (err) {
-    console.error("GUEST FAST LOGIN ERROR:", err);
-    res.status(500).json({ success: false, message: err.message });
-  }
+  } catch (err) { console.error("GUEST FAST LOGIN ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
 });
 
 router.get("/guest-auth/me", async (req, res) => {
@@ -73,9 +55,47 @@ router.get("/guest-auth/me", async (req, res) => {
     if (!account) return res.status(401).json({ success: false, message: "Account not found." });
     const bookings = await lightweightBookingsForEmail(account.email);
     res.json({ success: true, account: publicAccount(account), bookings });
-  } catch (err) {
-    res.status(401).json({ success: false, message: "Session expired or invalid." });
-  }
+  } catch (err) { res.status(401).json({ success: false, message: "Session expired or invalid." }); }
+});
+
+router.put("/guest-auth/account/email", async (req, res) => {
+  try {
+    const payload = verifyToken(req);
+    const password = String(req.body.password || "").trim();
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!password || !email) return res.status(400).json({ success: false, message: "New email and current password are required." });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ success: false, message: "Please enter a valid email address." });
+    const account = await GuestAccount.findById(payload.accountId);
+    if (!account) return res.status(404).json({ success: false, message: "Account not found." });
+    if (!(await bcrypt.compare(password, account.passwordHash))) return res.status(401).json({ success: false, message: "Current password is incorrect." });
+    const existing = await GuestAccount.findOne({ email, _id: { $ne: account._id } }).select("_id").lean();
+    if (existing) return res.status(409).json({ success: false, message: "That email is already registered to another guest account." });
+    const oldEmail = String(account.email).trim().toLowerCase();
+    account.email = email;
+    await account.save();
+    if (oldEmail !== email) await Booking.updateMany({ email: oldEmail }, { $set: { email } });
+    const token = jwt.sign({ accountId: account._id.toString(), email, bookingReference: account.bookingReference }, JWT_SECRET, { expiresIn: "30d" });
+    res.json({ success: true, message: "Email updated successfully.", token, account: publicAccount(account) });
+  } catch (err) { console.error("GUEST EMAIL UPDATE ERROR:", err); res.status(400).json({ success: false, message: err.message || "Unable to update email." }); }
+});
+
+router.put("/guest-auth/account/password", async (req, res) => {
+  try {
+    const payload = verifyToken(req);
+    const currentPassword = String(req.body.currentPassword || "").trim();
+    const newPassword = String(req.body.newPassword || "").trim();
+    if (!currentPassword || !newPassword) return res.status(400).json({ success: false, message: "Current and new passwords are required." });
+    if (newPassword.length < 8) return res.status(400).json({ success: false, message: "New password must be at least 8 characters." });
+    if (currentPassword === newPassword) return res.status(400).json({ success: false, message: "New password must be different from the current password." });
+    const account = await GuestAccount.findById(payload.accountId);
+    if (!account) return res.status(404).json({ success: false, message: "Account not found." });
+    if (!(await bcrypt.compare(currentPassword, account.passwordHash))) return res.status(401).json({ success: false, message: "Current password is incorrect." });
+    account.passwordHash = await bcrypt.hash(newPassword, 12);
+    account.defaultPassword = false;
+    account.lastPasswordChangeAt = new Date();
+    await account.save();
+    res.json({ success: true, message: "Password changed successfully.", account: publicAccount(account) });
+  } catch (err) { console.error("GUEST PASSWORD UPDATE ERROR:", err); res.status(400).json({ success: false, message: err.message || "Unable to change password." }); }
 });
 
 module.exports = router;

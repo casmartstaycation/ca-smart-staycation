@@ -1,3 +1,8 @@
 .env
 node_modules/
 .DS_Store
+
+# Google Play private signing keys
+*.jks
+*.keystore
+*-upload-key.*
