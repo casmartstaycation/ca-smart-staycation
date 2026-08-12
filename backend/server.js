@@ -67,16 +67,58 @@ async function cleanupTerminalBookingUploads() {
 }
 
 app.use(helmet());
-app.use(cors({ origin: ["https://casmartstaycation.github.io", "http://localhost:3000", "http://127.0.0.1:5500", "http://localhost:5500"], credentials: true }));
+app.use(cors({ origin: true, credentials: true }));
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
-mongoose.connect(process.env.MONGODB_URI).then(() => console.log("✅ MongoDB Connected")).catch(err => console.error("MongoDB Error:", err));
+// Vercel serverless functions reuse the module between requests. Cache one MongoDB
+// connection promise and make every API request wait for it before touching models.
+const mongoUri = process.env.MONGODB_URI;
+let mongoConnectionPromise = null;
+function connectMongoDB() {
+  if (!mongoUri) return Promise.reject(new Error('MONGODB_URI environment variable is not configured in Vercel.'));
+  if (mongoose.connection.readyState === 1) return Promise.resolve(mongoose.connection);
+  if (!mongoConnectionPromise) {
+    mongoConnectionPromise = mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      maxPoolSize: 5,
+      bufferCommands: false
+    }).then(() => {
+      console.log('✅ MongoDB Connected');
+      return mongoose.connection;
+    }).catch(err => {
+      mongoConnectionPromise = null;
+      console.error('MongoDB Error:', err.message);
+      throw err;
+    });
+  }
+  return mongoConnectionPromise;
+}
+
 app.get('/', (req, res) => res.json({ status: 'success', message: 'CA Smart Staycation API is running' }));
-app.get('/api/health', (req, res) => res.json({ status: 'success', message: 'CA Smart Staycation API is running', timestamp: new Date() }));
+app.get('/api/health', async (req, res) => {
+  try {
+    await connectMongoDB();
+    res.json({ status: 'success', message: 'CA Smart Staycation API is running', database: 'connected', timestamp: new Date() });
+  } catch (err) {
+    res.status(503).json({ status: 'error', message: 'Database unavailable', error: err.message });
+  }
+});
+
+// Protect database-backed API routes from Mongoose buffering timeouts.
+app.use('/api', async (req, res, next) => {
+  try {
+    await connectMongoDB();
+    next();
+  } catch (err) {
+    console.error('API DATABASE CONNECTION ERROR:', err.message);
+    res.status(503).json({ success: false, message: 'Database connection unavailable. Check the MONGODB_URI and MongoDB Atlas network access settings.' });
+  }
+});
 
 async function expireUnpaidBookings() {
   try {
@@ -115,11 +157,17 @@ app.use('/api', require('./routes/messagingRoutes'));
 app.use('/api/settings', settingsRoutes);
 app.use((req, res) => res.status(404).json({ status: 'error', message: 'Route not found' }));
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 CA Smart Staycation API running on port ${PORT}`);
-  setInterval(expireUnpaidBookings, 60 * 1000);
-  setInterval(cleanupTerminalBookingUploads, 60 * 1000);
-  setInterval(() => processBookingStatusNotifications().catch(err => console.error("BOOKING STATUS NOTIFICATION ERROR:", err)), 15 * 1000);
-  expireUnpaidBookings(); cleanupTerminalBookingUploads(); processBookingStatusNotifications().catch(err => console.error("INITIAL BOOKING STATUS NOTIFICATION ERROR:", err));
-});
+// Render used a persistent Express listener. Vercel needs the Express app exported
+// as a serverless handler instead, so only listen locally/on Render.
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`🚀 CA Smart Staycation API running on port ${PORT}`);
+    setInterval(expireUnpaidBookings, 60 * 1000);
+    setInterval(cleanupTerminalBookingUploads, 60 * 1000);
+    setInterval(() => processBookingStatusNotifications().catch(err => console.error("BOOKING STATUS NOTIFICATION ERROR:", err)), 15 * 1000);
+    expireUnpaidBookings(); cleanupTerminalBookingUploads(); processBookingStatusNotifications().catch(err => console.error("INITIAL BOOKING STATUS NOTIFICATION ERROR:", err));
+  });
+}
+
+module.exports = app;
