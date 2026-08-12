@@ -8,7 +8,7 @@ const fs = require('fs');
 const app = express();
 const Booking = require("./models/Booking");
 const Parking = require("./models/Parking");
-const settingsRoutes = require("./routes/settingsRoutes");
+const { requireAdmin } = require("./middleware/adminAuth");
 const { processBookingStatusNotifications } = require("./services/bookingStatusNotifier");
 const paymentUploadDir = path.join(__dirname, 'uploads/payments');
 const guestDocumentUploadDir = path.join(__dirname, 'uploads/guest-documents');
@@ -41,12 +41,78 @@ app.get('/api/health',(req,res)=>res.json({status:'success',message:'CA Smart St
 
 async function expireUnpaidBookings(){try{const result=await Booking.updateMany({paymentDeadline:{$ne:null,$lte:new Date()},paymentProof:{$in:[null,""]},paymentStatus:{$ne:"Paid"},bookingStatus:{$nin:["Cancelled","Checked Out","Expired"]}},{$set:{bookingStatus:"Expired",paymentStatus:"Expired"}});if(result.modifiedCount>0)console.log(`⏰ Expired ${result.modifiedCount} unpaid bookings`);}catch(err){console.error("Expiry error:",err);}}
 
-app.get('/api/bookings',async(req,res)=>{try{await expireUnpaidBookings();const bookings=await Booking.find().select("bookingReference firstName lastName email mobile room parking parkingOnly checkIn checkOut bookingStatus paymentStatus payingGuests").populate("room","unitNumber roomType price").populate("parking","parkingNumber rate").lean();res.json({status:"success",data:bookings});}catch(err){console.error("GET BOOKINGS ERROR:",err);res.status(500).json({status:"error",message:err.message});}})
-app.get('/api/parking/availability',async(req,res)=>{try{await expireUnpaidBookings();const bookings=await Booking.find({bookingStatus:{$nin:["Cancelled","Checked Out","Expired"]},checkIn:{$ne:null},checkOut:{$ne:null}}).select("parking checkIn checkOut").lean();const reserved=bookings.reduce((acc,b)=>{if(b.parking){const id=String(b.parking);if(!acc[id])acc[id]=[];acc[id].push({start:new Date(b.checkIn),end:new Date(b.checkOut)});}return acc;},{});res.json({status:"success",data:reserved});}catch(err){console.error("GET PARKING AVAILABILITY ERROR:",err);res.status(500).json({status:"error",message:err.message});}})
+app.get('/api/bookings',async(req,res)=>{try{await expireUnpaidBookings();const bookings=await Booking.find().select("bookingReference firstName lastName email mobile room parking parkingOnly checkIn checkOut bookingStatus paymentStatus payingGuests").populate("room","unitNumber roomType price").populate("parking","parkingNumber rate").lean();res.json({status:"success",data:bookings});}catch(err){console.error("GET BOOKINGS ERROR:",err);res.status(500).json({status:"error",message:err.message});}});
+app.get('/api/parking/availability',async(req,res)=>{try{await expireUnpaidBookings();const bookings=await Booking.find({bookingStatus:{$nin:["Cancelled","Checked Out","Expired"]},checkIn:{$ne:null},checkOut:{$ne:null}}).select("parking checkIn checkOut").lean();const reserved=bookings.reduce((acc,b)=>{if(b.parking){const id=String(b.parking);if(!acc[id])acc[id]=[];acc[id].push({start:new Date(b.checkIn),end:new Date(b.checkOut)});}return acc;},{});res.json({status:"success",data:reserved});}catch(err){console.error("GET PARKING AVAILABILITY ERROR:",err);res.status(500).json({status:"error",message:err.message});}});
 app.get('/api/bookings/:id',async(req,res)=>{try{const booking=await Booking.findById(req.params.id).populate('room').populate('parking').lean();if(!booking)return res.status(404).json({success:false,message:'Booking not found'});res.json({success:true,data:booking});}catch(err){console.error("GET BOOKING ERROR:",err);res.status(500).json({success:false,message:err.message});}});
 
-app.use('/api', settingsRoutes);
-app.use('/api', require('./routes/parkingRoutes'));
+// Settings routes - embedded directly
+app.get('/api/settings', async (req, res) => {
+    try {
+        const Setting = require('./models/Setting');
+        let settings = await Setting.findOne();
+        if (!settings) settings = await Setting.create({});
+        res.json({ status: "success", data: settings });
+    } catch (err) {
+        console.error("GET SETTINGS ERROR:", err);
+        res.status(500).json({ status: "error", message: err.message });
+    }
+});
+
+app.put('/api/settings', async (req, res) => {
+    try {
+        const Setting = require('./models/Setting');
+        let settings = await Setting.findOne();
+        if (!settings) settings = await Setting.create(req.body);
+        else { Object.assign(settings, req.body); await settings.save(); }
+        res.json({ status: "success", data: settings });
+    } catch (err) {
+        console.error("PUT SETTINGS ERROR:", err);
+        res.status(500).json({ status: "error", message: err.message });
+    }
+});
+
+// Parking routes - embedded directly
+app.get('/api/parking', async (req, res) => {
+    try {
+        const parkingSlots = await Parking.find().sort({ parkingNumber: 1 });
+        res.json({ status: "success", data: parkingSlots });
+    } catch (err) {
+        console.error("GET PARKING SLOTS ERROR:", err);
+        res.status(500).json({ status: "error", message: err.message });
+    }
+});
+
+app.post('/api/parking', requireAdmin, async (req, res) => {
+    try {
+        const parkingSlot = new Parking(req.body);
+        await parkingSlot.save();
+        res.status(201).json({ status: "success", data: parkingSlot });
+    } catch (err) {
+        console.error("PARKING CREATE ERROR:", err);
+        res.status(400).json({ status: "error", message: err.message });
+    }
+});
+
+app.put('/api/parking/:id', requireAdmin, async (req, res) => {
+    try {
+        const parkingSlot = await Parking.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+        if (!parkingSlot) return res.status(404).json({ status: "error", message: "Parking slot not found" });
+        res.json({ status: "success", data: parkingSlot });
+    } catch (err) {
+        res.status(400).json({ status: "error", message: err.message });
+    }
+});
+
+app.delete('/api/parking/:id', requireAdmin, async (req, res) => {
+    try {
+        const parkingSlot = await Parking.findByIdAndDelete(req.params.id);
+        if (!parkingSlot) return res.status(404).json({ status: "error", message: "Parking slot not found" });
+        res.json({ status: "success", message: "Parking slot deleted" });
+    } catch (err) {
+        res.status(500).json({ status: "error", message: err.message });
+    }
+});
+
 app.use('/api',require('./routes/adminRoutes'));
 app.use('/api',require('./routes/roomRoutes'));
 app.use('/api',require('./routes/guestRoutes'));
