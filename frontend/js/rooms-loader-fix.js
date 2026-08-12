@@ -1,10 +1,9 @@
 (function(){
   'use strict';
 
-  // The custom production domain is the verified working API endpoint.
-  // Use it directly so api-redirect.js cannot rewrite the request to a
-  // frontend/Vercel /api route that may return 404 on the browser deployment.
-  const API = 'https://www.casmartstaycation.com/api';
+  // Use the verified production API directly. Both desktop and mobile browsers
+  // must use the same endpoint; do not depend on a frontend/Vercel /api proxy.
+  const API = 'https://casmartstaycation.com/api';
 
   async function loadRoomsSafely(){
     const select = document.getElementById('room');
@@ -21,7 +20,8 @@
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 10000);
 
-      const res = await fetch(`${API}/rooms?active=true`, {
+      // Keep this request identical for desktop and mobile.
+      const res = await fetch(`${API}/rooms`, {
         cache: 'no-store',
         headers: { Accept: 'application/json' },
         signal: controller.signal
@@ -34,6 +34,7 @@
         throw new Error(json.message || `Rooms API returned ${res.status}`);
       }
 
+      // The live API returns { status, data: [...] }.
       const list = Array.isArray(json.data) ? json.data : [];
       if (!list.length) {
         select.innerHTML = '<option value="">No accommodation available</option>';
