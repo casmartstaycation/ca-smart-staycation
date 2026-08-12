@@ -1,0 +1,396 @@
+/* CA Smart Staycation — responsive/mobile layout overrides */
+
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img, svg, video, canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+button, input, select, textarea {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Tablet and smaller laptops */
+@media (max-width: 900px) {
+  .header {
+    height: auto;
+    min-height: 72px;
+    padding: 10px 24px;
+    gap: 12px;
+  }
+
+  .logo-area {
+    min-width: 0;
+  }
+
+  .logo-area h1 {
+    font-size: clamp(20px, 3vw, 26px);
+  }
+
+  .logo-area p {
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+
+  .logo-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 18px;
+    flex: 0 0 48px;
+  }
+
+  .hero {
+    min-height: 760px;
+    padding-top: 105px;
+  }
+
+  .hero-overlay {
+    padding: 0 30px;
+  }
+
+  .hero-content {
+    max-width: 680px;
+    padding: 28px 30px;
+    transform: none;
+  }
+
+  .booking-container {
+    width: min(94%, 1120px);
+    padding: 40px 30px;
+    margin-top: -60px;
+  }
+}
+
+/* Phones */
+@media (max-width: 600px) {
+  body {
+    font-size: 15px;
+  }
+
+  .header {
+    position: absolute;
+    width: 100%;
+    min-height: 0;
+    padding: 10px 14px;
+    align-items: center;
+  }
+
+  .header > div:last-child {
+    gap: 6px !important;
+    justify-content: flex-end !important;
+  }
+
+  .logo-area {
+    gap: 8px;
+    flex: 1 1 auto;
+  }
+
+  .logo-icon {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+    font-size: 16px;
+  }
+
+  .logo-area h1 {
+    font-size: 17px;
+    line-height: 1.15;
+    white-space: normal;
+  }
+
+  .logo-area p {
+    display: none;
+  }
+
+  .header-button {
+    padding: 8px 9px;
+    font-size: 10px;
+    letter-spacing: .2px;
+    white-space: nowrap;
+  }
+
+  .hero {
+    min-height: 690px;
+    padding-top: 95px;
+    align-items: center;
+  }
+
+  .hero-overlay {
+    padding: 0 14px;
+  }
+
+  .hero-content {
+    width: 100%;
+    max-width: none;
+    padding: 24px 18px;
+    border-radius: 16px;
+    transform: none;
+  }
+
+  .eyebrow {
+    font-size: 9px;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+
+  .hero h2 {
+    font-size: clamp(32px, 10vw, 48px);
+    line-height: 1.08;
+  }
+
+  .hero-description {
+    margin: 18px 0 24px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .gold-button {
+    width: 100%;
+    text-align: center;
+    padding: 13px 18px;
+  }
+
+  .hero-content a[href*="guest-login"] {
+    display: block !important;
+    margin: 13px 0 0 !important;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .booking-container {
+    width: calc(100% - 20px);
+    margin: -35px auto 35px;
+    padding: 28px 12px;
+    border-radius: 18px;
+  }
+
+  .booking-heading {
+    margin-bottom: 28px;
+    padding: 0 5px;
+  }
+
+  .section-label {
+    font-size: 9px;
+    letter-spacing: 2.5px;
+  }
+
+  .booking-heading h2 {
+    font-size: clamp(30px, 9vw, 42px);
+  }
+
+  .booking-heading p {
+    font-size: 13px;
+  }
+
+  .form-card {
+    padding: 20px 14px;
+    margin-bottom: 18px;
+    border-radius: 14px;
+  }
+
+  .form-card:hover {
+    transform: none;
+  }
+
+  .step-title {
+    gap: 10px;
+    padding-bottom: 16px;
+    margin-bottom: 18px;
+  }
+
+  .step-title > span {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .step-title h3 {
+    font-size: 20px;
+  }
+
+  .step-title p {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .full-width {
+    grid-column: auto;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    padding: 13px 12px;
+    font-size: 16px;
+  }
+
+  textarea {
+    min-height: 100px;
+  }
+
+  .booking-calendar-card {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .calendar-header {
+    gap: 6px;
+    padding: 10px 6px;
+  }
+
+  .calendar-header h3 {
+    font-size: 16px;
+    text-align: center;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .calendar-header button {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+  }
+
+  .calendar-weekdays,
+  .calendar-grid {
+    width: 100%;
+  }
+
+  .calendar-weekdays span {
+    font-size: 10px;
+  }
+
+  .calendar-day {
+    min-width: 0;
+    min-height: 38px;
+    font-size: 12px;
+  }
+
+  .upload-box {
+    padding: 28px 12px;
+  }
+
+  .upload-box strong {
+    font-size: 16px;
+  }
+
+  .summary-box {
+    overflow-wrap: anywhere;
+  }
+
+  .summary-row {
+    gap: 10px;
+  }
+
+  .summary-row span:last-child,
+  .summary-row strong:last-child {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .booking-info-card {
+    padding: 14px;
+  }
+
+  #vehicleSection {
+    padding: 0 2px;
+  }
+
+  .form-action {
+    padding: 0 2px;
+  }
+
+  .continue-button {
+    width: 100%;
+    min-height: 50px;
+    padding: 13px 18px;
+  }
+
+  footer {
+    padding: 35px 16px;
+    text-align: center;
+  }
+}
+
+/* Very small phones: 320–380px */
+@media (max-width: 380px) {
+  .header {
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    font-size: 14px;
+  }
+
+  .logo-area h1 {
+    font-size: 15px;
+  }
+
+  .header-button {
+    padding: 7px 7px;
+    font-size: 9px;
+  }
+
+  .hero-overlay {
+    padding: 0 9px;
+  }
+
+  .hero-content {
+    padding: 20px 14px;
+  }
+
+  .hero h2 {
+    font-size: 31px;
+  }
+
+  .booking-container {
+    width: calc(100% - 12px);
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .form-card {
+    padding-left: 11px;
+    padding-right: 11px;
+  }
+
+  .calendar-weekdays span {
+    font-size: 9px;
+  }
+
+  .calendar-day {
+    min-height: 34px;
+    font-size: 11px;
+  }
+}
+
+/* Landscape phones */
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 550px) {
+  .hero {
+    min-height: 620px;
+  }
+
+  .hero-content {
+    padding: 20px 24px;
+  }
+
+  .hero h2 {
+    font-size: clamp(28px, 7vw, 46px);
+  }
+}
