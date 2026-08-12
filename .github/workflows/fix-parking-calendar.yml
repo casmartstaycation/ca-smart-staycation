@@ -17,6 +17,8 @@ jobs:
   test-parking-calendar:
     name: Verify parking booked-mark logic
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
