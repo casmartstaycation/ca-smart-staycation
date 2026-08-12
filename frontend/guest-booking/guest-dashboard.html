@@ -49,6 +49,22 @@ document.getElementById("changePassword").onclick=()=>location.href="change-pass
 document.getElementById("logout").onclick=()=>{localStorage.removeItem("guestAuthToken");localStorage.removeItem("guestAccount");localStorage.removeItem("guestBooking");location.href="guest-login.html"};
 async function openAddon(id){const d=await(await fetch(`${API}/guest-auth/me`,{headers:auth(),cache:"no-store"})).json(),b=(d.bookings||[]).find(x=>x._id===id);if(!b)return;const max=Math.max(0,4-Number(b.adults||0)),back=document.createElement("div");back.className="addon-modal-backdrop";back.innerHTML=`<div class="addon-modal"><h3>Request Additional Guest / Amenities</h3><p>Each additional adult guest costs <strong>₱300</strong>. Each complete additional set of towel + toiletries + bedsheet + blanket is also <strong>₱300</strong>.</p><div class="addon-grid"><label>Additional adult guests (max ${max})<input id="ag" type="number" min="0" max="${max}" value="0"></label><label>Additional complete sets<input id="as" type="number" min="0" value="0"></label></div><p><strong>Amount to pay: ₱<span id="aa">0</span></strong></p><label><strong>Upload payment proof *</strong><input id="ap" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label><button class="addon-cancel" onclick="this.closest('.addon-modal-backdrop').remove()">Cancel</button><button id="submitAddon">Submit Request & Payment Proof</button></div>`;document.body.appendChild(back);const update=()=>back.querySelector("#aa").textContent=((Number(back.querySelector("#ag").value)||0)+(Number(back.querySelector("#as").value)||0))*300;back.querySelector("#ag").oninput=update;back.querySelector("#as").oninput=update;back.querySelector("#submitAddon").onclick=async()=>{const g=Math.min(max,Math.max(0,Number(back.querySelector("#ag").value)||0)),s=Math.max(0,Number(back.querySelector("#as").value)||0),file=back.querySelector("#ap").files[0],amount=(g+s)*300;if(!amount)return alert("Select at least one additional guest or complete set.");if(!file)return alert("Payment proof is required.");const fd=new FormData();fd.append("extraGuests",g);fd.append("amenitySets",s);fd.append("paymentProof",file);const btn=back.querySelector("#submitAddon");btn.disabled=true;btn.textContent="Submitting...";try{const r=await fetch(`${API}/guest-auth/bookings/${encodeURIComponent(id)}/add-ons`,{method:"POST",headers:auth(),body:fd}),x=await r.json();if(!r.ok)throw Error(x.message||"Unable to submit request.");alert(x.message||"Request submitted.");back.remove();loadAccount()}catch(e){alert(e.message);btn.disabled=false;btn.textContent="Submit Request & Payment Proof"}}}
 loadAccount();
+
+// Keep guest notifications and messages synchronized with the backend.
+let inboxPollBusy = false;
+async function refreshGuestInboxLive() {
+  if (inboxPollBusy || !TOKEN || document.visibilityState === "hidden") return;
+  inboxPollBusy = true;
+  try {
+    await loadInbox();
+  } finally {
+    inboxPollBusy = false;
+  }
+}
+setInterval(refreshGuestInboxLive, 10000);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") refreshGuestInboxLive();
+});
 </script>
 </body>
 </html>
