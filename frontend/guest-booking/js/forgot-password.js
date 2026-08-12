@@ -1,6 +1,4 @@
-/* Guest password reset API. Use the live Render backend directly because the
-   public Vercel/static frontend does not expose /api/* routes reliably. */
-const API = window.CA_SMART_API || 'https://ca-smart-staycation-muqd.onrender.com/api';
+const API = window.CA_SMART_API || '/api';
 
 const form = document.getElementById('forgotPasswordForm');
 const btn = document.getElementById('resetButton');
