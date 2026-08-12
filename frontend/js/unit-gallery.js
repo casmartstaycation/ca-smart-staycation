@@ -1,24 +1,30 @@
 const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
 (function(){
   const css=`
-    .unit-info-panel{margin-top:18px;padding:0;width:100%;box-sizing:border-box;grid-column:1/-1}
-    .unit-gallery{display:flex;flex-direction:column;align-items:stretch;width:100%;box-sizing:border-box}
-    .unit-primary-photo{display:block;width:100%;height:auto;aspect-ratio:21/9;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid #ddd;box-sizing:border-box}
-    .unit-photo-thumbs{display:flex;gap:8px;overflow-x:auto;margin-top:10px;padding-bottom:3px;width:100%;box-sizing:border-box}
+    .unit-info-panel{margin-top:18px;padding:0;width:100%;max-width:100%;box-sizing:border-box;grid-column:1/-1;min-width:0}
+    .unit-gallery{display:flex;flex-direction:column;align-items:stretch;width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+    .unit-primary-photo{display:block;width:100%;max-width:100%;height:auto;aspect-ratio:21/9;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid #ddd;box-sizing:border-box}
+    .unit-photo-thumbs{display:flex;gap:8px;overflow-x:auto;margin-top:10px;padding-bottom:3px;width:100%;max-width:100%;box-sizing:border-box}
     .unit-photo-thumbs img{width:76px;height:58px;object-fit:cover;border-radius:5px;border:1px solid #ddd;cursor:pointer;flex:0 0 auto}
-    .unit-description{margin-top:16px;padding:18px;border:1px solid #e2ddd5;border-radius:8px;background:#fff}
+    .unit-description{margin-top:16px;padding:18px;border:1px solid #e2ddd5;border-radius:8px;background:#fff;box-sizing:border-box;width:100%;max-width:100%;min-width:0}
     .unit-description h3,.unit-amenities h3{margin:0 0 7px;font-size:20px}
     .unit-description p{margin:0;line-height:1.6;color:#555;white-space:pre-line;overflow-wrap:anywhere}
-    .unit-amenities{margin-top:12px;padding:18px;border:1px solid #e2ddd5;border-radius:8px;background:#fff}
+    .unit-amenities{margin-top:12px;padding:18px;border:1px solid #e2ddd5;border-radius:8px;background:#fff;box-sizing:border-box;width:100%;max-width:100%;min-width:0}
     .unit-amenity-list{display:flex;flex-wrap:wrap;gap:8px}
     .unit-amenity{padding:7px 10px;border:1px solid #ddd;border-radius:6px;background:#f8f6f2;font-size:13px;color:#444}
-    .unit-lightbox{position:fixed;inset:0;background:#000d;z-index:9999;display:flex;align-items:center;justify-content:center;padding:25px}
-    .unit-lightbox img{max-width:94vw;max-height:88vh;object-fit:contain;border-radius:8px}
+    .unit-lightbox{position:fixed;inset:0;background:#000d;z-index:99999;display:flex;align-items:center;justify-content:center;padding:25px;box-sizing:border-box;overflow:hidden}
+    .unit-lightbox img{display:block;width:auto;max-width:94vw;max-height:88vh;height:auto;object-fit:contain;border-radius:8px}
     .unit-lightbox button{position:absolute;background:none;border:0;color:#fff;cursor:pointer}
     .unit-lightbox .unit-close{right:22px;top:14px;font-size:42px}
     .unit-lightbox .unit-nav{top:50%;transform:translateY(-50%);font-size:52px;padding:12px 18px}
     .unit-lightbox .unit-prev{left:12px}.unit-lightbox .unit-next{right:12px}
-    @media(max-width:700px){.unit-primary-photo{aspect-ratio:16/10}.unit-info-panel{margin-top:14px}}
+    @media(max-width:700px){
+      .unit-info-panel{margin-top:14px;width:100%;max-width:100%;min-width:0;grid-column:1/-1;position:relative;left:auto;right:auto;transform:none}
+      .unit-gallery{width:100%;max-width:100%;min-width:0;position:relative;left:auto;right:auto;transform:none;overflow:hidden}
+      .unit-primary-photo{aspect-ratio:16/10;max-width:100%;height:auto}
+      .unit-photo-thumbs{max-width:100%;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap}
+      .unit-description,.unit-amenities{max-width:100%;min-width:0;overflow-wrap:anywhere}
+    }
   `;
   const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
   let units=[];
@@ -50,16 +56,20 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     panel=document.createElement('div');panel.id='unitInfoPanel';panel.className='unit-info-panel';
     const formGrid=group.closest('.form-grid');
     const calendarGroup=formGrid?.querySelector('#calendarGrid')?.closest('.form-group');
-    if(formGrid&&calendarGroup)formGrid.insertBefore(panel,calendarGroup);
-    else if(formGrid)formGrid.appendChild(panel);
-    else group.parentElement.appendChild(panel);
+    if(formGrid&&calendarGroup){
+      formGrid.insertBefore(panel,calendarGroup);
+    } else if(formGrid){
+      formGrid.appendChild(panel);
+    } else {
+      group.parentElement.appendChild(panel);
+    }
     return panel;
   }
   function render(){
     const room=document.getElementById('room');if(!room)return;
     const panel=getPanel();if(!panel)return;
     if(isParkingOnly()){panel.style.display='none';return}
-    panel.style.display='';
+    panel.style.display='block';
     const u=selected();
     if(!u){panel.innerHTML='<p style="margin:0;color:#888">Select an accommodation to view photos.</p>';return}
     const images=Array.isArray(u.images)?u.images.map(x=>typeof x==='string'?x:x?.url).filter(Boolean):[];
