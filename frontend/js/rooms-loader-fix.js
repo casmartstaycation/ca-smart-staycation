@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const API='https://ca-smart-staycation-muqd.onrender.com/api';
+  const API='https://ca-smart-staycation.vercel.app/api';
   async function loadRoomsSafely(){
     const select=document.getElementById('room');
     if(!select)return;
