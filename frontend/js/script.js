@@ -64,8 +64,28 @@ function bookingHasAccommodation(booking) {
     return Boolean(booking?.room?._id || booking?.room);
 }
 
+/*
+   IMPORTANT: Parking Only bookings are explicitly saved with
+   parkingOnly=true. Do NOT depend only on the populated parking
+   object being returned by the API. The backend may return the
+   parking reference as a string, null, or an unpopulated field.
+*/
 function bookingHasParking(booking) {
-    return Boolean(booking?.parking?._id || booking?.parking);
+    if (!booking) return false;
+    if (booking.parkingOnly === true) return true;
+    if (String(booking.parkingOnly).toLowerCase() === "true") return true;
+
+    const type = String(booking.bookingType || booking.type || "")
+        .trim().toLowerCase().replace(/[\s_-]/g, "");
+    if (type === "parking" || type === "parkingonly") return true;
+
+    return Boolean(
+        booking.parking?._id ||
+        booking.parking ||
+        booking.parkingSlot?._id ||
+        booking.parkingSlot ||
+        booking.parkingNumber
+    );
 }
 
 function datesOverlap(target, checkIn, checkOut) {
@@ -166,9 +186,6 @@ async function loadParkingSlots() {
 
 /* =========================================
    LOAD BOOKED DATES
-   IMPORTANT: the guest calendar reads the same /api/bookings
-   source used by admin bookings. This keeps accommodation-only,
-   parking-only and combined bookings synchronized.
 ========================================= */
 async function loadBookedDates() {
     try {
@@ -187,7 +204,6 @@ async function loadBookedDates() {
     }
 }
 
-/* Refresh booking availability when the guest returns to the tab. */
 document.addEventListener("visibilitychange", () => {
     if (!document.hidden) loadBookedDates();
 });
@@ -271,7 +287,7 @@ function calculateTotal() {
     const roomTotal = nights * Number(room.price || 0);
     let extraAdultTotal = 0;
     const guests = Number(document.getElementById("guests")?.value || 1);
-    if (guests > Number(room.capacity || 2)) extraAdultTotal = (guests - room.capacity) * settings.extraAdultFee * nights;
+    if (guests > 2) extraAdultTotal = (guests - 2) * Number(settings.extraAdultFee || 300) * nights;
     let parkingTotal = 0;
     if (bookingType === "both") parkingTotal = Number(settings.parkingRate || 0) * nights;
     const securityDeposit = Number(settings.securityDeposit || 0);
@@ -320,14 +336,14 @@ async function submitBooking(event) {
             }
         }
 
-        // Client-side protection. The backend remains the final authority.
         const checkStart = parseBookingDate(checkIn);
         const checkEnd = parseBookingDate(checkOut);
         const roomUnavailable = bookingType !== "parking" && bookedDates.some(booking => {
             if (isTerminalBooking(booking) || !bookingHasAccommodation(booking)) return false;
             const existingStart = parseBookingDate(booking.checkIn);
             const existingEnd = parseBookingDate(booking.checkOut);
-            if (!datesOverlap(checkStart, existingStart, existingEnd) && !(checkStart < existingEnd && checkEnd > existingStart)) return false;
+            if (!checkStart || !checkEnd || !existingStart || !existingEnd) return false;
+            if (!(checkStart < existingEnd && checkEnd > existingStart)) return false;
             const existingRoomId = booking.room?._id || booking.room;
             return !room || String(existingRoomId) === String(room);
         });
@@ -341,7 +357,7 @@ async function submitBooking(event) {
             if (isTerminalBooking(booking) || !bookingHasParking(booking)) return false;
             const existingStart = parseBookingDate(booking.checkIn);
             const existingEnd = parseBookingDate(booking.checkOut);
-            return checkStart < existingEnd && checkEnd > existingStart;
+            return existingStart && existingEnd && checkStart < existingEnd && checkEnd > existingStart;
         });
         if (parkingUnavailable) {
             alert("Parking slot is already reserved for the selected dates.");
@@ -360,6 +376,7 @@ async function submitBooking(event) {
             room: bookingType === "parking" ? null : room,
             checkIn, checkOut, guests, parking,
             parkingOnly: bookingType === "parking",
+            bookingType,
             totalAmount: parseFloat(document.getElementById("totalAmount").innerText.replace("₱", "").replace(/,/g, ""))
         };
         const res = await fetch(`${API}/bookings`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bookingData) });
@@ -382,14 +399,6 @@ async function submitBooking(event) {
 
 /* =========================================
    CHECK IF DATE IS BOOKED
-   Accommodation-only:
-     block the selected accommodation when another active
-     accommodation booking overlaps.
-   Accommodation + parking:
-     block when either the selected accommodation OR the
-     parking slot is already occupied.
-   Parking-only:
-     block when the parking slot is occupied.
 ========================================= */
 function isDateBooked(date) {
     const bookingType = document.getElementById("bookingType")?.value || "unit";
@@ -413,14 +422,11 @@ function isDateBooked(date) {
         }
 
         if (bookingType === "both") {
-            // A combined booking needs BOTH resources, so either
-            // an occupied room or occupied parking makes the date unavailable.
             if (hasAccommodation && String(bookedRoomId) === String(selectedRoom)) return true;
             if (hasParking) return true;
             continue;
         }
 
-        // Accommodation-only. Match the selected unit.
         if (hasAccommodation && String(bookedRoomId) === String(selectedRoom)) return true;
     }
     return false;
@@ -451,7 +457,6 @@ function renderCalendar() {
         const cell = document.createElement("div");
         cell.className = "calendar-day";
         cell.textContent = day;
-
         if (date < today) {
             cell.classList.add("disabled");
         } else if (isDateBooked(date)) {
@@ -467,10 +472,7 @@ function renderCalendar() {
                     const temp = new Date(selectedCheckIn);
                     temp.setDate(temp.getDate() + 1);
                     while (temp < date) {
-                        if (isDateBooked(temp)) {
-                            blocked = true;
-                            break;
-                        }
+                        if (isDateBooked(temp)) { blocked = true; break; }
                         temp.setDate(temp.getDate() + 1);
                     }
                     if (blocked || isDateBooked(date)) {
@@ -493,7 +495,6 @@ function renderCalendar() {
                 renderCalendar();
             });
         }
-
         if (selectedCheckIn && date.getTime() === selectedCheckIn.getTime()) cell.classList.add("checkin");
         if (selectedCheckOut && date.getTime() === selectedCheckOut.getTime()) cell.classList.add("checkout");
         if (selectedCheckIn && selectedCheckOut && date > selectedCheckIn && date < selectedCheckOut) cell.classList.add("selected-range");
@@ -520,35 +521,3 @@ const prevBtn = document.getElementById("prevMonth");
 const nextBtn = document.getElementById("nextMonth");
 if (prevBtn) prevBtn.addEventListener("click", previousMonth);
 if (nextBtn) nextBtn.addEventListener("click", nextMonth);
-
-function clearBookingSelection() {
-    selectedCheckIn = null;
-    selectedCheckOut = null;
-    const checkIn = document.getElementById("checkIn");
-    const checkOut = document.getElementById("checkOut");
-    if (checkIn) checkIn.value = "";
-    if (checkOut) checkOut.value = "";
-    calculateTotal();
-    renderCalendar();
-}
-
-function saveBookingReference(booking) {
-    if (!booking) return;
-    localStorage.setItem("guestBooking", JSON.stringify(booking));
-    if (booking.bookingReference) localStorage.setItem("bookingReference", booking.bookingReference);
-}
-
-function loadBookingReference() {
-    const booking = JSON.parse(localStorage.getItem("guestBooking"));
-    const reference = document.getElementById("bookingReference");
-    if (!reference) return;
-    reference.innerText = booking && booking.bookingReference ? booking.bookingReference : "N/A";
-}
-
-function peso(value) {
-    return "₱" + Number(value || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-window.addEventListener("load", () => {
-    if (document.getElementById("bookingReference")) loadBookingReference();
-});
