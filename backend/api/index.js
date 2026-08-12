@@ -12,6 +12,10 @@ function applyCors(req, res) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Vary', 'Origin');
+
+    // Add some helpful CORS headers for preflight caching and exposed headers.
+    res.setHeader('Access-Control-Max-Age', '600');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Location');
   }
 
   res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS');
