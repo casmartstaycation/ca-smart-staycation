@@ -32,10 +32,7 @@
     card.classList.add("voucher-tab-panel");
     card.classList.toggle("active", !!active);
     tab.classList.toggle("active", !!active);
-    if (active) {
-      card.scrollIntoView({ behavior: "smooth", block: "start" });
-      setTimeout(addDeleteButtons, 100);
-    }
+    if (active) setTimeout(addDeleteButtons, 100);
   }
 
   function hideTab() {
@@ -94,7 +91,6 @@
     addStyles();
     addTab();
     patchLoader();
-    // Voucher Management is hidden on the Bookings landing page by default.
     hideTab();
     setTimeout(() => { addTab(); patchLoader(); hideTab(); }, 500);
     setTimeout(() => { addTab(); patchLoader(); hideTab(); }, 1500);
@@ -102,12 +98,8 @@
 
   document.addEventListener("DOMContentLoaded", init);
   const observer = new MutationObserver(() => {
-    addStyles();
-    addTab();
-    patchLoader();
-    // Keep it hidden unless the user explicitly opened the tab.
-    const card = getCard();
-    const tab = document.getElementById("voucherManagementTab");
+    addStyles(); addTab(); patchLoader();
+    const card = getCard(); const tab = document.getElementById("voucherManagementTab");
     if (card && tab && !tab.classList.contains("active")) hideTab();
     addDeleteButtons();
   });

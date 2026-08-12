@@ -4,26 +4,35 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CA Smart Staycation — Units & Parking</title>
-<link rel="stylesheet" href="resources.css">
+<link rel="stylesheet" href="resources.css?v=20260811-5">
 </head>
 <body>
 <div class="page">
 <header class="topbar">
   <div><p class="eyebrow">CA SMART STAYCATION</p><h1>Units & Parking</h1><p class="subtitle">Manage accommodation and parking records used by the booking system.</p></div>
-  <div class="top-actions"><a href="bookings.html">Dashboard</a><button id="refreshBtn">Refresh</button></div>
+  <div class="top-actions"><a href="bookings.html">Dashboard</a><button id="refreshBtn" type="button">Refresh</button></div>
 </header>
 <main class="grid">
 <section class="card">
- <div class="card-head"><div><h2>Accommodation Units</h2><p>Update name, rate, capacity and availability.</p></div><button id="addRoomBtn">Add Unit</button></div>
+ <div class="card-head"><div><h2>Accommodation Units</h2><p>Update name, rate, capacity, photos and availability.</p></div><button id="addRoomBtn" type="button">Add Unit</button></div>
  <div id="rooms" class="list"><div class="muted">Loading…</div></div>
 </section>
 <section class="card">
- <div class="card-head"><div><h2>Parking Slots</h2><p>Manage slot names, rates and availability.</p></div><button id="addParkingBtn">Add Slot</button></div>
+ <div class="card-head"><div><h2>Parking Slots</h2><p>Manage slot names, rates and availability.</p></div><button id="addParkingBtn" type="button">Add Slot</button></div>
  <div id="parking" class="list"><div class="muted">Loading…</div></div>
 </section>
 </main>
-<div id="modal" class="modal hidden"><div class="modal-card"><div class="modal-head"><h2 id="modalTitle">Edit</h2><button id="closeModal">×</button></div><form id="resourceForm"></form></div></div>
+<div id="modal" class="modal hidden" aria-hidden="true">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head"><h2 id="modalTitle">Edit</h2><button id="closeModal" type="button" aria-label="Close">×</button></div>
+    <form id="resourceForm"></form>
+    <div id="resourceActions" class="resource-actions">
+      <button id="cancelResource" type="button">Cancel</button>
+      <button id="saveResource" class="save" type="button">Save Changes</button>
+    </div>
+  </div>
 </div>
-<script src="resources.js"></script>
+</div>
+<script src="resources.js?v=20260811-5"></script>
 </body>
 </html>

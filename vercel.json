@@ -1,0 +1,12 @@
+{
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        { "type": "host", "value": "casmartstaycation.com" }
+      ],
+      "destination": "https://www.casmartstaycation.com/:path*",
+      "permanent": true
+    }
+  ]
+}

@@ -1,5 +1,17 @@
 const mongoose = require("mongoose");
 
+const addOnRequestSchema = new mongoose.Schema({
+  extraGuests: { type: Number, default: 0, min: 0, max: 2 },
+  amenitySets: { type: Number, default: 0, min: 0 },
+  amount: { type: Number, required: true, min: 0 },
+  paymentProof: { type: String, default: "" },
+  paymentSubmittedAt: { type: Date, default: null },
+  status: { type: String, enum: ["Pending Verification", "Approved", "Rejected"], default: "Pending Verification" },
+  verifiedAt: { type: Date, default: null },
+  verifiedBy: { type: String, default: "" },
+  adminNote: { type: String, default: "" }
+}, { _id: true });
+
 const bookingSchema = new mongoose.Schema({
   bookingReference: { type: String, required: true, unique: true },
   firstName: { type: String, required: true }, lastName: { type: String, required: true }, email: { type: String, required: true }, mobile: { type: String, required: true }, address: { type: String, required: true },
@@ -7,19 +19,13 @@ const bookingSchema = new mongoose.Schema({
   room: { type: mongoose.Schema.Types.ObjectId, ref: "Room", default: null }, checkIn: { type: Date, required: true }, checkOut: { type: Date, required: true }, adults: { type: Number, default: 1 }, children: { type: Number, default: 0 },
   subtotalAmount: { type: Number, default: 0 }, voucherCode: { type: String, default: "" }, voucherDiscountPercent: { type: Number, min: 0, max: 100, default: 0 }, voucherDiscountAmount: { type: Number, default: 0 }, voucherMaxNights: { type: Number, default: null }, complimentaryNonCancellable: { type: Boolean, default: false },
   totalAmount: { type: Number, required: true }, paymentStatus: { type: String, enum: ["Pending", "Partial", "Paid", "Refunded"], default: "Pending" }, bookingStatus: { type: String, enum: ["Waiting for Payment", "Reserved", "Pending Payment Verification", "Payment Rejected", "Checked In", "Checked Out", "Cancelled", "Expired"], default: "Waiting for Payment" }, housekeepingStatus: { type: String, enum: ["Clean", "Needs Cleaning"], default: "Clean" }, parkingOnly: { type: Boolean, default: false }, parking: { type: mongoose.Schema.Types.ObjectId, ref: "Parking", default: null }, notes: { type: String, default: "" }, paymentProof: { type: String, default: "" },
-  paymentProofHistory: [{ filename: { type: String, required: true }, rejectedAt: { type: Date, default: Date.now }, rejectionReason: { type: String, default: "" } }], paymentDate: { type: Date, default: null }, paymentReference: { type: String, default: "" }, paymentRejectionReason: { type: String, default: "" }, paymentDeadline: { type: Date, default: null }, paymentProofSubmittedAt: { type: Date, default: null }, paymentVerifiedAt: { type: Date, default: null }, cancellationRequestedAt: { type: Date, default: null }, cancellationReason: { type: String, default: "" }, refundRequested: { type: Boolean, default: false }, refundRequestedAt: { type: Date, default: null }, refundAmount: { type: Number, default: 0 }, refundFee: { type: Number, default: 0 }, refundPolicyRule: { type: String, default: "" }, refundStatus: { type: String, enum: ["Not Requested", "Requested", "Processing", "Refunded", "Not Eligible"], default: "Not Requested" }, refundProcessedAt: { type: Date, default: null }, refundProcessedBy: { type: String, default: "" }, rescheduleHistory: [{ previousCheckIn: { type: Date }, previousCheckOut: { type: Date }, newCheckIn: { type: Date }, newCheckOut: { type: Date }, changedAt: { type: Date, default: Date.now }, policyRule: { type: String, default: "" }, inconvenienceFee: { type: Number, default: 0 }, refundAmount: { type: Number, default: 0 } }], reschedulePending: { type: Boolean, default: false }, reschedulePendingCheckIn: { type: Date, default: null }, reschedulePendingCheckOut: { type: Date, default: null }, rescheduleFee: { type: Number, default: 0 }, reschedulePolicyRule: { type: String, default: "" }, rescheduleRefundAmount: { type: Number, default: 0 }, rescheduleRequestedAt: { type: Date, default: null }, reschedulePaymentProof: { type: String, default: "" }, reschedulePaymentSubmittedAt: { type: Date, default: null }, reschedulePaymentStatus: { type: String, enum: ["Not Required", "Pending Verification", "Verified", "Rejected"], default: "Not Required" },
-  lastStatusNotificationKey: { type: String, default: "" }
+  paymentProofHistory: [{ filename: { type: String, required: true }, rejectedAt: { type: Date, default: Date.now }, rejectionReason: { type: String, default: "" } }], paymentDate: { type: Date, default: null }, paymentReference: { type: String, default: "" }, paymentRejectionReason: { type: String, default: "" }, paymentDeadline: { type: Date, default: null }, paymentProofSubmittedAt: { type: Date, default: null }, paymentVerifiedAt: { type: Date, default: null },
+  addOnRequests: { type: [addOnRequestSchema], default: [] },
+  cancellationRequestedAt: { type: Date, default: null }, cancellationReason: { type: String, default: "" }, refundRequested: { type: Boolean, default: false }, refundRequestedAt: { type: Date, default: null }, refundAmount: { type: Number, default: 0 }, refundFee: { type: Number, default: 0 }, refundPolicyRule: { type: String, default: "" }, refundStatus: { type: String, enum: ["Not Requested", "Requested", "Processing", "Refunded", "Not Eligible"], default: "Not Requested" }, refundProcessedAt: { type: Date, default: null }, refundProcessedBy: { type: String, default: "" }, rescheduleHistory: [{ previousCheckIn: { type: Date }, previousCheckOut: { type: Date }, newCheckIn: { type: Date }, newCheckOut: { type: Date }, changedAt: { type: Date, default: Date.now }, policyRule: { type: String, default: "" }, inconvenienceFee: { type: Number, default: 0 }, refundAmount: { type: Number, default: 0 } }], reschedulePending: { type: Boolean, default: false }, reschedulePendingCheckIn: { type: Date, default: null }, reschedulePendingCheckOut: { type: Date, default: null }, rescheduleFee: { type: Number, default: 0 }, reschedulePolicyRule: { type: String, default: "" }, rescheduleRefundAmount: { type: Number, default: 0 }, rescheduleRequestedAt: { type: Date, default: null }, reschedulePaymentProof: { type: String, default: "" }, reschedulePaymentSubmittedAt: { type: Date, default: null }, reschedulePaymentStatus: { type: String, enum: ["Not Required", "Pending Verification", "Verified", "Rejected"], default: "Not Required" },
+  lastStatusNotificationKey: { type: String, default: "" }, lastGuestEmailNotificationKey: { type: String, default: "" }, lastAdminEmailNotificationKey: { type: String, default: "" }
 }, { timestamps: true });
 
-bookingSchema.index({ createdAt: -1 });
-bookingSchema.index({ email: 1, createdAt: -1 });
-bookingSchema.index({ checkIn: 1, checkOut: 1, bookingStatus: 1 });
-bookingSchema.index({ paymentDeadline: 1, bookingStatus: 1 });
+bookingSchema.index({ createdAt: -1 }); bookingSchema.index({ email: 1, createdAt: -1 }); bookingSchema.index({ checkIn: 1, checkOut: 1, bookingStatus: 1 }); bookingSchema.index({ paymentDeadline: 1, bookingStatus: 1 });
 
-bookingSchema.pre("validate", function(next) {
-  if (Number(this.voucherDiscountPercent || 0) === 100) this.complimentaryNonCancellable = true;
-  if (this.bookingStatus === "Cancelled" && this.complimentaryNonCancellable) return next(new Error("Bookings using a 100% complimentary voucher cannot be cancelled."));
-  next();
-});
-
+bookingSchema.pre("validate", function(next) { if (Number(this.voucherDiscountPercent || 0) === 100) this.complimentaryNonCancellable = true; if (this.bookingStatus === "Cancelled" && this.complimentaryNonCancellable) return next(new Error("Bookings using a 100% complimentary voucher cannot be cancelled.")); next(); });
 module.exports = mongoose.model("Booking", bookingSchema);
