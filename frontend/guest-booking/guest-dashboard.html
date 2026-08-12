@@ -1,4 +1,18 @@
-<script>
-const API = window.CA_SMART_API || '/api',TOKEN=localStorage.getItem("guestAuthToken");
-const auth=()=>({Authorization:`Bearer ${TOKEN}`});
-const esc=v=>String(v??"").replace(/[&<>\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guest Dashboard</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="dashboard">
+<!-- panels omitted for brevity in this example; keep original layout in repo -->
+<section id="messagesPanel" class="panel"><h2>Messages</h2><div id="messagesList"><div class="empty">Loading messages...</div></div><div class="compose"><h3>Send a message to CA Smart Staycation</h3><label for="messageBooking">Booking (optional)</label><select id="messageBooking"><option value="">General message</option></select><label for="messageText">Message</label><textarea id="messageText" rows="5" maxlength="3000" placeholder="Type your message..."></textarea><button type="button" id="sendMessage">Send Message</button><div id="messageStatus" class="meta"></div></div></section>
+<section id="accountPanel" class="panel"><h2>Account Settings</h2><div class="account-card" style="padding:18px"><div class="account-row"><span class="label">Email address</span><span id="accountEmail" class="account-value">—</span></div><div class="account-row"><span class="label">Booking reference</span><span id="accountReference" class="account-value">—</span></div><div class="account-row"><span class="label">Password</span><span class="account-value">••••••••</span></div><div class="account-actions"><button type="button" id="changePassword">Change Password</button></div></div></section>
+<button id="logout" class="logout">Logout</button>
+</div>
+<script src="js/guest-dashboard.js"></script>
+</body>
+</html>
