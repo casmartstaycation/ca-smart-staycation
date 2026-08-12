@@ -1,14 +1,14 @@
 (() => {
   const run = code => {
-    if (document.readyState === "loading") { new Function(code)(); return; }
-    const originalAddEventListener = document.addEventListener;
-    let domReadyHandler = null;
-    document.addEventListener = function(type, handler, options) {
-      if (type === "DOMContentLoaded") { domReadyHandler = handler; return; }
-      return originalAddEventListener.call(document, type, handler, options);
-    };
-    try { new Function(code)(); } finally { document.addEventListener = originalAddEventListener; }
-    if (typeof domReadyHandler === "function") domReadyHandler();
+    const script = document.createElement('script');
+    script.textContent = code;
+    // If the DOM is already ready (DOMContentLoaded has fired), dispatch a
+    // synthetic event so the injected module's DOMContentLoaded listener fires.
+    const alreadyReady = document.readyState !== 'loading';
+    document.head.appendChild(script);
+    if (alreadyReady) {
+      document.dispatchEvent(new Event('DOMContentLoaded'));
+    }
   };
   const syncGuestAvailability = () => { const grid=document.getElementById("abCalendarGrid"); if(grid) grid.dataset.availabilitySync="live"; };
   const removeDuplicateCalendarCards = () => { document.querySelectorAll("#adminBookingModal .ab-calendar-section").forEach((card,index)=>{if(index>0)card.remove();}); };
