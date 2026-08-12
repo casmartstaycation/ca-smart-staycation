@@ -5,22 +5,14 @@
       "maxDuration": 60
     }
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/",
-      "destination": "/frontend/index.html"
+      "src": "/api/(.*)",
+      "dest": "/api/[...path].js"
     },
     {
-      "source": "/index.html",
-      "destination": "/frontend/index.html"
-    },
-    {
-      "source": "/favicon.ico",
-      "destination": "/frontend/favicon.svg"
-    },
-    {
-      "source": "/:path*",
-      "destination": "/frontend/:path*"
+      "src": "/(.*)",
+      "dest": "/frontend/$1"
     }
   ]
 }
