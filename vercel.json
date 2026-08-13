@@ -1,17 +1,21 @@
 {
   "version": 2,
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/[...path].js"
+      "src": "^/api/(.*)$",
+      "dest": "/api/$1"
     },
     {
-      "source": "/",
-      "destination": "/frontend/index.html"
+      "src": "^/api$",
+      "dest": "/api"
     },
     {
-      "source": "/((?!api(?:/|$)).*)",
-      "destination": "/frontend/$1"
+      "src": "^/$",
+      "dest": "/frontend/index.html"
+    },
+    {
+      "src": "^/(.*)$",
+      "dest": "/frontend/$1"
     }
   ]
 }
