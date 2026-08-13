@@ -6,7 +6,16 @@ module.exports = (req, res) => {
   const originalUrl = String(req.url || '/');
   const requestPath = originalUrl.split('?')[0];
 
-  if (requestPath === '/api' || requestPath.startsWith('/api/')) {
+  // Vercel catch-all functions may receive the path without the /api prefix.
+  // Express is configured with /api routes, so normalize it before handing
+  // API requests to the backend. This prevents /api/health from falling into
+  // the frontend fallback and returning the wrong JSON response.
+  const apiPath = requestPath === '/api' || requestPath.startsWith('/api/')
+    ? requestPath
+    : `/api${requestPath === '/' ? '' : requestPath}`;
+
+  if (requestPath === '/api' || requestPath.startsWith('/api/') || requestPath === '/health' || requestPath.startsWith('/health/') || requestPath === '/rooms' || requestPath.startsWith('/rooms/') || requestPath === '/bookings' || requestPath.startsWith('/bookings/')) {
+    req.url = apiPath + (originalUrl.includes('?') ? originalUrl.slice(originalUrl.indexOf('?')) : '');
     return app(req, res);
   }
 
