@@ -2,17 +2,10 @@
   "version": 2,
   "functions": {
     "api/[...path].js": {
-      "runtime": "nodejs24.x"
+      "runtime": "nodejs24.x",
+      "includeFiles": [
+        "frontend/**"
+      ]
     }
-  },
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/frontend/$1"
-    }
-  ]
+  }
 }
