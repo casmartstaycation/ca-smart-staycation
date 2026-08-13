@@ -1,10 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/:path*" },
-    { "source": "/(.*)", "destination": "/api/frontend/$1" }
-  ],
   "functions": {
     "api/[...path].js": {
       "runtime": "nodejs24.x"
