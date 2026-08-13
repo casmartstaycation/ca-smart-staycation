@@ -69,34 +69,45 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Vercel's Express runtime can invoke this app directly for the project root.
-// Serve the static frontend from Express as a final fallback so / never returns
-// the API's JSON "Route not found" response. API routes remain under /api.
 const frontendRoot = path.resolve(__dirname, '..', 'frontend');
-
 app.use(express.static(frontendRoot));
 app.get('/', (req, res) => res.sendFile(path.join(frontendRoot, 'index.html')));
 
-const mongoUri = process.env.MONGODB_URI;
+const mongoUri = String(process.env.MONGODB_URI || '').trim();
 let mongoConnectionPromise = null;
+let mongoLastFailureAt = 0;
+const MONGO_RETRY_COOLDOWN_MS = 3000;
+
 function connectMongoDB() {
   if (!mongoUri) return Promise.reject(new Error('MONGODB_URI environment variable is not configured in Vercel.'));
   if (mongoose.connection.readyState === 1) return Promise.resolve(mongoose.connection);
-  if (!mongoConnectionPromise) {
-    mongoConnectionPromise = mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 10000,
-      connectTimeoutMS: 10000,
-      maxPoolSize: 5,
-      bufferCommands: false
-    }).then(() => {
-      console.log('✅ MongoDB Connected');
-      return mongoose.connection;
-    }).catch(err => {
-      mongoConnectionPromise = null;
-      console.error('MongoDB Error:', err.message);
-      throw err;
-    });
+  if (mongoConnectionPromise) return mongoConnectionPromise;
+
+  const now = Date.now();
+  if (mongoLastFailureAt && now - mongoLastFailureAt < MONGO_RETRY_COOLDOWN_MS) {
+    return Promise.reject(new Error('MongoDB connection is temporarily unavailable; retrying shortly.'));
   }
+
+  mongoConnectionPromise = mongoose.connect(mongoUri, {
+    serverSelectionTimeoutMS: 10000,
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 20000,
+    maxPoolSize: 5,
+    minPoolSize: 0,
+    bufferCommands: false,
+    family: 4,
+    retryWrites: true
+  }).then(() => {
+    mongoLastFailureAt = 0;
+    console.log('✅ MongoDB Connected');
+    return mongoose.connection;
+  }).catch(err => {
+    mongoLastFailureAt = Date.now();
+    mongoConnectionPromise = null;
+    console.error('MongoDB Error:', err.message);
+    throw err;
+  });
+
   return mongoConnectionPromise;
 }
 
