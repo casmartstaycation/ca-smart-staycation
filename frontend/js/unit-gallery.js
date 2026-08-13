@@ -1,4 +1,4 @@
-const UNIT_GALLERY_API = "https://ca-smart-staycation-muqd.onrender.com/api";
+const UNIT_GALLERY_API = "/api";
 
 (function() {
   const css = `
