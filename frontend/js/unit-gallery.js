@@ -21,7 +21,7 @@ const UNIT_GALLERY_API = "https://ca-smart-staycation-muqd.onrender.com/api";
     .unit-lightbox .unit-prev{left:12px}.unit-lightbox .unit-next{right:12px}
     @media(max-width:700px){.unit-primary-photo{aspect-ratio:16/10}.unit-info-panel{margin-top:14px}}
   `;
-  
+
   const style = document.createElement('style');
   style.textContent = css;
   document.head.appendChild(style);
@@ -50,19 +50,19 @@ const UNIT_GALLERY_API = "https://ca-smart-staycation-muqd.onrender.com/api";
     const m = document.createElement('div');
     m.className = 'unit-lightbox';
     m.innerHTML = `<button type="button" class="unit-close" aria-label="Close">×</button><button type="button" class="unit-nav unit-prev" aria-label="Previous photo">‹</button><img alt="Accommodation photo"><button type="button" class="unit-nav unit-next" aria-label="Next photo">›</button>`;
-    
+
     const img = m.querySelector('img');
     const show = () => {
       index = (index + images.length) % images.length;
       img.src = images[index];
       img.alt = `Accommodation photo ${index + 1} of ${images.length}`;
     };
-    
+
     const close = () => {
       document.removeEventListener('keydown', keyHandler);
       m.remove();
     };
-    
+
     const keyHandler = e => {
       if (!document.body.contains(m)) return;
       if (e.key === 'ArrowLeft') {
@@ -84,18 +84,18 @@ const UNIT_GALLERY_API = "https://ca-smart-staycation-muqd.onrender.com/api";
       index--;
       show();
     };
-    
+
     m.querySelector('.unit-next').onclick = e => {
       e.stopPropagation();
       index++;
       show();
     };
-    
+
     m.querySelector('.unit-close').onclick = close;
     m.onclick = e => {
       if (e.target === m) close();
     };
-    
+
     document.addEventListener('keydown', keyHandler);
     document.body.appendChild(m);
     show();
@@ -110,9 +110,9 @@ const UNIT_GALLERY_API = "https://ca-smart-staycation-muqd.onrender.com/api";
     let panel = document.getElementById('unitInfoPanel');
     if (panel) return panel;
 
-    const group = document.getElementById('roomGroup');
-    if (!group) {
-      console.warn('Room group element not found');
+    const roomGroup = document.getElementById('roomGroup');
+    if (!roomGroup) {
+      console.warn('[UnitGallery] roomGroup element not found');
       return null;
     }
 
@@ -120,21 +120,26 @@ const UNIT_GALLERY_API = "https://ca-smart-staycation-muqd.onrender.com/api";
     panel.id = 'unitInfoPanel';
     panel.className = 'unit-info-panel';
 
-    // Insert after the room select group
-    group.parentElement.insertBefore(panel, group.nextElementSibling);
+    // Insert directly after roomGroup element
+    if (roomGroup.nextElementSibling) {
+      roomGroup.parentElement.insertBefore(panel, roomGroup.nextElementSibling);
+    } else {
+      roomGroup.parentElement.appendChild(panel);
+    }
+
     return panel;
   }
 
   function render() {
     const room = document.getElementById('room');
     if (!room) {
-      console.warn('Room select element not found');
+      console.warn('[UnitGallery] room select element not found');
       return;
     }
 
     const panel = getPanel();
     if (!panel) {
-      console.warn('Could not create or find panel');
+      console.warn('[UnitGallery] could not create or find panel');
       return;
     }
 
@@ -154,7 +159,7 @@ const UNIT_GALLERY_API = "https://ca-smart-staycation-muqd.onrender.com/api";
     const images = Array.isArray(u.images)
       ? u.images.map(x => typeof x === 'string' ? x : x?.url).filter(Boolean)
       : [];
-    
+
     const primary = images[0];
     const amenities = Array.isArray(u.amenities) ? u.amenities.filter(Boolean) : [];
 
@@ -181,10 +186,11 @@ const UNIT_GALLERY_API = "https://ca-smart-staycation-muqd.onrender.com/api";
       if (!cached?.timestamp || Date.now() - cached.timestamp > CACHE_TTL || !Array.isArray(cached.data))
         return false;
       units = cached.data;
+      console.log(`[UnitGallery] Using cached data: ${units.length} units`);
       render();
       return true;
     } catch (err) {
-      console.warn('Cache error:', err);
+      console.warn('[UnitGallery] Cache error:', err);
       return false;
     }
   }
@@ -193,15 +199,20 @@ const UNIT_GALLERY_API = "https://ca-smart-staycation-muqd.onrender.com/api";
     if (isParkingOnly()) return;
     if (useCached()) return;
 
+    console.log('[UnitGallery] Loading units from API...');
+
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 8000);
+      const timer = setTimeout(() => {
+        console.warn('[UnitGallery] Request timeout after 15 seconds');
+        controller.abort();
+      }, 15000); // Increased from 8s to 15s for slow Render backend
 
       const r = await fetch(`${UNIT_GALLERY_API}/rooms`, {
         cache: 'no-store',
         signal: controller.signal
       });
-      
+
       clearTimeout(timer);
 
       if (!r.ok) {
@@ -212,45 +223,51 @@ const UNIT_GALLERY_API = "https://ca-smart-staycation-muqd.onrender.com/api";
 
       if (Array.isArray(j.data)) {
         units = j.data;
-        console.log(`Loaded ${units.length} accommodation units`);
-        
+        console.log(`[UnitGallery] Successfully loaded ${units.length} accommodation units`);
+
         try {
           sessionStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: units }));
         } catch (e) {
-          console.warn('Cache storage error:', e);
+          console.warn('[UnitGallery] Cache storage error:', e);
         }
-        
+
         render();
       } else {
         throw new Error('Invalid response format: expected data array');
       }
     } catch (err) {
       if (err.name === 'AbortError') {
-        console.error('Gallery load timeout (8s) - API took too long', err);
+        console.error('[UnitGallery] Request timeout - API is slow to respond', err);
       } else {
-        console.error('Unable to load accommodation photos:', err.message);
+        console.error('[UnitGallery] Failed to load units:', err.message);
       }
-      
-      // Show error message in panel on critical failures
+
+      // Show user-friendly error message
       const panel = getPanel();
       if (panel && !isParkingOnly()) {
-        panel.innerHTML = `<p style="margin:0;color:#c00;font-weight:bold">Unable to load accommodation gallery. Please try refreshing the page.</p>`;
+        panel.innerHTML = `<p style="margin:0;color:#c00;font-weight:bold">Unable to load accommodation gallery. Please try refreshing the page or contact support.</p>`;
       }
     }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    console.log('[UnitGallery] Initializing...');
+    
     const room = document.getElementById('room');
     const type = document.getElementById('bookingType');
 
     if (room) {
-      room.addEventListener('change', render);
+      room.addEventListener('change', () => {
+        console.log('[UnitGallery] Room selection changed');
+        render();
+      });
     } else {
-      console.warn('Room select element not found on page load');
+      console.warn('[UnitGallery] Room select element not found on page load');
     }
 
     if (type) {
       type.addEventListener('change', () => {
+        console.log('[UnitGallery] Booking type changed to:', type.value);
         const panel = document.getElementById('unitInfoPanel');
         if (String(type.value).toLowerCase() === 'parking') {
           if (panel) panel.style.display = 'none';
