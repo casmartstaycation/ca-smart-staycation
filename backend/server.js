@@ -72,7 +72,10 @@ app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 // Vercel's Express runtime can invoke this app directly for the project root.
 // Serve the static frontend from Express as a final fallback so / never returns
 // the API's JSON "Route not found" response. API routes remain under /api.
-const frontendRoot = path.join(process.cwd(), 'frontend');
+const frontendRoot = process.env.VERCEL
+  ? path.join(process.cwd(), 'public')
+  : path.join(process.cwd(), 'frontend');
+
 app.use(express.static(frontendRoot));
 app.get('/', (req, res) => res.sendFile(path.join(frontendRoot, 'index.html')));
 
