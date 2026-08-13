@@ -69,6 +69,13 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Vercel's Express runtime can invoke this app directly for the project root.
+// Serve the static frontend from Express as a final fallback so / never returns
+// the API's JSON "Route not found" response. API routes remain under /api.
+const frontendRoot = path.join(process.cwd(), 'frontend');
+app.use(express.static(frontendRoot));
+app.get('/', (req, res) => res.sendFile(path.join(frontendRoot, 'index.html')));
+
 const mongoUri = process.env.MONGODB_URI;
 let mongoConnectionPromise = null;
 function connectMongoDB() {
@@ -92,8 +99,6 @@ function connectMongoDB() {
   return mongoConnectionPromise;
 }
 
-// This Express app is mounted behind /api on Vercel. The website root must never
-// be handled by Express because the frontend is served from /frontend/index.html.
 app.get('/api/health', async (req, res) => {
   try {
     await connectMongoDB();
@@ -148,7 +153,11 @@ app.use('/api', require('./routes/parkingRoutes'));
 app.use('/api', require('./routes/voucherRoutes'));
 app.use('/api', require('./routes/messagingRoutes'));
 app.use('/api/settings', settingsRoutes);
-app.use((req, res) => res.status(404).json({ status: 'error', message: 'Route not found' }));
+
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ status: 'error', message: 'Route not found' });
+  return res.sendFile(path.join(frontendRoot, 'index.html'));
+});
 
 if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 3000;
