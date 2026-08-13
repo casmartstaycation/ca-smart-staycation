@@ -1,7 +1,6 @@
 /* CA Smart Staycation guest booking parking fix */
 (function () {
   'use strict';
-  // GitHub Pages has no /api backend. Use the deployed API instead.
   const API_BASE = window.CA_SMART_API || 'https://ca-smart-staycation-muqd.onrender.com/api';
   const TERMINAL = new Set(['Cancelled', 'Checked Out', 'Expired']);
   let parkingSlots = [];
@@ -11,7 +10,8 @@
 
   const $ = id => document.getElementById(id);
   const type = () => $('bookingType')?.value || 'unit';
-  const needsParking = () => type() === 'parking' || type() === 'both';
+  // Parking-lot selection is intentionally shown ONLY for Parking Only.
+  const needsParking = () => type() === 'parking';
 
   function date(v) {
     if (!v) return null;
@@ -31,10 +31,16 @@
     if (!vehicle) return;
     const group = document.createElement('div');
     group.id = 'parkingGroup';
-    group.className = 'form-group full-width';
-    group.innerHTML = '<label for="parking">Select Parking Slot</label><select id="parking" required><option value="">Loading parking slots...</option></select><small id="parkingAvailabilityMessage"></small>';
-    vehicle.parentNode.insertBefore(group, vehicle);
-    ['vehicleBrand','vehicleModel','vehicleColor','plateNumber'].forEach(id => { const el = $(id); if (el) el.required = false; });
+    group.className = 'form-group';
+    group.innerHTML = '<label for="parking">Select Parking Lot</label><select id="parking"><option value="">Select Parking Lot</option></select><small id="parkingAvailabilityMessage"></small>';
+    // Do not append it to the vehicle section. Insert it into the booking form grid
+    // immediately after Booking Type so it occupies the same row.
+    const bookingType = $('bookingType');
+    if (bookingType?.parentElement?.parentElement) {
+      bookingType.parentElement.parentElement.insertBefore(group, bookingType.parentElement.nextElementSibling);
+    } else if (vehicle.parentNode) {
+      vehicle.parentNode.insertBefore(group, vehicle);
+    }
   }
 
   function updateParkingUI() {
@@ -44,9 +50,16 @@
     const required = needsParking();
     if (group) group.style.display = required ? '' : 'none';
     if (select) select.required = required;
-    ['vehicleBrand','vehicleModel','vehicleColor','plateNumber'].forEach(id => { const el = $(id); if (el) el.required = required; });
-    if (!required && select) { select.value = ''; selectedParkingId = ''; }
-    if (required && select && selectedParkingId) select.value = selectedParkingId;
+    ['vehicleBrand','vehicleModel','vehicleColor','plateNumber'].forEach(id => {
+      const el = $(id);
+      if (el) el.required = required;
+    });
+    if (!required) {
+      if (select) select.value = '';
+      selectedParkingId = '';
+    } else if (select && selectedParkingId) {
+      select.value = selectedParkingId;
+    }
   }
 
   async function loadRoomsFix() {
@@ -78,15 +91,18 @@
       const select = $('parking');
       if (!select) return;
       const current = selectedParkingId || select.value;
-      select.innerHTML = '<option value="">Select Parking Slot</option>';
+      select.innerHTML = '<option value="">Select Parking Lot</option>';
       parkingSlots.forEach(slot => {
         const option = document.createElement('option');
         option.value = slot._id;
-        option.textContent = `${slot.parkingNumber || ''}${slot.parkingName ? ` - ${slot.parkingName}` : ''}`.trim();
+        option.textContent = `${slot.parkingNumber || slot.slotNumber || ''}${slot.parkingName ? ` - ${slot.parkingName}` : ''}`.trim() || slot.name || 'Parking Lot';
         if (String(slot.status || '').toLowerCase() === 'occupied') option.disabled = true;
         select.appendChild(option);
       });
-      if (current && parkingSlots.some(s => String(s._id) === String(current))) { select.value = current; selectedParkingId = current; }
+      if (current && parkingSlots.some(s => String(s._id) === String(current))) {
+        select.value = current;
+        selectedParkingId = current;
+      }
       updateParkingUI();
     } catch (e) {
       parkingSlots = [];
@@ -144,7 +160,7 @@
     if (bookingType !== 'parking' && !$('room')?.value) return alert('Please select an accommodation.');
     if (needsParking()) {
       const parking = $('parking')?.value || '';
-      if (!parking) return alert('Please select a parking slot.');
+      if (!parking) return alert('Please select a parking lot.');
       if (!$('vehicleBrand')?.value.trim() || !$('vehicleModel')?.value.trim() || !$('vehicleColor')?.value.trim() || !$('plateNumber')?.value.trim()) return alert('Please complete Vehicle Brand, Vehicle Model, Vehicle Color, and Plate Number.');
       selectedParkingId = parking;
     }
@@ -152,7 +168,7 @@
     if (bookingType !== 'parking' && !$('governmentId')?.files?.length) return alert('Please upload a government-issued ID.');
     await refreshBookings();
     if (roomConflict(start, end)) return alert('The selected accommodation is already booked for the selected dates.');
-    if (needsParking() && parkingConflict(start, end)) return alert('The selected parking slot is already reserved for the selected dates.');
+    if (needsParking() && parkingConflict(start, end)) return alert('The selected parking lot is already reserved for the selected dates.');
     const totalText = $('totalAmount')?.textContent || '0';
     const total = Number(totalText.replace(/[^0-9.-]/g, '')) || 0;
     const payload = {
@@ -174,11 +190,16 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
-    ensureParkingUI(); updateParkingUI();
+    ensureParkingUI();
+    updateParkingUI();
     await Promise.all([loadRoomsFix(), loadParkingFix(), refreshBookings()]);
     updateParkingUI();
     $('parking')?.addEventListener('change', e => { selectedParkingId = e.target.value; });
-    $('bookingType')?.addEventListener('change', () => { setTimeout(updateParkingUI, 0); setTimeout(loadParkingFix, 0); });
+    $('bookingType')?.addEventListener('change', () => {
+      updateParkingUI();
+      setTimeout(updateParkingUI, 0);
+      if (type() === 'parking') loadParkingFix();
+    });
     $('room')?.addEventListener('change', () => setTimeout(refreshBookings, 0));
     $('guestBookingForm')?.addEventListener('submit', submitFix, true);
   });
