@@ -6,22 +6,21 @@ module.exports = (req, res) => {
   const originalUrl = String(req.url || '/');
   const requestPath = originalUrl.split('?')[0];
 
-  // Vercel catch-all functions may receive the path without the /api prefix.
-  // Express is configured with /api routes, so normalize it before handing
-  // API requests to the backend. This prevents /api/health from falling into
-  // the frontend fallback and returning the wrong JSON response.
-  const apiPath = requestPath === '/api' || requestPath.startsWith('/api/')
-    ? requestPath
-    : `/api${requestPath === '/' ? '' : requestPath}`;
+  const isApiRequest = requestPath === '/api' || requestPath.startsWith('/api/') || requestPath === '/health' || requestPath.startsWith('/health/') || requestPath === '/rooms' || requestPath.startsWith('/rooms/') || requestPath === '/bookings' || requestPath.startsWith('/bookings/');
 
-  if (requestPath === '/api' || requestPath.startsWith('/api/') || requestPath === '/health' || requestPath.startsWith('/health/') || requestPath === '/rooms' || requestPath.startsWith('/rooms/') || requestPath === '/bookings' || requestPath.startsWith('/bookings/')) {
+  if (isApiRequest) {
+    const apiPath = requestPath === '/api' || requestPath.startsWith('/api/')
+      ? requestPath
+      : `/api${requestPath === '/' ? '' : requestPath}`;
     req.url = apiPath + (originalUrl.includes('?') ? originalUrl.slice(originalUrl.indexOf('?')) : '');
     return app(req, res);
   }
 
-  const relativePath = requestPath.replace(/^\/+/, '') || 'index.html';
-  const frontendRoot = path.join(process.cwd(), 'frontend');
-  const requestedFile = path.normalize(path.join(frontendRoot, relativePath));
+  // Serve the existing frontend directory directly. This avoids depending on
+  // Vercel's build output or Express's working-directory assumptions.
+  const frontendRoot = path.resolve(__dirname, '..', 'frontend');
+  const relativePath = requestPath.replace(/^\/+/, '');
+  const requestedFile = path.resolve(frontendRoot, relativePath || 'index.html');
 
   if (!requestedFile.startsWith(frontendRoot + path.sep) && requestedFile !== frontendRoot) {
     return res.status(400).json({ status: 'error', message: 'Invalid path' });
