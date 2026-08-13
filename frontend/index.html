@@ -1,20 +1,316 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>CA Smart Staycation | Online Booking</title><link rel="stylesheet" href="css/style.css"></head><body>
-<header class="header"><div class="logo-area"><div class="logo-icon">CA</div><div><h1>CA Smart Staycation</h1><p>Elegant Comfort • Private Stay</p></div></div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;"><a href="guest-booking/guest-login.html" class="header-button">Guest Login</a><a href="#booking" class="header-button">Book Your Stay</a></div></header>
-<section class="hero"><div class="hero-overlay"><div class="hero-content"><p class="eyebrow">YOUR PRIVATE LUXURY ESCAPE</p><h2>Stay in Comfort.<br>Create Beautiful Memories.</h2><p class="hero-description">Reserve your stay with our simple and secure online booking process.</p><a href="#booking" class="gold-button">Reserve Now</a><a href="guest-booking/guest-login.html" style="display:inline-block;margin-left:12px;color:#fff;text-decoration:none;">Already booked? Guest Login</a></div></div></section>
-<main id="booking" class="booking-container"><div class="booking-heading"><p class="section-label">ONLINE RESERVATION</p><h2>Reserve Your Stay</h2><p>Complete the reservation form below to book your stay.</p><div class="gold-divider">✦ ✦ ✦</div></div>
-<form id="guestBookingForm" enctype="multipart/form-data"><section class="form-card"><div class="step-title"><span>1</span><div><h3>Booking Details</h3><p>Select your booking type and preferred dates.</p></div></div><div class="form-grid">
-<div class="form-group"><label for="bookingType">Booking Type</label><select id="bookingType" required><option value="unit">Accommodation Only</option><option value="parking">Parking Only</option><option value="both">Accommodation + Parking</option></select></div>
-<div class="form-group" id="roomGroup"><label for="room">Select Accommodation</label><select id="room" required><option value="">Loading rooms...</option></select></div>
-<div class="form-group full-width"><label>Select Your Stay Dates</label><div class="booking-calendar-card"><div class="calendar-header"><button type="button" id="prevMonth">←</button><h3 id="calendarTitle"></h3><button type="button" id="nextMonth">→</button></div><div class="calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div id="calendarGrid" class="calendar-grid"></div></div><input type="hidden" id="checkIn" required><input type="hidden" id="checkOut" required></div>
-<div class="form-group" id="guestsGroup"><label for="guests">Number of Guests</label><select id="guests" required><option value="1">1 Guest</option><option value="2" selected>2 Guests</option><option value="3">3 Guests</option><option value="4">4 Guests</option></select></div>
-<div class="form-group" id="childrenGroup"><label for="children">Children <small>(0–2 years old)</small></label><select id="children"><option value="0" selected>0 Children</option><option value="1">1 Child</option><option value="2">2 Children</option></select></div>
-</div></section>
-<section class="form-card"><div class="step-title"><span>2</span><div><h3>Guest Information</h3><p>Please enter accurate personal information.</p></div></div><div class="form-grid"><div class="form-group"><label for="firstName">First Name</label><input type="text" id="firstName" required></div><div class="form-group"><label for="lastName">Last Name</label><input type="text" id="lastName" required></div><div class="form-group"><label for="email">Email Address</label><input type="email" id="email" placeholder="example@email.com" required></div><div class="form-group"><label for="mobile">Mobile Number</label><input type="tel" id="mobile" placeholder="09XXXXXXXXX" required></div><div class="form-group full-width"><label for="address">Complete Address</label><textarea id="address" rows="4" required></textarea></div></div></section>
-<section class="form-card" id="governmentIdSection"><div class="step-title"><span>3</span><div><h3>Government-Issued ID</h3><p>Upload a clear and valid government-issued ID.</p></div></div><div class="upload-box"><label for="governmentId"><span class="upload-icon">📄</span><strong>Upload Government ID</strong><small>JPG, PNG, or PDF</small></label><input type="file" id="governmentId" accept="image/png,image/jpeg,application/pdf"><p id="governmentIdName">No file selected</p></div></section>
-<section class="form-card"><div class="step-title"><span>4</span><div><h3>Booking Summary</h3><p>Review your reservation before proceeding.</p></div></div><div id="bookingSummary" class="summary-box"><div class="summary-row"><span>Accommodation</span><span id="roomAmount">₱0</span></div><div class="summary-row"><span>Extra Guest</span><span id="extraGuestAmount">₱0</span></div><div class="summary-row"><span>Parking</span><span id="parkingAmount">₱0</span></div><div class="summary-row"><span>Security Deposit</span><span id="securityDepositAmount">₱0</span></div><hr><div class="summary-row total"><strong>Total</strong><strong id="totalAmount">₱0</strong></div><hr style="margin:25px 0;"><h3>Booking Information</h3><div class="booking-info-card"><h4>💰 Security Deposit</h4><p>A <strong>₱1,000 Security Deposit</strong> is required for accommodation bookings. It is refundable within <strong>1–2 days after checkout</strong>, subject to inspection.</p></div><div class="booking-info-card"><h4>👥 Additional Guests</h4><p>Your accommodation includes <strong>2 guests.</strong> Every additional guest is charged <strong>₱300 per night.</strong></p></div><div class="booking-info-card"><h4>👶 Children</h4><p>Children aged <strong>0–2 years old stay FREE</strong> and are <strong>NOT counted</strong> toward maximum capacity.</p></div><div class="booking-info-card"><h4>🏡 Maximum Capacity</h4><p>Maximum accommodation capacity is <strong>4 guests.</strong></p></div></div></div></section>
-<div id="vehicleSection" style="display:none;"><h3>Vehicle Information</h3><div class="vehicle-note"><strong>Parking Information Required</strong><p>Vehicle information is required for <strong>Parking Only</strong> or <strong>Accommodation + Parking</strong>. Details are used for parking access and security.</p><p>Please ensure the registered vehicle details are accurate.</p></div><label>Driver's License</label><input type="file" id="driversLicense" accept="image/*,.pdf"><label>Vehicle Brand</label><input type="text" id="vehicleBrand" placeholder="Toyota"><label>Vehicle Model</label><input type="text" id="vehicleModel" placeholder="Vios"><label>Vehicle Color</label><input type="text" id="vehicleColor" placeholder="White"><label>Plate Number</label><input type="text" id="plateNumber" placeholder="ABC 1234"></div>
-<div class="form-action"><button type="submit" class="continue-button">Submit Booking <span>→</span></button><p>Your booking will remain pending until the payment is reviewed and validated.</p></div></form></main><footer><div><h3>CA Smart Staycation</h3><p>Private comfort with an elegant stay experience.</p><p><a href="privacy-policy.html">Privacy Policy</a> · <a href="mailto:booking@casmartstaycation.com">booking@casmartstaycation.com</a></p></div><p>© 2026 CA Smart Staycation. All rights reserved.</p></footer>
-<script src="js/script.js"></script><script src="js/guest-booking-documents.js"></script><script src="js/unit-gallery.js"></script><script src="js/parking-booking-fix.js?v=20260814-1"></script><script>document.addEventListener('DOMContentLoaded',()=>{const type=document.getElementById('bookingType'),idSection=document.getElementById('governmentIdSection'),idInput=document.getElementById('governmentId'),room=document.getElementById('room'),roomGroup=document.getElementById('roomGroup');function updateDocumentRequirements(){const parkingOnly=type.value==='parking';idSection.style.display=parkingOnly?'none':'';idInput.required=!parkingOnly;if(parkingOnly)idInput.value='';room.required=!parkingOnly;roomGroup.style.display=parkingOnly?'none':''}type.addEventListener('change',updateDocumentRequirements);updateDocumentRequirements();});</script>
-<script>document.addEventListener('DOMContentLoaded',()=>{const grid=document.getElementById('calendarGrid');if(!grid)return;grid.addEventListener('click',(event)=>{const cell=event.target.closest('.calendar-day.booked');if(!cell||!selectedCheckIn||selectedCheckOut)return;const day=Number(cell.textContent.trim());if(!day)return;const target=new Date(currentYear,currentMonth,day);target.setHours(0,0,0,0);const selectedRoom=document.getElementById('room')?.value||'';const bookingType=document.getElementById('bookingType')?.value||'unit';const isTerminal=booking=>['Cancelled','Checked Out','Expired'].includes(String(booking?.bookingStatus||''));const parseDate=value=>{if(!value)return null;if(/^\d{4}-\d{2}-\d{2}$/.test(String(value))){const[y,m,d]=String(value).split('-').map(Number);const result=new Date(y,m-1,d);result.setHours(0,0,0,0);return result;}const result=new Date(value);if(Number.isNaN(result.getTime()))return null;result.setHours(0,0,0,0);return result;};const hasRoom=b=>Boolean(b?.room?._id||b?.room);const hasParking=b=>Boolean(b?.parking?._id||b?.parking);const matchingBoundary=bookedDates.some(booking=>{if(isTerminal(booking))return false;const start=parseDate(booking.checkIn);if(!start||start.getTime()!==target.getTime())return false;const roomId=booking.room?._id||booking.room||null;if(bookingType==='parking')return hasParking(booking);if(bookingType==='both')return(hasRoom(booking)&&String(roomId)===String(selectedRoom))||hasParking(booking);return hasRoom(booking)&&String(roomId)===String(selectedRoom);});if(!matchingBoundary||target<=selectedCheckIn)return;event.stopPropagation();selectedCheckOut=new Date(target);const checkIn=document.getElementById('checkIn'),checkOut=document.getElementById('checkOut');const format=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;if(checkIn)checkIn.value=format(selectedCheckIn);if(checkOut)checkOut.value=format(selectedCheckOut);if(typeof calculateTotal==='function')calculateTotal();if(typeof renderCalendar==='function')renderCalendar();},true);});</script>
-</body></html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://ca-smart-staycation-muqd.onrender.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-ancestors 'none';">
+  <title>CA Smart Staycation | Online Booking</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-area">
+    <div class="logo-icon">CA</div>
+    <div>
+      <h1>CA Smart Staycation</h1>
+      <p>Elegant Comfort • Private Stay</p>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <a href="privacy-policy.html" target="_blank" style="font-size:14px;color:#666;text-decoration:none;">Privacy Policy</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-overlay">
+    <div class="hero-content">
+      <p class="eyebrow">YOUR PRIVATE LUXURY ESCAPE</p>
+      <h2>Stay in Comfort.<br>Create Beautiful Memories.</h2>
+      <p class="hero-desc">Discover our elegantly appointed accommodations and seamless booking experience.</p>
+    </div>
+  </div>
+</section>
+
+<main id="booking" class="booking-container">
+  <div class="booking-heading">
+    <p class="section-label">ONLINE RESERVATION</p>
+    <h2>Reserve Your Stay</h2>
+    <p>Complete the reservation form below to book your accommodation or parking.</p>
+  </div>
+
+  <form id="guestBookingForm" enctype="multipart/form-data">
+    <section class="form-card">
+      <div class="step-title">
+        <span>1</span>
+        <div>
+          <h3>Booking Details</h3>
+          <p>Select your booking type and preferred dates for your stay.</p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="bookingType">Booking Type</label>
+          <select id="bookingType" required>
+            <option value="unit">Accommodation Only</option>
+            <option value="parking">Parking Only</option>
+            <option value="both">Accommodation + Parking</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="roomGroup">
+          <label for="room">Select Accommodation</label>
+          <select id="room" required>
+            <option value="">Loading rooms...</option>
+          </select>
+        </div>
+
+        <div class="form-group full-width">
+          <label>Select Your Stay Dates</label>
+          <div class="booking-calendar-card">
+            <div class="calendar-header">
+              <button type="button" id="prevMonth">←</button>
+              <h3 id="calendarTitle">Month Year</h3>
+              <button type="button" id="nextMonth">→</button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+        </div>
+
+        <div class="form-group" id="guestsGroup">
+          <label for="guests">Number of Guests</label>
+          <select id="guests" required>
+            <option value="1">1 Guest</option>
+            <option value="2" selected>2 Guests</option>
+            <option value="3">3 Guests</option>
+            <option value="4">4 Guests</option>
+            <option value="5">5 Guests</option>
+            <option value="6">6+ Guests</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="childrenGroup">
+          <label for="children">Children <small>(0–2 years old)</small></label>
+          <select id="children">
+            <option value="0" selected>0 Children</option>
+            <option value="1">1 Child</option>
+            <option value="2">2 Children</option>
+            <option value="3">3 Children</option>
+            <option value="4">4 Children</option>
+            <option value="5">5+ Children</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-card">
+      <div class="step-title">
+        <span>2</span>
+        <div>
+          <h3>Guest Information</h3>
+          <p>Please enter accurate personal information.</p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="firstName">First Name *</label>
+          <input type="text" id="firstName" required>
+        </div>
+        <div class="form-group">
+          <label for="lastName">Last Name *</label>
+          <input type="text" id="lastName" required>
+        </div>
+        <div class="form-group">
+          <label for="email">Email Address *</label>
+          <input type="email" id="email" required>
+        </div>
+        <div class="form-group">
+          <label for="mobile">Mobile Number *</label>
+          <input type="tel" id="mobile" required>
+        </div>
+        <div class="form-group full-width">
+          <label for="address">Street Address *</label>
+          <input type="text" id="address" required>
+        </div>
+        <div class="form-group full-width">
+          <label for="bookingNotes">Special Requests (Optional)</label>
+          <textarea id="bookingNotes" rows="4" placeholder="Any special requests or notes for your stay..."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-card" id="governmentIdSection">
+      <div class="step-title">
+        <span>3</span>
+        <div>
+          <h3>Government-Issued ID</h3>
+          <p>Upload a clear and valid government-issued ID.</p>
+        </div>
+      </div>
+
+      <div class="form-group full-width">
+        <label for="governmentId">Upload ID (JPEG, PNG) *</label>
+        <div class="file-input-wrapper">
+          <input type="file" id="governmentId" accept=".jpg,.jpeg,.png" required>
+          <span id="governmentIdName">No file selected</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-card">
+      <div class="step-title">
+        <span>4</span>
+        <div>
+          <h3>Booking Summary</h3>
+          <p>Review your reservation before proceeding.</p>
+        </div>
+      </div>
+
+      <div id="bookingSummary" class="summary-block">
+        <div class="summary-row"><span>Accommodation:</span><span id="summaryRoom">—</span></div>
+        <div class="summary-row"><span>Check-In:</span><span id="summaryCheckIn">—</span></div>
+        <div class="summary-row"><span>Check-Out:</span><span id="summaryCheckOut">—</span></div>
+        <div class="summary-row"><span>Guests:</span><span id="summaryGuests">—</span></div>
+        <hr>
+        <div class="summary-row highlight"><span>Room Rate:</span><span id="roomAmount">₱0</span></div>
+        <div class="summary-row highlight"><span>Extra Guest Fees:</span><span id="extraGuestAmount">₱0</span></div>
+        <div class="summary-row highlight"><span>Parking:</span><span id="parkingAmount">₱0</span></div>
+        <div class="summary-row highlight"><span>Security Deposit:</span><span id="securityDepositAmount">₱0</span></div>
+        <hr>
+        <div class="summary-row total"><span>Total Amount:</span><span id="totalAmount">₱0</span></div>
+      </div>
+
+      <div id="vehicleSection" style="display:none;">
+        <h3>Vehicle Information</h3>
+        <div class="vehicle-note">
+          <strong>Parking Information Required</strong>
+          <p>Vehicle information is required for <strong>Parking-only</strong> and <strong>Accommodation + Parking</strong> bookings.</p>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="vehicleBrand">Vehicle Brand *</label>
+            <input type="text" id="vehicleBrand">
+          </div>
+          <div class="form-group">
+            <label for="vehicleModel">Vehicle Model *</label>
+            <input type="text" id="vehicleModel">
+          </div>
+          <div class="form-group">
+            <label for="vehicleColor">Vehicle Color *</label>
+            <input type="text" id="vehicleColor">
+          </div>
+          <div class="form-group">
+            <label for="plateNumber">License Plate Number *</label>
+            <input type="text" id="plateNumber">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-action">
+        <button type="submit" class="continue-button">Submit Booking <span>→</span></button>
+        <p>Your booking will remain pending until the payment is reviewed and validated.</p>
+      </div>
+    </section>
+  </form>
+</main>
+
+<footer style="text-align:center;padding:40px 20px;background:#f8f6f2;color:#666;font-size:14px;">
+  <p>&copy; 2024 CA Smart Staycation. All rights reserved.</p>
+</footer>
+
+<script src="js/script.js"></script>
+<script src="js/guest-booking-documents.js"></script>
+<script src="js/unit-gallery.js"></script>
+<script src="js/parking-booking-fix.js?v=20260814-1"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const type = document.getElementById('bookingType');
+    const idSection = document.getElementById('governmentIdSection');
+    const idInput = document.getElementById('governmentId');
+    const room = document.getElementById('room');
+    const roomGroup = document.getElementById('roomGroup');
+
+    function updateDocumentRequirements() {
+      const parkingOnly = type.value === 'parking';
+      idSection.style.display = parkingOnly ? 'none' : '';
+      idInput.required = !parkingOnly;
+      if (parkingOnly) idInput.value = '';
+      room.required = !parkingOnly;
+      roomGroup.style.display = parkingOnly ? 'none' : '';
+    }
+
+    type.addEventListener('change', updateDocumentRequirements);
+    updateDocumentRequirements();
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const grid = document.getElementById('calendarGrid');
+    if (!grid) return;
+
+    grid.addEventListener('click', (event) => {
+      const cell = event.target.closest('.calendar-day.booked');
+      if (!cell || !selectedCheckIn || selectedCheckOut) return;
+
+      const day = Number(cell.textContent.trim());
+      if (!day) return;
+
+      const target = new Date(currentYear, currentMonth, day);
+      target.setHours(0, 0, 0, 0);
+
+      const selectedRoom = document.getElementById('room')?.value || '';
+      const bookingType = document.getElementById('bookingType')?.value || 'unit';
+
+      const isTerminal = (booking) =>
+        ['Cancelled', 'Checked Out', 'Expired'].includes(String(booking?.bookingStatus || ''));
+
+      const parseDate = (value) => {
+        if (!value) return null;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+          const [y, m, d] = String(value).split('-').map(Number);
+          const result = new Date(y, m - 1, d);
+          result.setHours(0, 0, 0, 0);
+          return result;
+        }
+        const result = new Date(value);
+        if (Number.isNaN(result.getTime())) return null;
+        result.setHours(0, 0, 0, 0);
+        return result;
+      };
+
+      const hasRoom = (b) => Boolean(b?.room?._id || b?.room);
+      const hasParking = (b) => Boolean(b?.parking?._id || b?.parking);
+
+      const matchingBoundary = bookedDates.some((booking) => {
+        if (isTerminal(booking)) return false;
+        const start = parseDate(booking.checkIn);
+        if (!start || start.getTime() !== target.getTime()) return false;
+        const roomId = booking.room?._id || booking.room || null;
+
+        if (bookingType === 'parking') return hasParking(booking);
+        if (bookingType === 'both')
+          return (hasRoom(booking) && String(roomId) === String(selectedRoom)) || hasParking(booking);
+        return hasRoom(booking) && String(roomId) === String(selectedRoom);
+      });
+
+      if (!matchingBoundary || target <= selectedCheckIn) return;
+      event.stopPropagation();
+      selectedCheckOut = new Date(target);
+      const checkIn = document.getElementById('checkIn');
+      const checkOut = document.getElementById('checkOut');
+      const format = (d) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (checkIn) checkIn.value = format(selectedCheckIn);
+      if (checkOut) checkOut.value = format(selectedCheckOut);
+      if (typeof calculateTotal === 'function') calculateTotal();
+      if (typeof renderCalendar === 'function') renderCalendar();
+    }, true);
+  });
+</script>
+
+</body>
+</html>
