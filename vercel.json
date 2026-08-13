@@ -1,9 +1,17 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/css/:path*", "destination": "/frontend/css/:path*" },
+    { "source": "/js/:path*", "destination": "/frontend/js/:path*" },
+    { "source": "/images/:path*", "destination": "/frontend/images/:path*" },
+    { "source": "/guest-booking/:path*", "destination": "/frontend/guest-booking/:path*" },
+    { "source": "/:path*", "destination": "/frontend/:path*" }
+  ],
   "functions": {
     "api/[...path].js": {
-      "runtime": "nodejs24.x",
-      "includeFiles": "frontend/**"
+      "runtime": "nodejs24.x"
     }
   }
 }
