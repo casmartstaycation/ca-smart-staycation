@@ -1,6 +1,7 @@
-const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
-(function(){
-  const css=`
+const UNIT_GALLERY_API = "https://ca-smart-staycation-muqd.onrender.com/api";
+
+(function() {
+  const css = `
     .unit-info-panel{margin-top:18px;padding:0;width:100%;box-sizing:border-box;grid-column:1/-1}
     .unit-gallery{display:flex;flex-direction:column;align-items:stretch;width:100%;box-sizing:border-box}
     .unit-primary-photo{display:block;width:100%;height:auto;aspect-ratio:21/9;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid #ddd;box-sizing:border-box}
@@ -20,71 +21,248 @@ const UNIT_GALLERY_API="https://ca-smart-staycation-muqd.onrender.com/api";
     .unit-lightbox .unit-prev{left:12px}.unit-lightbox .unit-next{right:12px}
     @media(max-width:700px){.unit-primary-photo{aspect-ratio:16/10}.unit-info-panel{margin-top:14px}}
   `;
-  const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
-  let units=[];
-  const CACHE_KEY='caSmartStaycationRoomsGallery';
-  const CACHE_TTL=5*60*1000;
-  function esc(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[c]))}
-  function isParkingOnly(){return String(document.getElementById('bookingType')?.value||'').toLowerCase()==='parking'}
-  function openPhoto(images,startIndex){
-    if(!images.length)return;
-    let index=startIndex;
-    const m=document.createElement('div');m.className='unit-lightbox';
-    m.innerHTML=`<button type="button" class="unit-close" aria-label="Close">×</button><button type="button" class="unit-nav unit-prev" aria-label="Previous photo">‹</button><img alt="Accommodation photo"><button type="button" class="unit-nav unit-next" aria-label="Next photo">›</button>`;
-    const img=m.querySelector('img');
-    const show=()=>{index=(index+images.length)%images.length;img.src=images[index];img.alt=`Accommodation photo ${index+1} of ${images.length}`};
-    const close=()=>{document.removeEventListener('keydown',keyHandler);m.remove()};
-    const keyHandler=e=>{if(!document.body.contains(m))return;if(e.key==='ArrowLeft'){e.preventDefault();index--;show()}else if(e.key==='ArrowRight'){e.preventDefault();index++;show()}else if(e.key==='Escape'){e.preventDefault();close()}};
-    m.querySelector('.unit-prev').onclick=e=>{e.stopPropagation();index--;show()};
-    m.querySelector('.unit-next').onclick=e=>{e.stopPropagation();index++;show()};
-    m.querySelector('.unit-close').onclick=close;
-    m.onclick=e=>{if(e.target===m)close()};
-    document.addEventListener('keydown',keyHandler);
-    document.body.appendChild(m);show();
+  
+  const style = document.createElement('style');
+  style.textContent = css;
+  document.head.appendChild(style);
+
+  let units = [];
+  const CACHE_KEY = 'caSmartStaycationRoomsGallery';
+  const CACHE_TTL = 5 * 60 * 1000;
+
+  function esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    }[c]));
   }
-  function selected(){const id=document.getElementById('room')?.value;return units.find(x=>String(x._id)===String(id))||null}
-  function getPanel(){
-    let panel=document.getElementById('unitInfoPanel');
-    if(panel)return panel;
-    const group=document.getElementById('roomGroup');if(!group)return null;
-    panel=document.createElement('div');panel.id='unitInfoPanel';panel.className='unit-info-panel';
-    const formGrid=group.closest('.form-grid');
-    const calendarGroup=formGrid?.querySelector('#calendarGrid')?.closest('.form-group');
-    if(formGrid&&calendarGroup)formGrid.insertBefore(panel,calendarGroup);
-    else if(formGrid)formGrid.appendChild(panel);
-    else group.parentElement.appendChild(panel);
+
+  function isParkingOnly() {
+    return String(document.getElementById('bookingType')?.value || '').toLowerCase() === 'parking';
+  }
+
+  function openPhoto(images, startIndex) {
+    if (!images.length) return;
+    let index = startIndex;
+    const m = document.createElement('div');
+    m.className = 'unit-lightbox';
+    m.innerHTML = `<button type="button" class="unit-close" aria-label="Close">×</button><button type="button" class="unit-nav unit-prev" aria-label="Previous photo">‹</button><img alt="Accommodation photo"><button type="button" class="unit-nav unit-next" aria-label="Next photo">›</button>`;
+    
+    const img = m.querySelector('img');
+    const show = () => {
+      index = (index + images.length) % images.length;
+      img.src = images[index];
+      img.alt = `Accommodation photo ${index + 1} of ${images.length}`;
+    };
+    
+    const close = () => {
+      document.removeEventListener('keydown', keyHandler);
+      m.remove();
+    };
+    
+    const keyHandler = e => {
+      if (!document.body.contains(m)) return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        index--;
+        show();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        index++;
+        show();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        close();
+      }
+    };
+
+    m.querySelector('.unit-prev').onclick = e => {
+      e.stopPropagation();
+      index--;
+      show();
+    };
+    
+    m.querySelector('.unit-next').onclick = e => {
+      e.stopPropagation();
+      index++;
+      show();
+    };
+    
+    m.querySelector('.unit-close').onclick = close;
+    m.onclick = e => {
+      if (e.target === m) close();
+    };
+    
+    document.addEventListener('keydown', keyHandler);
+    document.body.appendChild(m);
+    show();
+  }
+
+  function selected() {
+    const id = document.getElementById('room')?.value;
+    return units.find(x => String(x._id) === String(id)) || null;
+  }
+
+  function getPanel() {
+    let panel = document.getElementById('unitInfoPanel');
+    if (panel) return panel;
+
+    const group = document.getElementById('roomGroup');
+    if (!group) {
+      console.warn('Room group element not found');
+      return null;
+    }
+
+    panel = document.createElement('div');
+    panel.id = 'unitInfoPanel';
+    panel.className = 'unit-info-panel';
+
+    // Insert after the room select group
+    group.parentElement.insertBefore(panel, group.nextElementSibling);
     return panel;
   }
-  function render(){
-    const room=document.getElementById('room');if(!room)return;
-    const panel=getPanel();if(!panel)return;
-    if(isParkingOnly()){panel.style.display='none';return}
-    panel.style.display='';
-    const u=selected();
-    if(!u){panel.innerHTML='<p style="margin:0;color:#888">Select an accommodation to view photos.</p>';return}
-    const images=Array.isArray(u.images)?u.images.map(x=>typeof x==='string'?x:x?.url).filter(Boolean):[];
-    const primary=images[0];
-    const amenities=Array.isArray(u.amenities)?u.amenities.filter(Boolean):[];
-    panel.innerHTML=`<div class="unit-gallery">${primary?`<img class="unit-primary-photo" loading="lazy" src="${esc(primary)}" alt="${esc(u.unitName||u.name||'Accommodation')}" data-photo="0"><div class="unit-photo-thumbs">${images.map((img,i)=>`<img loading="lazy" src="${esc(img)}" alt="Photo ${i+1}" data-photo="${i}">`).join('')}</div>`:'<div style="display:flex;align-items:center;justify-content:center;min-height:300px;background:#f5f3ef;border-radius:8px;color:#888">No photos available</div>'}<div class="unit-description"><h3>${esc(u.unitName||u.name||u.unitNumber||'Selected Unit')}</h3><p>${esc(u.description||'No description available for this accommodation.')}</p></div>${amenities.length?`<div class="unit-amenities"><h3>Amenities</h3><div class="unit-amenity-list">${amenities.map(a=>`<span class="unit-amenity">${esc(a)}</span>`).join('')}</div></div>`:''}</div>`;
-    panel.querySelectorAll('[data-photo]').forEach(el=>el.addEventListener('click',()=>openPhoto(images,Number(el.dataset.photo))));
+
+  function render() {
+    const room = document.getElementById('room');
+    if (!room) {
+      console.warn('Room select element not found');
+      return;
+    }
+
+    const panel = getPanel();
+    if (!panel) {
+      console.warn('Could not create or find panel');
+      return;
+    }
+
+    if (isParkingOnly()) {
+      panel.style.display = 'none';
+      return;
+    }
+
+    panel.style.display = '';
+
+    const u = selected();
+    if (!u) {
+      panel.innerHTML = '<p style="margin:0;color:#888">Select an accommodation to view photos.</p>';
+      return;
+    }
+
+    const images = Array.isArray(u.images)
+      ? u.images.map(x => typeof x === 'string' ? x : x?.url).filter(Boolean)
+      : [];
+    
+    const primary = images[0];
+    const amenities = Array.isArray(u.amenities) ? u.amenities.filter(Boolean) : [];
+
+    panel.innerHTML = `<div class="unit-gallery">${
+      primary
+        ? `<img class="unit-primary-photo" loading="lazy" src="${esc(primary)}" alt="${esc(u.unitName || u.name || 'Accommodation')}" data-photo="0"><div class="unit-photo-thumbs">${images.map((img, i) => `<img loading="lazy" src="${esc(img)}" alt="Photo ${i + 1}" data-photo="${i}">`).join('')}</div>`
+        : '<div style="display:flex;align-items:center;justify-content:center;min-height:300px;background:#f5f3ef;border-radius:8px;color:#888">No photos available</div>'
+    }<div class="unit-description"><h3>${esc(u.unitName || u.name || u.unitNumber || 'Selected Unit')}</h3><p>${esc(u.description || 'No description available for this accommodation.')}</p></div>${
+      amenities.length
+        ? `<div class="unit-amenities"><h3>Amenities</h3><div class="unit-amenity-list">${amenities.map(a => `<span class="unit-amenity">${esc(a)}</span>`).join('')}</div></div>`
+        : ''
+    }</div>`;
+
+    panel.querySelectorAll('[data-photo]').forEach(el =>
+      el.addEventListener('click', () => openPhoto(images, Number(el.dataset.photo)))
+    );
   }
-  function useCached(){
-    try{const raw=sessionStorage.getItem(CACHE_KEY);if(!raw)return false;const cached=JSON.parse(raw);if(!cached?.timestamp||Date.now()-cached.timestamp>CACHE_TTL||!Array.isArray(cached.data))return false;units=cached.data;render();return true}catch{return false}
+
+  function useCached() {
+    try {
+      const raw = sessionStorage.getItem(CACHE_KEY);
+      if (!raw) return false;
+      const cached = JSON.parse(raw);
+      if (!cached?.timestamp || Date.now() - cached.timestamp > CACHE_TTL || !Array.isArray(cached.data))
+        return false;
+      units = cached.data;
+      render();
+      return true;
+    } catch (err) {
+      console.warn('Cache error:', err);
+      return false;
+    }
   }
-  async function load(){
-    if(isParkingOnly())return;
-    if(useCached())return;
-    try{
-      const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),8000);
-      const r=await fetch(`${UNIT_GALLERY_API}/rooms`,{cache:'no-store',signal:controller.signal});clearTimeout(timer);
-      const j=await r.json();
-      if(r.ok&&Array.isArray(j.data)){units=j.data;try{sessionStorage.setItem(CACHE_KEY,JSON.stringify({timestamp:Date.now(),data:units}))}catch{}render()}
-    }catch(e){console.warn('Unable to load accommodation photos',e)}
+
+  async function load() {
+    if (isParkingOnly()) return;
+    if (useCached()) return;
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+
+      const r = await fetch(`${UNIT_GALLERY_API}/rooms`, {
+        cache: 'no-store',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timer);
+
+      if (!r.ok) {
+        throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+      }
+
+      const j = await r.json();
+
+      if (Array.isArray(j.data)) {
+        units = j.data;
+        console.log(`Loaded ${units.length} accommodation units`);
+        
+        try {
+          sessionStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: units }));
+        } catch (e) {
+          console.warn('Cache storage error:', e);
+        }
+        
+        render();
+      } else {
+        throw new Error('Invalid response format: expected data array');
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.error('Gallery load timeout (8s) - API took too long', err);
+      } else {
+        console.error('Unable to load accommodation photos:', err.message);
+      }
+      
+      // Show error message in panel on critical failures
+      const panel = getPanel();
+      if (panel && !isParkingOnly()) {
+        panel.innerHTML = `<p style="margin:0;color:#c00;font-weight:bold">Unable to load accommodation gallery. Please try refreshing the page.</p>`;
+      }
+    }
   }
-  document.addEventListener('DOMContentLoaded',()=>{
-    const room=document.getElementById('room');const type=document.getElementById('bookingType');
-    if(room)room.addEventListener('change',render);
-    if(type)type.addEventListener('change',()=>{const panel=document.getElementById('unitInfoPanel');if(String(type.value).toLowerCase()==='parking'){if(panel)panel.style.display='none'}else{load();render()}});
-    if(!isParkingOnly())load();
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const room = document.getElementById('room');
+    const type = document.getElementById('bookingType');
+
+    if (room) {
+      room.addEventListener('change', render);
+    } else {
+      console.warn('Room select element not found on page load');
+    }
+
+    if (type) {
+      type.addEventListener('change', () => {
+        const panel = document.getElementById('unitInfoPanel');
+        if (String(type.value).toLowerCase() === 'parking') {
+          if (panel) panel.style.display = 'none';
+        } else {
+          load();
+          render();
+        }
+      });
+    }
+
+    if (!isParkingOnly()) {
+      load();
+    }
   });
 })();
