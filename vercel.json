@@ -3,9 +3,7 @@
   "functions": {
     "api/[...path].js": {
       "runtime": "nodejs24.x",
-      "includeFiles": [
-        "frontend/**"
-      ]
+      "includeFiles": "frontend/**"
     }
   }
 }
