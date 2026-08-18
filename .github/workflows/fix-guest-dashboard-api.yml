@@ -1,0 +1,44 @@
+name: Fix guest dashboard API base
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix-api-base:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Replace Render API with same-origin API
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/guest-booking/guest-dashboard.html')
+          s = p.read_text(encoding='utf-8')
+          old = 'const API="https://ca-smart-staycation-muqd.onrender.com/api"'
+          new = 'const API="/api"'
+          if old in s:
+              p.write_text(s.replace(old, new), encoding='utf-8')
+              print('Guest dashboard API base changed to /api')
+          else:
+              print('Render API base not present; no change needed')
+          PY
+
+      - name: Commit fix
+        run: |
+          if git diff --quiet -- frontend/guest-booking/guest-dashboard.html; then
+            echo "No change required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/guest-booking/guest-dashboard.html
+          git commit -m "fix(guest-dashboard): use same-origin API"
+          git push
