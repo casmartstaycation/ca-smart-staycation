@@ -36,38 +36,43 @@ router.post("/guest-auth/login", async (req, res) => {
     const password = String(req.body.password || "").trim();
     if (!email || !password) return res.status(400).json({ success: false, message: "Email and password are required." });
 
-    let account = await GuestAccount.findOne({ email }).sort({ createdAt: -1 });
+    // The guest's initial password is the booking reference. Match the booking
+    // first, rather than relying on whichever account happens to be newest for
+    // the email. This also repairs accounts created by an older login flow.
+    const bookingForPassword = await Booking.findOne({ email, bookingReference: password }).sort({ createdAt: -1 }).lean();
+    let account = bookingForPassword
+      ? await GuestAccount.findOne({ bookingReference: bookingForPassword.bookingReference })
+      : await GuestAccount.findOne({ email }).sort({ createdAt: -1 });
 
-    // Guest accounts are normally created by the notification worker. If that worker
-    // has not run, create the account from the guest's booking on first login.
-    if (!account) {
-      const booking = await Booking.findOne({ email }).sort({ createdAt: -1 }).lean();
-      if (booking && booking.bookingReference && String(password).trim() === String(booking.bookingReference).trim()) {
-        account = await GuestAccount.create({
-          guest: null,
-          bookingReference: String(booking.bookingReference).trim(),
-          email,
-          passwordHash: await bcrypt.hash(String(booking.bookingReference).trim(), 12),
-          defaultPassword: true
-        });
-      }
+    if (!account && bookingForPassword) {
+      account = await GuestAccount.create({
+        guest: null,
+        bookingReference: bookingForPassword.bookingReference,
+        email,
+        passwordHash: await bcrypt.hash(password, 12),
+        defaultPassword: true
+      });
     }
 
     if (!account) return res.status(401).json({ success: false, message: "Invalid email or password." });
 
     let validPassword = await bcrypt.compare(password, account.passwordHash);
-    if (!validPassword && account.defaultPassword === true && String(account.bookingReference || "").trim() === password) {
+
+    // Repair an existing default-password account if its stored hash was created
+    // incorrectly by an older deployment. Never do this for a changed password.
+    if (!validPassword && account.defaultPassword === true && bookingForPassword && String(account.bookingReference).trim() === password) {
       account.passwordHash = await bcrypt.hash(password, 12);
-      await account.save();
+      account.email = email;
       validPassword = true;
     }
+
     if (!validPassword) return res.status(401).json({ success: false, message: "Invalid email or password." });
 
     account.lastLoginAt = new Date();
     await account.save();
 
     const token = jwt.sign({ accountId: account._id.toString(), email: account.email, bookingReference: account.bookingReference }, JWT_SECRET, { expiresIn: "30d" });
-    res.json({ success: true, message: "Login successful.", token, account: publicAccount(account) });
+    res.json({ success: true, message: "Login successful.", token, account: publicAccount(account), bookings: await lightweightBookingsForEmail(account.email) });
   } catch (err) {
     console.error("GUEST FAST LOGIN ERROR:", err);
     res.status(500).json({ success: false, message: err.message });
