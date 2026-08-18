@@ -35,17 +35,43 @@ router.post("/guest-auth/login", async (req, res) => {
     const email = String(req.body.email || "").trim().toLowerCase();
     const password = String(req.body.password || "").trim();
     if (!email || !password) return res.status(400).json({ success: false, message: "Email and password are required." });
-    const account = await GuestAccount.findOne({ email }).sort({ createdAt: -1 });
+
+    let account = await GuestAccount.findOne({ email }).sort({ createdAt: -1 });
+
+    // Guest accounts are normally created by the notification worker. If that worker
+    // has not run, create the account from the guest's booking on first login.
+    if (!account) {
+      const booking = await Booking.findOne({ email }).sort({ createdAt: -1 }).lean();
+      if (booking && booking.bookingReference && String(password).trim() === String(booking.bookingReference).trim()) {
+        account = await GuestAccount.create({
+          guest: null,
+          bookingReference: String(booking.bookingReference).trim(),
+          email,
+          passwordHash: await bcrypt.hash(String(booking.bookingReference).trim(), 12),
+          defaultPassword: true
+        });
+      }
+    }
+
     if (!account) return res.status(401).json({ success: false, message: "Invalid email or password." });
+
     let validPassword = await bcrypt.compare(password, account.passwordHash);
     if (!validPassword && account.defaultPassword === true && String(account.bookingReference || "").trim() === password) {
-      account.passwordHash = await bcrypt.hash(password, 12); account.defaultPassword = true; await account.save(); validPassword = true;
+      account.passwordHash = await bcrypt.hash(password, 12);
+      await account.save();
+      validPassword = true;
     }
     if (!validPassword) return res.status(401).json({ success: false, message: "Invalid email or password." });
-    await GuestAccount.updateOne({ _id: account._id }, { $set: { lastLoginAt: new Date() } });
+
+    account.lastLoginAt = new Date();
+    await account.save();
+
     const token = jwt.sign({ accountId: account._id.toString(), email: account.email, bookingReference: account.bookingReference }, JWT_SECRET, { expiresIn: "30d" });
     res.json({ success: true, message: "Login successful.", token, account: publicAccount(account) });
-  } catch (err) { console.error("GUEST FAST LOGIN ERROR:", err); res.status(500).json({ success: false, message: err.message }); }
+  } catch (err) {
+    console.error("GUEST FAST LOGIN ERROR:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 router.get("/guest-auth/me", async (req, res) => {
