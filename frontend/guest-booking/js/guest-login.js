@@ -1,4 +1,4 @@
-const API = "https://ca-smart-staycation-muqd.onrender.com/api";
+const API = window.CA_SMART_API || "/api";
 
 const form = document.getElementById("guestLoginForm");
 const button = document.getElementById("loginButton");
