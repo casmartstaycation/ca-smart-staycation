@@ -75,10 +75,14 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve the actual website from /frontend when this Express app is deployed by Vercel.
-// The project production runtime is Express, so without this middleware /guest-booking/*
-// requests fall through to the JSON 404 handler instead of reaching the HTML files.
+// Production is deployed as an Express app. Explicitly serve the frontend directory
+// so /guest-booking/guest-login.html and all other static pages resolve correctly.
 app.use(express.static(frontendDir, { index: 'index.html' }));
+
+// Prevent a harmless browser favicon request from reaching the JSON 404 handler.
+app.get('/favicon.ico', (req, res) => {
+  res.type('svg').send(`<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#063b32"/><circle cx="32" cy="32" r="22" fill="none" stroke="#c9a44c" stroke-width="3"/><text x="32" y="39" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#c9a44c">CA</text></svg>`);
+});
 
 mongoose.connect(process.env.MONGODB_URI).then(() => console.log("✅ MongoDB Connected")).catch(err => console.error("MongoDB Error:", err));
 app.get('/api/health', (req, res) => res.json({ status: 'success', message: 'CA Smart Staycation API is running', timestamp: new Date() }));
