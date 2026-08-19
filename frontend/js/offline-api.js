@@ -1,10 +1,9 @@
 /*
  * CA Smart Staycation - Cross-browser API bridge
  *
- * All /api/* requests use the real Vercel API first. On the production
- * domain this is same-origin; on GitHub Pages/static hosting it is routed to
- * the production API. The browser's original fetch is always used so the
- * bridge cannot recurse into itself.
+ * Static hosts such as GitHub Pages cannot serve /api/* routes. Requests made
+ * to /api/* are therefore forwarded to the live Render backend. On the custom
+ * production domain or a Vercel deployment, same-origin /api/* remains in use.
  *
  * Local fallback is intentionally limited to read-only GET endpoints. POST,
  * PUT, PATCH and DELETE requests must never be silently converted into a
@@ -15,7 +14,7 @@
   'use strict';
 
   const STORAGE_KEY = 'caSmartStaycationOfflineBookings';
-  const REMOTE_API = 'https://www.casmartstaycation.com/api';
+  const REMOTE_API = 'https://ca-smart-staycation-muqd.onrender.com/api';
 
   const roomsFallback = [{
     _id: 'unit-719', id: 'unit-719', name: 'Unit 719', unitName: 'Unit 719',
@@ -134,7 +133,6 @@
     const target = apiUrl(path);
     const requestInit = { ...(init || {}), cache: 'no-store' };
 
-    // Always call the captured browser fetch, never window.fetch.
     try {
       return await originalFetch(target, requestInit);
     } catch (error) {
@@ -149,14 +147,16 @@
     }
   };
 
+  window.CA_SMART_API = window.location.hostname.endsWith('github.io') ? REMOTE_API : '/api';
   window.CA_SMART_OFFLINE = {
     enabled: true,
     remoteFirst: true,
+    remoteApi: REMOTE_API,
     rooms: roomsFallback,
     parking: parkingFallback,
     settings: settingsFallback,
     getBookings: getLocalBookings
   };
 
-  console.info('[CA Smart Staycation] Cross-browser API bridge enabled: original fetch + real API first.');
+  console.info(`[CA Smart Staycation] API bridge enabled: ${window.CA_SMART_API}`);
 })();
