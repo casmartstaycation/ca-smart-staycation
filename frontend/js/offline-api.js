@@ -1,19 +1,16 @@
 /*
  * CA Smart Staycation - temporary GitHub Pages mode
- *
- * GitHub Pages cannot run the Express/MongoDB API. While Vercel is paused,
- * github.io serves local room/rate data plus a privacy-safe availability
- * snapshot. No API request is sent to Vercel from GitHub Pages.
- *
- * Real booking/payment/account writes remain disabled. Guests can select dates
- * and send a prefilled email booking request for manual confirmation.
+ * GitHub Pages cannot run the Express/MongoDB API, so this bridge provides
+ * local read-only booking data and a manual booking-request workflow.
+ * No request is sent to Vercel from github.io.
  */
 (function () {
   'use strict';
 
   const GITHUB_ONLY_MODE = window.location.hostname.endsWith('github.io');
-  const BOOKING_NOTICE_ID = 'caBookingServiceNotice';
   const SUPPORT_EMAIL = 'booking@casmartstaycation.com';
+  const BOOKING_NOTICE_ID = 'caBookingServiceNotice';
+  const DELIVERY_PANEL_ID = 'githubBookingDeliveryPanel';
 
   const roomsFallback = [{
     _id: 'unit-719', id: 'unit-719', name: 'Unit 719', unitName: 'Unit 719',
@@ -24,8 +21,7 @@
     price: 2800, nightlyRate: 2800, rate: 2800, capacity: 4, maxGuests: 4,
     status: 'Available', available: true,
     amenities: ['Air Conditioning','Private Bathroom','Wi-Fi','Kitchen','Refrigerator','Microwave','Television','Keyless Entry','Hot Water','Bedroom','Dining Area'],
-    images: ['images/luxury-room-4.png'], photos: ['images/luxury-room-4.png'],
-    gallery: ['images/luxury-room-4.png']
+    images: ['images/luxury-room-4.png'], photos: ['images/luxury-room-4.png'], gallery: ['images/luxury-room-4.png']
   }];
 
   const parkingFallback = [{
@@ -43,21 +39,13 @@
     maxFreeChildren: 2, MAX_FREE_CHILDREN: 2
   };
 
-  /*
-   * Privacy-safe snapshot taken from the last healthy live database response
-   * on 2026-08-20 around 12:52 AM Asia/Manila. Only fields needed to block
-   * dates are retained. No guest name, email, phone, address, ID or payment
-   * document is published to GitHub Pages.
-   */
+  /* Privacy-safe availability snapshot only; no guest personal data. */
   const bookingsSnapshot = [{
     _id: 'availability-snapshot-20260824',
-    room: 'unit-719',
-    parking: 'parking-1',
-    checkIn: '2026-08-24',
-    checkOut: '2026-08-25',
+    room: 'unit-719', parking: 'parking-1',
+    checkIn: '2026-08-24', checkOut: '2026-08-25',
     bookingStatus: 'Pending Payment Verification',
-    paymentStatus: 'Pending',
-    staticSnapshot: true
+    paymentStatus: 'Pending', staticSnapshot: true
   }];
 
   function jsonResponse(data, status) {
@@ -81,28 +69,14 @@
   }
 
   function fallbackGet(path) {
-    if (path === '/api/rooms') {
-      return jsonResponse({ success: true, rooms: roomsFallback, data: roomsFallback, offline: true, githubOnly: true });
-    }
-    if (path === '/api/parking') {
-      return jsonResponse({ success: true, parking: parkingFallback, slots: parkingFallback, data: parkingFallback, offline: true, githubOnly: true });
-    }
-    if (path === '/api/settings') {
-      return jsonResponse({ success: true, settings: settingsFallback, data: settingsFallback, offline: true, githubOnly: true });
-    }
-    if (path === '/api/health') {
-      return jsonResponse({ status: 'success', offline: true, githubOnly: true, database: 'not-connected' });
-    }
-    if (path === '/api/bookings') {
-      return jsonResponse({
-        success: true,
-        bookings: bookingsSnapshot,
-        data: bookingsSnapshot,
-        offline: true,
-        githubOnly: true,
-        snapshotAt: '2026-08-20T00:52:00+08:00'
-      });
-    }
+    if (path === '/api/rooms') return jsonResponse({ success: true, rooms: roomsFallback, data: roomsFallback, offline: true, githubOnly: true });
+    if (path === '/api/parking') return jsonResponse({ success: true, parking: parkingFallback, slots: parkingFallback, data: parkingFallback, offline: true, githubOnly: true });
+    if (path === '/api/settings') return jsonResponse({ success: true, settings: settingsFallback, data: settingsFallback, offline: true, githubOnly: true });
+    if (path === '/api/health') return jsonResponse({ status: 'success', offline: true, githubOnly: true, database: 'not-connected' });
+    if (path === '/api/bookings') return jsonResponse({
+      success: true, bookings: bookingsSnapshot, data: bookingsSnapshot,
+      offline: true, githubOnly: true, snapshotAt: '2026-08-20T00:52:00+08:00'
+    });
     return null;
   }
 
@@ -122,10 +96,7 @@
     return 'Accommodation Only';
   }
 
-  function sendEmailBookingRequest(event) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-
+  function buildBookingRequest() {
     const checkIn = value('checkIn');
     const checkOut = value('checkOut');
     const firstName = value('firstName');
@@ -134,10 +105,7 @@
     const mobile = value('mobile');
     const type = value('bookingType') || 'unit';
 
-    if (!checkIn || !checkOut || !firstName || !lastName || !email || !mobile) {
-      alert('Please complete your dates and required guest information first.');
-      return;
-    }
+    if (!checkIn || !checkOut || !firstName || !lastName || !email || !mobile) return null;
 
     const roomSelect = document.getElementById('room');
     const roomName = roomSelect && roomSelect.selectedOptions && roomSelect.selectedOptions[0]
@@ -166,8 +134,7 @@
 
     if (type === 'parking' || type === 'both') {
       lines.push(
-        '',
-        'Vehicle Information:',
+        '', 'Vehicle Information:',
         `Brand: ${value('vehicleBrand') || 'Not provided'}`,
         `Model: ${value('vehicleModel') || 'Not provided'}`,
         `Color: ${value('vehicleColor') || 'Not provided'}`,
@@ -182,14 +149,95 @@
       'Sent from the temporary CA Smart Staycation GitHub Pages booking form.'
     );
 
-    const body = lines.join('\n');
-    const subject = `Booking Request - ${checkIn} to ${checkOut}`;
+    return {
+      body: lines.join('\n'),
+      subject: `Booking Request - ${checkIn} to ${checkOut}`
+    };
+  }
+
+  function copyRequest(body, textarea, status) {
+    const done = () => {
+      status.textContent = 'Booking request copied. Paste it into Gmail, Messenger, SMS, or another app.';
+      status.style.color = '#0b5d4d';
+    };
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(body).catch(function () {});
+      navigator.clipboard.writeText(body).then(done).catch(() => {
+        textarea.focus(); textarea.select();
+        try { document.execCommand('copy'); done(); }
+        catch (_) { status.textContent = 'Select the request text and copy it manually.'; status.style.color = '#b42318'; }
+      });
+      return;
     }
 
-    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    textarea.focus(); textarea.select();
+    try { document.execCommand('copy'); done(); }
+    catch (_) { status.textContent = 'Select the request text and copy it manually.'; status.style.color = '#b42318'; }
+  }
+
+  function showDeliveryPanel(request) {
+    let panel = document.getElementById(DELIVERY_PANEL_ID);
+    const form = document.getElementById('guestBookingForm');
+    if (!form) return;
+
+    if (!panel) {
+      panel = document.createElement('section');
+      panel.id = DELIVERY_PANEL_ID;
+      panel.style.cssText = 'margin:22px 0;padding:22px;background:#fff;border:2px solid #c9a44c;border-radius:14px;box-shadow:0 8px 24px rgba(6,59,50,.12);';
+      panel.innerHTML = `
+        <h3 style="margin:0 0 8px;color:#063b32;">Booking Request Ready</h3>
+        <p style="margin:0 0 14px;line-height:1.55;color:#5f6b67;"><strong>Your request has been prepared but has not been sent yet.</strong> Choose how you want to send it.</p>
+        <div style="padding:12px 14px;margin-bottom:14px;background:#fff8df;border:1px solid #d5a62b;border-radius:9px;color:#5a4610;line-height:1.5;">Send this request to <strong>${SUPPORT_EMAIL}</strong>. The host must manually confirm availability before payment.</div>
+        <textarea id="githubBookingRequestText" readonly style="width:100%;box-sizing:border-box;min-height:280px;padding:12px;border:1px solid #ccd5d1;border-radius:8px;font:13px/1.5 monospace;background:#fafcfb;"></textarea>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+          <button type="button" id="githubOpenGmail" class="continue-button" style="flex:1;min-width:150px;">Open Gmail</button>
+          <button type="button" id="githubOpenEmailApp" class="continue-button" style="flex:1;min-width:150px;">Open Email App</button>
+          <button type="button" id="githubCopyRequest" class="continue-button" style="flex:1;min-width:150px;">Copy Request</button>
+        </div>
+        <p id="githubBookingDeliveryStatus" role="status" aria-live="polite" style="margin:12px 0 0;font-size:13px;color:#68736e;"></p>
+      `;
+      form.insertAdjacentElement('afterend', panel);
+    }
+
+    const textarea = panel.querySelector('#githubBookingRequestText');
+    const status = panel.querySelector('#githubBookingDeliveryStatus');
+    textarea.value = request.body;
+    status.textContent = 'Choose Gmail, your email app, or Copy Request.';
+    status.style.color = '#68736e';
+
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(SUPPORT_EMAIL)}&su=${encodeURIComponent(request.subject)}&body=${encodeURIComponent(request.body)}`;
+    const mailtoUrl = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(request.subject)}&body=${encodeURIComponent(request.body)}`;
+
+    panel.querySelector('#githubOpenGmail').onclick = function () {
+      const opened = window.open(gmailUrl, '_blank', 'noopener');
+      status.textContent = opened ? 'Gmail opened. Review the message and press Send.' : 'Your browser blocked the Gmail tab. Use Copy Request instead.';
+      status.style.color = opened ? '#0b5d4d' : '#b42318';
+    };
+
+    panel.querySelector('#githubOpenEmailApp').onclick = function () {
+      status.textContent = 'Opening your email app. If nothing opens, use Open Gmail or Copy Request.';
+      status.style.color = '#0b5d4d';
+      window.location.href = mailtoUrl;
+    };
+
+    panel.querySelector('#githubCopyRequest').onclick = function () {
+      copyRequest(request.body, textarea, status);
+    };
+
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function submitBookingRequest(event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const request = buildBookingRequest();
+    if (!request) {
+      alert('Please complete your dates and required guest information first.');
+      return;
+    }
+
+    showDeliveryPanel(request);
   }
 
   function applyGitHubOnlyMode() {
@@ -199,15 +247,12 @@
     const submit = form.querySelector('button[type="submit"]');
     if (submit) {
       submit.disabled = false;
-      submit.innerHTML = 'Email Booking Request <span>→</span>';
-      submit.title = 'Send a booking request by email for manual confirmation.';
+      submit.innerHTML = 'Submit Booking Request <span>→</span>';
+      submit.title = 'Prepare your booking request for manual confirmation.';
     }
 
     const grid = document.getElementById('calendarGrid');
-    if (grid) {
-      grid.style.pointerEvents = '';
-      grid.style.opacity = '';
-    }
+    if (grid) { grid.style.pointerEvents = ''; grid.style.opacity = ''; }
 
     const idSection = document.getElementById('governmentIdSection');
     if (idSection) idSection.style.display = 'none';
@@ -217,29 +262,21 @@
       notice = document.createElement('div');
       notice.id = BOOKING_NOTICE_ID;
       notice.setAttribute('role', 'status');
-      notice.style.margin = '12px 0';
-      notice.style.padding = '14px 16px';
-      notice.style.border = '1px solid #d5a62b';
-      notice.style.borderRadius = '10px';
-      notice.style.background = '#fff8df';
-      notice.style.color = '#5a4610';
-      notice.style.fontSize = '14px';
-      notice.style.lineHeight = '1.5';
+      notice.style.cssText = 'margin:12px 0;padding:14px 16px;border:1px solid #d5a62b;border-radius:10px;background:#fff8df;color:#5a4610;font-size:14px;line-height:1.5;';
       const calendar = document.querySelector('.booking-calendar-card');
       if (calendar && calendar.parentNode) calendar.parentNode.insertBefore(notice, calendar);
       else form.insertBefore(notice, form.firstChild);
     }
 
-    notice.innerHTML = '<strong>Temporary GitHub-only booking mode.</strong> The calendar uses a privacy-safe availability snapshot checked on <strong>August 20, 2026</strong>. Select your preferred dates, then use <strong>Email Booking Request</strong>. The host must manually confirm availability before you make any payment.';
+    notice.innerHTML = '<strong>Temporary GitHub-only booking mode.</strong> Select your preferred dates, complete your information, then use <strong>Submit Booking Request</strong>. A request panel will appear on this page. Nothing is sent automatically.';
 
-    if (!form.dataset.caGithubSubmitHandler) {
-      form.dataset.caGithubSubmitHandler = '1';
-      form.addEventListener('submit', sendEmailBookingRequest, true);
+    if (!form.dataset.caGithubSubmitHandlerV9) {
+      form.dataset.caGithubSubmitHandlerV9 = '1';
+      form.addEventListener('submit', submitBookingRequest, true);
     }
   }
 
   const originalFetch = window.fetch.bind(window);
-
   window.fetch = async function (input, init) {
     const path = normalizePath(input);
     const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
@@ -251,12 +288,10 @@
         const fallback = fallbackGet(path);
         if (fallback) return fallback;
       }
-
-      console.warn(`[CA Smart Staycation] GitHub-only mode blocked ${method} ${path}; no Vercel request was sent.`);
+      console.warn(`[CA Smart Staycation] GitHub-only mode blocked ${method} ${path}; no backend request was sent.`);
       return jsonResponse({
-        success: false,
-        githubOnly: true,
-        message: 'Live booking/account writes are temporarily paused. Please use the email booking request option.'
+        success: false, githubOnly: true,
+        message: 'Live booking/account writes are temporarily paused. Use Submit Booking Request instead.'
       }, 503);
     }
 
@@ -280,6 +315,6 @@
   if (GITHUB_ONLY_MODE) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyGitHubOnlyMode, { once: true });
     else applyGitHubOnlyMode();
-    console.info('[CA Smart Staycation] GitHub-only mode enabled. Vercel API calls are disabled; email booking requests are active.');
+    console.info('[CA Smart Staycation] GitHub-only mode v9 enabled. Booking requests open an on-page delivery panel; nothing is sent automatically.');
   }
 })();
