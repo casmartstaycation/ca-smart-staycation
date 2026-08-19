@@ -1,18 +1,16 @@
 /* CA Smart Staycation admin API routing/auth bridge. */
 (function () {
+  'use strict';
+
   const TOKEN_KEY = 'caSmartAdminToken';
-  const API_ORIGIN = 'https://ca-smart-staycation.vercel.app';
-  const GITHUB_PAGES_ORIGIN = 'https://casmartstaycation.github.io';
-  const LEGACY_ORIGIN = 'https://ca-smart-staycation-muqd.onrender.com';
+  const GITHUB_ONLY_MODE = window.location.hostname.endsWith('github.io');
   const originalFetch = window.fetch.bind(window);
 
-  // Admin pages historically had no favicon declaration, causing browsers to
-  // probe /favicon.ico. Use the existing SVG asset instead.
   if (!document.querySelector('link[rel~="icon"]')) {
     const favicon = document.createElement('link');
     favicon.rel = 'icon';
     favicon.type = 'image/svg+xml';
-    favicon.href = '/favicon.svg';
+    favicon.href = '../favicon.svg';
     document.head.appendChild(favicon);
   }
 
@@ -26,12 +24,7 @@
       const parts = token.split('.');
       if (parts.length !== 3) return false;
       const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-      return !!(
-        payload &&
-        payload.role === 'admin' &&
-        payload.email &&
-        (!payload.exp || payload.exp * 1000 > Date.now())
-      );
+      return !!(payload && payload.role === 'admin' && payload.email && (!payload.exp || payload.exp * 1000 > Date.now()));
     } catch (_) {
       return false;
     }
@@ -42,85 +35,61 @@
     localStorage.removeItem(TOKEN_KEY);
   }
 
-  function clearInvalidToken(token) {
-    if (token && !validateToken(token)) {
-      clear();
-      return '';
-    }
-    return token;
-  }
-
-  function rawUrl(input) {
-    return input instanceof Request ? input.url : String(input || '');
-  }
-
-  function resolveApiUrl(input) {
-    const raw = rawUrl(input);
-    if (!raw) return null;
-
+  function isApiRequest(input) {
     try {
+      const raw = input instanceof Request ? input.url : String(input || '');
       const url = new URL(raw, window.location.origin);
-      if (!(url.pathname === '/api' || url.pathname.startsWith('/api/'))) return null;
-
-      // GitHub Pages is static and cannot serve /api/*. Send those calls to Vercel.
-      if (url.origin === GITHUB_PAGES_ORIGIN || url.origin === LEGACY_ORIGIN) {
-        return new URL(url.pathname + url.search, API_ORIGIN).href;
-      }
-
-      // Allow calls already aimed at the Vercel API, and same-origin calls on
-      // casmartstaycation.com / Vercel-hosted pages.
-      if (url.origin === API_ORIGIN || url.origin === window.location.origin) {
-        return url.href;
-      }
+      return url.pathname === '/api' || url.pathname.startsWith('/api/');
     } catch (_) {
-      return null;
+      return false;
     }
-
-    return null;
   }
 
-  function withAuth(input, init, targetUrl) {
-    let request;
-    try {
-      request = input instanceof Request
-        ? new Request(targetUrl || input.url, input)
-        : new Request(targetUrl || String(input), init || {});
-    } catch (_) {
-      return null;
-    }
+  function jsonResponse(data, status) {
+    return new Response(JSON.stringify(data), {
+      status: status || 503,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' }
+    });
+  }
 
-    const token = clearInvalidToken(getToken());
-    if (!token) return request;
-
-    const headers = new Headers(request.headers);
-    if (!headers.has('Authorization')) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-    return new Request(request, { headers });
+  function showGitHubOnlyNotice() {
+    if (!GITHUB_ONLY_MODE || document.getElementById('caAdminGithubOnlyNotice')) return;
+    const notice = document.createElement('div');
+    notice.id = 'caAdminGithubOnlyNotice';
+    notice.setAttribute('role', 'status');
+    notice.style.cssText = 'position:fixed;left:12px;right:12px;top:12px;z-index:99999;padding:12px 14px;border:1px solid #d5a62b;border-radius:10px;background:#fff8df;color:#5a4610;font:14px/1.45 Arial,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.12)';
+    notice.innerHTML = '<strong>Temporary GitHub-only mode.</strong> The Admin Dashboard database is paused. No request will be sent to Vercel. Existing live booking records are not modified.';
+    document.body.appendChild(notice);
   }
 
   window.fetch = function (input, init) {
-    const targetUrl = resolveApiUrl(input);
-    if (!targetUrl) return originalFetch(input, init);
+    if (GITHUB_ONLY_MODE && isApiRequest(input)) {
+      console.warn('[CA Smart Staycation] GitHub-only mode blocked an Admin API request; no Vercel request was sent.');
+      return Promise.resolve(jsonResponse({
+        success: false,
+        githubOnly: true,
+        message: 'Admin database features are temporarily paused while the site is running on GitHub Pages.'
+      }, 503));
+    }
 
-    const request = withAuth(input, init, targetUrl);
-    const promise = request ? originalFetch(request) : originalFetch(targetUrl, init);
-
-    return promise.then(response => {
-      if (response.status === 401) {
-        clear();
-        if (!location.pathname.endsWith('/admin/index.html') && !location.pathname.endsWith('/admin/')) {
-          location.replace('/admin/index.html?session=expired');
-        }
-      }
-      return response;
-    });
+    return originalFetch(input, init);
   };
 
   window.CASmartAdminAuth = {
     token: getToken,
-    hasValidToken: () => validateToken(getToken()),
+    hasValidToken: () => !GITHUB_ONLY_MODE && validateToken(getToken()),
     clear,
-    apiOrigin: window.location.origin === GITHUB_PAGES_ORIGIN ? API_ORIGIN : window.location.origin
+    apiOrigin: GITHUB_ONLY_MODE ? null : window.location.origin,
+    githubOnly: GITHUB_ONLY_MODE
   };
+
+  if (GITHUB_ONLY_MODE) {
+    clear();
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', showGitHubOnlyNotice, { once: true });
+    } else {
+      showGitHubOnlyNotice();
+    }
+    console.info('[CA Smart Staycation] Admin is in GitHub-only static mode. Vercel routing is disabled.');
+  }
 })();
