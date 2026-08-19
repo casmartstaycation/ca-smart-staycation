@@ -33,7 +33,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; script-src-attr 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://ca-smart-staycation-muqd.onrender.com https://www.casmartstaycation.com https://casmartstaycation.com; img-src 'self' data: blob: https:; font-src 'self' data:; frame-src 'self' https:; media-src 'self' data: blob: https:;"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; script-src-attr 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://www.casmartstaycation.com https://casmartstaycation.com; img-src 'self' data: blob: https:; font-src 'self' data:; frame-src 'self' https:; media-src 'self' data: blob: https:;"
         }
       ]
     }
