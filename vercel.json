@@ -1,0 +1,41 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "functions": {
+    "api/[...path].js": {
+      "runtime": "nodejs24.x"
+    }
+  },
+  "redirects": [
+    {
+      "source": "/css/styles.css",
+      "destination": "/css/style.css",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/guest-booking/",
+      "destination": "/api/frontend/guest-booking/guest-dashboard.html"
+    },
+    {
+      "source": "/guest-booking/css/:path*",
+      "destination": "/api/frontend/css/:path*"
+    },
+    {
+      "source": "/guest-booking/:path*",
+      "destination": "/api/frontend/guest-booking/:path*"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; script-src-attr 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://ca-smart-staycation-muqd.onrender.com https://www.casmartstaycation.com https://casmartstaycation.com; img-src 'self' data: blob: https:; font-src 'self' data:; frame-src 'self' https:; media-src 'self' data: blob: https:;"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+(()=>{
+'use strict';
+const API='/api';
+const auth=()=>({Authorization:`Bearer ${localStorage.getItem('guestAuthToken')||''}`,'Content-Type':'application/json'});
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+function bookingInfo(card){
+ const id=(card.dataset.bookingId||'').trim();
+ const ref=(card.dataset.bookingReference||card.querySelector('.reference')?.textContent||'').trim();
+ const meta=card.querySelector('.summary-meta')?.textContent||'';
+ const type=(meta.split('·')[0]||'').trim();
+ const rows=[...card.querySelectorAll('.details .row')];
+ const value=k=>(rows.find(r=>(r.querySelector('.label')?.textContent||'').trim().toLowerCase()===k)||{}).lastElementChild?.textContent||'';
+ const guests=value('guests');
+ const adults=Number((guests.match(/(\d+)\s*adult/i)||[])[1]||0);
+ const checkin=value('check-in'),checkout=value('check-out');
+ const a=new Date(checkin),b=new Date(checkout);
+ const nights=Number.isFinite(a.getTime())&&Number.isFinite(b.getTime())?Math.max(1,Math.ceil((b-a)/86400000)):1;
+ return {id,ref,type,adults,nights};
+}
+function isParkingOnly(info){return /parking\s*only/i.test(info.type)||(/^parking$/i.test(info.type));}
+function render(card){
+ const details=card.querySelector('.details');
+ if(!details||!card.classList.contains('open')||details.querySelector('[data-extra-request-ui]'))return;
+ const b=bookingInfo(card);
+ if(!b.id||!b.ref||b.ref==='N/A'||isParkingOnly(b))return;
+ // Studio/unit capacity rule: the booking's qualifying adults plus requested extra
+ // guests must never exceed four. Children age 0–2 are not part of this calculation.
+ const remaining=Math.max(0,4-Math.min(4,b.adults));
+ const box=document.createElement('section');
+ box.dataset.extraRequestUi='1';
+ box.style.cssText='display:block!important;visibility:visible!important;opacity:1!important;margin-top:18px;padding:18px;border:1px solid #d8e2dd;border-radius:10px;background:#f8fbfa;color:#333;box-sizing:border-box';
+ box.innerHTML=`
+ <div style="font-size:18px;font-weight:700;color:#0b5d4d;margin-bottom:6px">Request for Extra Guest / Amenities</div>
+ <div style="font-size:13px;line-height:1.6;color:#68736e;margin-bottom:13px">If you need additional guests or another set of towels, toiletries, blanket and bedsheet, submit a request with payment proof.</div>
+ <div style="font-size:12px;line-height:1.5;margin-bottom:12px;padding:9px;background:#fff8e8;border-left:4px solid #c9a44c"><strong>Guest capacity:</strong> ${b.adults} qualifying guest${b.adults===1?'':'s'} booked · ${remaining} additional guest${remaining===1?'':'s'} available · maximum 4. Children age 0–2 are not counted.</div>
+ <label style="display:block;margin:10px 0;font-weight:600"><input data-extra-type type="radio" name="extra-request-${esc(b.id)}" value="extra_guest" ${remaining<1?'disabled':''}> Extra Guest — ₱300 per guest / night</label>
+ ${remaining<1?'<div style="font-size:12px;margin:6px 0 10px;padding:8px;background:#fff1f1;border-left:4px solid #b42318">Maximum of 4 qualifying guests has already been reached.</div>':''}
+ <label style="display:block;margin:10px 0;font-weight:600"><input data-extra-type type="radio" name="extra-request-${esc(b.id)}" value="extra_set"> Extra Set of Amenities — ₱300 per set</label>
+ <label style="display:block;margin:12px 0 4px;font-weight:600">Quantity
+   <select data-extra-qty style="display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:10px;border:1px solid #d5ddd9;border-radius:7px;background:#fff;font:inherit">
+     <option value="1">1</option><option value="2">2</option>
+   </select>
+ </label>
+ <div data-extra-total style="font-weight:700;margin-top:10px">Additional amount: ₱0</div>
+ <input data-extra-file type="file" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:none">
+ <button type="button" data-extra-upload style="width:100%;margin-top:12px;background:#0b5d4d;color:#fff;border:0;border-radius:7px;padding:12px 14px;cursor:pointer;font-size:14px;font-weight:600">Upload Payment Proof</button>
+ <div data-extra-status style="margin-top:9px;font-size:13px;line-height:1.5"></div>`;
+ details.appendChild(box);
+ const radios=[...box.querySelectorAll('[data-extra-type]')],qty=box.querySelector('[data-extra-qty]'),total=box.querySelector('[data-extra-total]'),file=box.querySelector('[data-extra-file]'),btn=box.querySelector('[data-extra-upload]'),status=box.querySelector('[data-extra-status]');
+ function update(){
+   const type=box.querySelector('[data-extra-type]:checked')?.value||'';
+   const max=type==='extra_guest'?Math.max(1,Math.min(remaining,2)):2;
+   const old=Number(qty.value||1);qty.innerHTML=Array.from({length:max},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');qty.value=String(Math.min(Math.max(1,old),max));
+   const q=Number(qty.value||1);const amount=type==='extra_guest'?300*q*b.nights:type==='extra_set'?300*q:0;
+   total.textContent='Additional amount: ₱'+amount.toLocaleString('en-PH');
+ }
+ radios.forEach(r=>r.addEventListener('change',update));qty.addEventListener('change',update);
+ btn.addEventListener('click',()=>{const type=box.querySelector('[data-extra-type]:checked')?.value||'';if(!type){status.textContent='Please select Extra Guest or Extra Set of Amenities first.';status.style.color='#b42318';return}if(type==='extra_guest'&&remaining<1){status.textContent='No additional guest capacity is available for this booking.';status.style.color='#b42318';return}file.click()});
+ file.addEventListener('change',()=>{const f=file.files?.[0];if(!f)return;if(!['image/jpeg','image/png','image/webp','application/pdf'].includes(f.type)){status.textContent='Upload JPG, PNG, WEBP, or PDF only.';status.style.color='#b42318';file.value='';return}if(f.size>10*1024*1024){status.textContent='Payment proof must be 10 MB or smaller.';status.style.color='#b42318';file.value='';return}
+   const reader=new FileReader();reader.onload=async()=>{btn.disabled=true;btn.textContent='Uploading...';try{
+     const type=box.querySelector('[data-extra-type]:checked')?.value,q=Number(qty.value||1);if(!type)throw Error('Please select a request type.');if(type==='extra_guest'&&(remaining<1||q>remaining))throw Error(`Only ${remaining} additional guest${remaining===1?'':'s'} allowed.`);
+     const r=await fetch(`${API}/guest-auth/bookings/${encodeURIComponent(b.id)}/extra-requests`,{method:'POST',headers:auth(),body:JSON.stringify({type,quantity:q,paymentProof:reader.result,paymentProofFileName:f.name}),cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.message||'Unable to submit the request.');
+     status.textContent=d.message||'Payment proof uploaded. This request is subject to payment verification.';status.style.color='#0b5d4d';btn.textContent='Payment Uploaded';file.value='';
+   }catch(e){status.textContent=e.message||'Unable to upload payment proof.';status.style.color='#b42318';btn.textContent='Upload Payment Proof'}finally{btn.disabled=false}};reader.readAsDataURL(f)
+ });
+ update();
+}
+function scan(){document.querySelectorAll('.booking-card').forEach(render)}
+function boot(){scan();const list=document.getElementById('bookingsList');if(list)new MutationObserver(scan).observe(list,{childList:true,subtree:true});document.addEventListener('click',e=>{if(e.target.closest('.booking-summary')||e.target.closest('.booking-actions button')||e.target.closest('.details'))setTimeout(scan,50)});[100,300,700,1500,3000].forEach(t=>setTimeout(scan,t))}
+document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot):boot();
+})();

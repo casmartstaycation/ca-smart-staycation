@@ -1,0 +1,22 @@
+(function(){
+  'use strict';
+  const API='/api'; const tokenKey='guestAuthToken';
+  const auth=()=>({Authorization:`Bearer ${localStorage.getItem(tokenKey)}`,'Content-Type':'application/json'});
+  function inject(card){
+    const details=card.querySelector('.details'); if(!details||details.querySelector('.extra-request'))return;
+    const ref=(card.querySelector('.reference')?.textContent||'').trim(); if(!ref||ref==='N/A')return;
+    const box=document.createElement('div'); box.className='extra-request'; box.style.cssText='margin-top:15px;padding:15px;border:1px solid #d9e2de;border-radius:9px;background:#f8fbfa';
+    box.innerHTML=`<div style="font-weight:700;color:#0b5d4d;margin-bottom:10px">Additional Guest / Amenity Request</div><div style="font-size:13px;color:#68736e;margin-bottom:10px">Upload payment proof for an additional guest or an extra set of towels, toiletries, blanket and bedsheet.</div><label style="display:block;margin:8px 0"><input type="radio" name="er-${CSS.escape(ref)}" value="extra_guest"> Extra Guest — ₱300 per night</label><label style="display:block;margin:8px 0"><input type="radio" name="er-${CSS.escape(ref)}" value="extra_set"> Extra Set of Amenities — ₱300 per set</label><label style="display:block;margin:10px 0">Quantity <select class="er-qty" style="margin-left:8px;padding:6px;border:1px solid #ccd5d1;border-radius:6px"><option value="1">1</option><option value="2">2</option></select></label><div class="er-total" style="font-weight:700;margin-top:10px">Additional charge: ₱300</div><input class="er-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:block;margin-top:10px;width:100%"><div style="font-size:12px;color:#68736e;margin-top:5px">JPG, PNG, WEBP or PDF, maximum 10 MB.</div><button type="button" class="er-submit" style="margin-top:10px;background:#0b5d4d;color:#fff;border:0;border-radius:7px;padding:10px 14px;cursor:pointer">Upload Payment</button><div class="er-status" style="margin-top:9px;font-size:13px"></div><div style="margin-top:12px;padding:10px;background:#fff8e8;border-left:4px solid #c9a44c;font-size:12px;line-height:1.5;color:#5f553b"><strong>Reminder:</strong> This request is subject to payment verification. It will only be processed after CA Smart Staycation verifies the uploaded payment.</div>`;
+    details.appendChild(box);
+    const qty=box.querySelector('.er-qty'),total=box.querySelector('.er-total'),file=box.querySelector('.er-file');
+    const update=()=>{const type=box.querySelector('input[type="radio"]:checked')?.value,q=Number(qty.value||1);total.textContent=type==='extra_guest'?`Additional charge: ₱${(300*q).toLocaleString()} per night`:`Additional charge: ₱${(300*q).toLocaleString()} per set`};
+    qty.addEventListener('change',update);box.querySelectorAll('input[type="radio"]').forEach(r=>r.addEventListener('change',update));
+    box.querySelector('.er-submit').addEventListener('click',async()=>{
+      const type=box.querySelector('input[type="radio"]:checked')?.value; if(!type){alert('Please select Extra Guest or Extra Set of Amenities first.');return;} if(!file.files?.[0]){alert('Please choose your payment proof first.');return;}
+      const f=file.files[0]; if(f.size>10*1024*1024){alert('Payment proof must be 10 MB or smaller.');return;}
+      const reader=new FileReader(); reader.onload=async()=>{const btn=box.querySelector('.er-submit'),status=box.querySelector('.er-status');btn.disabled=true;btn.textContent='Uploading Payment...';
+        try{const q=Math.max(1,Math.min(2,Number(qty.value||1)));const r=await fetch(`${API}/guest-auth/bookings/${encodeURIComponent(ref)}/extra-requests`,{method:'POST',headers:auth(),body:JSON.stringify({type,quantity:q,paymentProof:reader.result,paymentProofFileName:f.name})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.message||'Unable to upload payment proof.');status.textContent=d.message||'Payment proof uploaded and awaiting verification.';status.style.color='#0b5d4d';}catch(e){status.textContent=e.message;status.style.color='#b42318';}finally{btn.disabled=false;btn.textContent='Upload Payment';}}; reader.readAsDataURL(f);
+    });
+  }
+  function scan(){document.querySelectorAll('.booking-card').forEach(inject)} function start(){const list=document.getElementById('bookingsList');if(list)new MutationObserver(scan).observe(list,{childList:true,subtree:true});scan();} if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
