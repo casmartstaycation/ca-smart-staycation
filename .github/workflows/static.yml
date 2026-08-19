@@ -4,6 +4,9 @@ name: Deploy CA Smart Staycation Frontend
 on:
   push:
     branches: ["main"]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/static.yml"
   workflow_dispatch:
 
 permissions:
@@ -13,7 +16,7 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -21,18 +24,22 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Checkout
+      - name: Checkout latest main
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload frontend
+      - name: Upload latest frontend
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./frontend
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy latest frontend to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
