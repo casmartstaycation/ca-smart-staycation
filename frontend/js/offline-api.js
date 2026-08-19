@@ -2,8 +2,9 @@
  * CA Smart Staycation - Cross-browser API bridge
  *
  * Static hosts such as GitHub Pages cannot serve /api/* routes. Requests made
- * to /api/* are therefore forwarded to the live Render backend. On the custom
- * production domain or a Vercel deployment, same-origin /api/* remains in use.
+ * to /api/* are therefore forwarded to the live Vercel production API. On the
+ * custom production domain or a Vercel deployment, same-origin /api/* remains
+ * in use.
  *
  * Local fallback is intentionally limited to read-only GET endpoints. POST,
  * PUT, PATCH and DELETE requests must never be silently converted into a
@@ -14,7 +15,7 @@
   'use strict';
 
   const STORAGE_KEY = 'caSmartStaycationOfflineBookings';
-  const REMOTE_API = 'https://ca-smart-staycation-muqd.onrender.com/api';
+  const REMOTE_API = String(window.CA_SMART_REMOTE_API || 'https://casmartstaycation.com/api').replace(/\/+$/, '');
 
   const roomsFallback = [{
     _id: 'unit-719', id: 'unit-719', name: 'Unit 719', unitName: 'Unit 719',
