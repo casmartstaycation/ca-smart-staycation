@@ -1,89 +1,60 @@
-const isGitHubOnlyMode = window.location.hostname.endsWith("github.io");
-const API = "/api";
+/* CA Smart Staycation - temporary GitHub-only guest portal mode
+ * No login request is sent to Vercel or any API while the backend is paused.
+ */
+(function () {
+  'use strict';
 
-const form = document.getElementById("guestLoginForm");
-const button = document.getElementById("loginButton");
+  const SUPPORT_EMAIL = 'booking@casmartstaycation.com';
+  const form = document.getElementById('guestLoginForm');
+  const button = document.getElementById('loginButton');
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
 
-function showGitHubOnlyNotice() {
+  function showTemporaryNotice() {
     if (!form) return;
 
-    button.disabled = true;
-    button.innerText = "Guest Login Temporarily Paused";
+    if (emailInput) emailInput.disabled = true;
+    if (passwordInput) passwordInput.disabled = true;
 
-    let notice = document.getElementById("githubOnlyGuestNotice");
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Guest Login Temporarily Paused';
+    }
+
+    let notice = document.getElementById('githubOnlyGuestNotice');
     if (!notice) {
-        notice = document.createElement("div");
-        notice.id = "githubOnlyGuestNotice";
-        notice.className = "login-help";
-        notice.style.marginTop = "14px";
-        notice.innerHTML = '<strong>Temporary GitHub-only mode.</strong><br>The live guest account database is currently offline. No request will be sent to Vercel. For booking assistance, email <a href="mailto:booking@casmartstaycation.com">booking@casmartstaycation.com</a>.';
-        button.insertAdjacentElement("afterend", notice);
+      notice = document.createElement('div');
+      notice.id = 'githubOnlyGuestNotice';
+      notice.className = 'login-help';
+      notice.setAttribute('role', 'status');
+      notice.style.marginTop = '14px';
+      notice.innerHTML =
+        '<strong>Guest Portal temporarily unavailable.</strong><br>' +
+        'CA Smart Staycation is currently operating in GitHub-only mode, so secure guest account login is paused. ' +
+        'No login request is being sent to Vercel or any external API. ' +
+        'For your booking status or reservation details, email ' +
+        '<a href="mailto:' + SUPPORT_EMAIL + '">' + SUPPORT_EMAIL + '</a>.';
+      if (button) button.insertAdjacentElement('afterend', notice);
+      else form.appendChild(notice);
     }
-}
+  }
 
-if (isGitHubOnlyMode) {
-    showGitHubOnlyNotice();
-}
+  if (form) {
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      showTemporaryNotice();
+      return false;
+    }, true);
+  }
 
-form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  // Remove stale cached guest credentials so a bookmarked dashboard cannot
+  // accidentally attempt backend calls while GitHub-only mode is active.
+  localStorage.removeItem('guestAuthToken');
+  localStorage.removeItem('guestAccount');
+  sessionStorage.removeItem('guestAuthToken');
+  sessionStorage.removeItem('guestAccount');
 
-    if (isGitHubOnlyMode) {
-        showGitHubOnlyNotice();
-        return;
-    }
-
-    const email = document.getElementById("email").value.trim().toLowerCase();
-    const password = document.getElementById("password").value.trim();
-
-    button.disabled = true;
-    button.innerText = "Logging in...";
-
-    try {
-        const body = new URLSearchParams({ email, password });
-        const response = await fetch(`${API}/guest-auth/login`, {
-            method: "POST",
-            body,
-            cache: "no-store"
-        });
-
-        const raw = await response.text();
-        let result = {};
-        try {
-            result = raw ? JSON.parse(raw) : {};
-        } catch (_) {
-            console.error("Guest login returned a non-JSON response:", raw.slice(0, 300));
-            throw new Error(`Login server returned an invalid response (HTTP ${response.status}).`);
-        }
-
-        if (!response.ok) {
-            alert(result.message || "Invalid email or password.");
-            button.disabled = false;
-            button.innerText = "Login";
-            return;
-        }
-
-        localStorage.setItem("guestAuthToken", result.token || "");
-        localStorage.setItem("guestAccount", JSON.stringify(result.account || {}));
-        if (Array.isArray(result.bookings)) {
-            localStorage.setItem("guestBookingsCache", JSON.stringify({ savedAt: Date.now(), bookings: result.bookings }));
-        }
-
-        const booking = result.bookings?.[0];
-        if (booking) localStorage.setItem("guestBooking", JSON.stringify(booking));
-
-        if (result.account?.mustChangePassword) {
-            window.location.href = "change-password.html";
-        } else {
-            const params = new URLSearchParams(window.location.search);
-            const next = params.get("next");
-            const safeNext = next === "guest-dashboard.html" ? next : "guest-dashboard.html";
-            window.location.replace(safeNext);
-        }
-    } catch (err) {
-        console.error("Guest login error:", err);
-        alert(err?.message || "Unable to connect to the server.");
-        button.disabled = false;
-        button.innerText = "Login";
-    }
-});
+  showTemporaryNotice();
+  console.info('[CA Smart Staycation] Guest Login is in GitHub-only mode. No API login request will be sent.');
+})();
