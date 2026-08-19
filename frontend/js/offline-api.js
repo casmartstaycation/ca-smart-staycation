@@ -1,22 +1,18 @@
 /*
- * CA Smart Staycation - Cross-browser API bridge
+ * CA Smart Staycation - temporary GitHub Pages static mode
  *
- * Static hosts such as GitHub Pages cannot serve /api/* routes. Requests made
- * to /api/* are therefore forwarded directly to the canonical Vercel
- * production API host. On the custom production domain or a Vercel deployment,
- * same-origin /api/* remains in use.
+ * GitHub Pages is a static host and cannot run the Express/MongoDB API.
+ * While Vercel is paused, this bridge serves safe read-only fallback data
+ * locally and NEVER sends API requests to Vercel from github.io.
  *
- * Local fallback is intentionally limited to read-only GET endpoints. POST,
- * PUT, PATCH and DELETE requests must never be silently converted into a
- * local-only booking/payment action because doing so can create browser-
- * specific data and duplicate-booking problems.
+ * Booking/payment/account writes are intentionally blocked so a reservation
+ * cannot appear successful only in one browser and create double bookings.
  */
 (function () {
   'use strict';
 
-  const STORAGE_KEY = 'caSmartStaycationOfflineBookings';
+  const GITHUB_ONLY_MODE = window.location.hostname.endsWith('github.io');
   const BOOKING_NOTICE_ID = 'caBookingServiceNotice';
-  const REMOTE_API = String(window.CA_SMART_REMOTE_API || 'https://www.casmartstaycation.com/api').replace(/\/+$/, '');
 
   const roomsFallback = [{
     _id: 'unit-719', id: 'unit-719', name: 'Unit 719', unitName: 'Unit 719',
@@ -46,25 +42,30 @@
     maxFreeChildren: 2, MAX_FREE_CHILDREN: 2
   };
 
-  function readJson(key, fallback) {
+  function jsonResponse(data, status) {
+    return new Response(JSON.stringify(data), {
+      status: status || 200,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' }
+    });
+  }
+
+  function normalizePath(input) {
     try {
-      const value = localStorage.getItem(key);
-      if (!value) return fallback;
-      const parsed = JSON.parse(value);
-      return parsed == null ? fallback : parsed;
-    } catch (_) { return fallback; }
+      const raw = typeof input === 'string' ? input : (input && input.url) || '';
+      return new URL(raw, window.location.origin).pathname.replace(/\/+$/, '') || '/';
+    } catch (_) {
+      return String(input || '').split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
+    }
   }
 
-  function getLocalBookings() {
-    const value = readJson(STORAGE_KEY, []);
-    return Array.isArray(value) ? value : [];
+  function isApiPath(path) {
+    return path === '/api' || path.startsWith('/api/');
   }
 
-  function getSafetyBookings() {
-    const local = getLocalBookings();
-    const safetyHold = {
-      _id: 'ca-api-safety-hold',
-      bookingReference: 'SERVICE-HOLD',
+  function serviceHoldBooking() {
+    return {
+      _id: 'ca-github-static-hold',
+      bookingReference: 'GITHUB-STATIC-MODE',
       room: 'unit-719',
       parking: 'parking-1',
       checkIn: '2000-01-01',
@@ -73,20 +74,36 @@
       paymentStatus: 'Pending',
       offlineSafetyHold: true
     };
-    return [...local, safetyHold];
   }
 
-  function applyBookingServiceLock(message) {
+  function fallbackGet(path) {
+    if (path === '/api/rooms') {
+      return jsonResponse({ success: true, rooms: roomsFallback, data: roomsFallback, offline: true, githubOnly: true });
+    }
+    if (path === '/api/parking') {
+      return jsonResponse({ success: true, parking: parkingFallback, slots: parkingFallback, data: parkingFallback, offline: true, githubOnly: true });
+    }
+    if (path === '/api/settings') {
+      return jsonResponse({ success: true, settings: settingsFallback, data: settingsFallback, offline: true, githubOnly: true });
+    }
+    if (path === '/api/health') {
+      return jsonResponse({ status: 'success', offline: true, githubOnly: true, database: 'not-connected' });
+    }
+    if (path === '/api/bookings') {
+      return jsonResponse({ success: true, bookings: [serviceHoldBooking()], data: [serviceHoldBooking()], offline: true, githubOnly: true, safetyLocked: true });
+    }
+    return null;
+  }
+
+  function applyBookingServiceLock() {
     const form = document.getElementById('guestBookingForm');
     if (!form) return;
 
     const submit = form.querySelector('button[type="submit"]');
     if (submit) {
-      if (!submit.dataset.caApiOriginalText) submit.dataset.caApiOriginalText = submit.innerHTML;
-      submit.dataset.caApiLock = '1';
       submit.disabled = true;
-      submit.innerHTML = 'Booking Temporarily Unavailable';
-      submit.title = 'Live availability cannot be verified right now.';
+      submit.innerHTML = 'Online Booking Temporarily Paused';
+      submit.title = 'The GitHub Pages site is temporarily running without the live booking database.';
     }
 
     const grid = document.getElementById('calendarGrid');
@@ -101,126 +118,19 @@
       notice.id = BOOKING_NOTICE_ID;
       notice.setAttribute('role', 'status');
       notice.style.margin = '12px 0';
-      notice.style.padding = '12px 14px';
+      notice.style.padding = '14px 16px';
       notice.style.border = '1px solid #d5a62b';
       notice.style.borderRadius = '10px';
       notice.style.background = '#fff8df';
       notice.style.color = '#5a4610';
       notice.style.fontSize = '14px';
-      notice.style.lineHeight = '1.45';
+      notice.style.lineHeight = '1.5';
       const calendar = document.querySelector('.booking-calendar-card');
       if (calendar && calendar.parentNode) calendar.parentNode.insertBefore(notice, calendar);
       else form.insertBefore(notice, form.firstChild);
     }
-    notice.textContent = message || 'Live availability is temporarily unavailable. Online booking is paused to prevent duplicate reservations. Please try again shortly.';
-  }
 
-  function lockBookingService(message) {
-    const apply = () => applyBookingServiceLock(message);
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply, { once: true });
-    else apply();
-  }
-
-  function unlockBookingService() {
-    const apply = () => {
-      const form = document.getElementById('guestBookingForm');
-      const submit = form && form.querySelector('button[type="submit"]');
-      if (submit && submit.dataset.caApiLock === '1') {
-        submit.disabled = false;
-        submit.innerHTML = submit.dataset.caApiOriginalText || 'Submit Booking <span>→</span>';
-        submit.title = '';
-        delete submit.dataset.caApiLock;
-      }
-
-      const grid = document.getElementById('calendarGrid');
-      if (grid) {
-        grid.style.pointerEvents = '';
-        grid.style.opacity = '';
-      }
-
-      const notice = document.getElementById(BOOKING_NOTICE_ID);
-      if (notice) notice.remove();
-    };
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply, { once: true });
-    else apply();
-  }
-
-  function normalizePath(input) {
-    try {
-      const raw = typeof input === 'string' ? input : (input && input.url) || '';
-      return new URL(raw, window.location.origin).pathname.replace(/\/+$/, '') || '/';
-    } catch (_) {
-      return String(input || '').split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
-    }
-  }
-
-  function jsonResponse(data, status) {
-    return new Response(JSON.stringify(data), {
-      status: status || 200,
-      headers: { 'Content-Type': 'application/json; charset=utf-8' }
-    });
-  }
-
-  function apiUrl(path) {
-    const cleanPath = String(path || '/');
-    const apiPath = cleanPath === '/api'
-      ? ''
-      : cleanPath.startsWith('/api/')
-        ? cleanPath.slice(4)
-        : cleanPath.startsWith('/')
-          ? cleanPath
-          : '/' + cleanPath;
-
-    const host = window.location.hostname;
-    const isProductionHost = host === 'www.casmartstaycation.com' ||
-      host === 'casmartstaycation.com' ||
-      host.endsWith('.vercel.app');
-
-    if (isProductionHost) {
-      return `${window.location.origin}/api${apiPath}`;
-    }
-
-    return `${REMOTE_API}${apiPath}`;
-  }
-
-  function isApiPath(path) {
-    return path === '/api' || path.startsWith('/api/');
-  }
-
-  function fallbackGet(path) {
-    if (path === '/api/rooms') {
-      return jsonResponse({ success: true, rooms: roomsFallback, data: roomsFallback, offline: true });
-    }
-    if (path === '/api/parking') {
-      return jsonResponse({ success: true, parking: parkingFallback, slots: parkingFallback, data: parkingFallback, offline: true });
-    }
-    if (path === '/api/settings') {
-      return jsonResponse({ success: true, settings: settingsFallback, data: settingsFallback, offline: true });
-    }
-    if (path === '/api/health') {
-      return jsonResponse({ status: 'success', offline: true, database: 'offline' });
-    }
-    if (path === '/api/bookings') {
-      lockBookingService('Live availability is temporarily unavailable. Online booking is paused to prevent duplicate reservations. Please try again shortly.');
-      const bookings = getSafetyBookings();
-      return jsonResponse({ success: true, bookings, data: bookings, offline: true, safetyLocked: true });
-    }
-    return null;
-  }
-
-  async function describeErrorResponse(response) {
-    try {
-      const clone = response.clone();
-      const type = String(clone.headers.get('content-type') || '');
-      if (type.includes('application/json')) {
-        const payload = await clone.json();
-        return payload && (payload.detail || payload.message || payload.error || JSON.stringify(payload));
-      }
-      const text = (await clone.text()).trim();
-      return text ? text.slice(0, 800) : '';
-    } catch (_) {
-      return '';
-    }
+    notice.innerHTML = '<strong>Temporary GitHub-only mode.</strong> Live availability and online booking are paused while the booking server is offline. Please contact <a href="mailto:booking@casmartstaycation.com">booking@casmartstaycation.com</a> before reserving.';
   }
 
   const originalFetch = window.fetch.bind(window);
@@ -229,58 +139,43 @@
     const path = normalizePath(input);
     const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
 
-    if (!isApiPath(path)) {
-      return originalFetch(input, init);
-    }
+    if (!isApiPath(path)) return originalFetch(input, init);
 
-    const target = apiUrl(path);
-    const requestInit = { ...(init || {}), cache: 'no-store' };
-
-    try {
-      const response = await originalFetch(target, requestInit);
-
-      if (!response.ok) {
-        const detail = await describeErrorResponse(response);
-        console.error(`[CA Smart Staycation] API ${response.status} for ${path}${detail ? `: ${detail}` : ''}`);
-
-        if (method === 'GET') {
-          const fallback = fallbackGet(path);
-          if (fallback) {
-            console.warn(`[CA Smart Staycation] Remote API returned HTTP ${response.status} for ${path}; using read-only local fallback.`);
-            return fallback;
-          }
-        }
-      } else if (method === 'GET' && path === '/api/bookings') {
-        unlockBookingService();
-      }
-
-      return response;
-    } catch (error) {
-      console.error(`[CA Smart Staycation] Network/CORS failure for ${path}:`, error);
+    if (GITHUB_ONLY_MODE) {
       if (method === 'GET') {
         const fallback = fallbackGet(path);
-        if (fallback) {
-          console.warn(`[CA Smart Staycation] API unavailable for ${path}; using read-only local fallback.`);
-          return fallback;
-        }
+        if (fallback) return fallback;
       }
-      throw error;
+
+      applyBookingServiceLock();
+      console.warn(`[CA Smart Staycation] GitHub-only mode blocked ${method} ${path}; no Vercel request was sent.`);
+      return jsonResponse({
+        success: false,
+        githubOnly: true,
+        message: 'Online booking/account service is temporarily paused while CA Smart Staycation is using GitHub Pages only.'
+      }, 503);
     }
+
+    return originalFetch(input, init);
   };
 
-  window.CA_SMART_API = window.location.hostname.endsWith('github.io') ? REMOTE_API : '/api';
+  window.CA_SMART_API = '/api';
   window.CA_SMART_OFFLINE = {
-    enabled: true,
-    remoteFirst: true,
-    remoteApi: REMOTE_API,
+    enabled: GITHUB_ONLY_MODE,
+    githubOnly: GITHUB_ONLY_MODE,
+    remoteFirst: false,
+    remoteApi: null,
     rooms: roomsFallback,
     parking: parkingFallback,
     settings: settingsFallback,
-    getBookings: getLocalBookings,
-    lockBookingService,
-    unlockBookingService
+    getBookings: function () { return []; },
+    lockBookingService: applyBookingServiceLock,
+    unlockBookingService: function () {}
   };
 
-  lockBookingService('Checking live availability…');
-  console.info(`[CA Smart Staycation] API bridge enabled: ${window.CA_SMART_API}`);
+  if (GITHUB_ONLY_MODE) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyBookingServiceLock, { once: true });
+    else applyBookingServiceLock();
+    console.info('[CA Smart Staycation] GitHub-only static mode enabled. Vercel API calls are disabled.');
+  }
 })();
