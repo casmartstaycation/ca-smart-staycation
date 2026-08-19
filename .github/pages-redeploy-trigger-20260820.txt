@@ -1,0 +1,2 @@
+CA Smart Staycation GitHub Pages redeploy trigger.
+Created 2026-08-20 to republish the current frontend from main, including offline-api.js?v=20260819-7.
