@@ -35,43 +35,104 @@
     localStorage.removeItem(TOKEN_KEY);
   }
 
-  function isApiRequest(input) {
+  function requestPath(input) {
     try {
       const raw = input instanceof Request ? input.url : String(input || '');
-      const url = new URL(raw, window.location.origin);
-      return url.pathname === '/api' || url.pathname.startsWith('/api/');
+      return new URL(raw, window.location.origin).pathname.replace(/\/+$/, '') || '/';
     } catch (_) {
-      return false;
+      return '';
     }
+  }
+
+  function isApiRequest(input) {
+    const path = requestPath(input);
+    return path === '/api' || path.startsWith('/api/');
   }
 
   function jsonResponse(data, status) {
     return new Response(JSON.stringify(data), {
-      status: status || 503,
+      status: status || 200,
       headers: { 'Content-Type': 'application/json; charset=utf-8' }
+    });
+  }
+
+  function githubOnlyResponse(path) {
+    if (path === '/api/admin-auth/status') {
+      return jsonResponse({
+        success: true,
+        configured: true,
+        emailConfigured: true,
+        passwordConfigured: true,
+        jwtConfigured: true,
+        adminEmail: 'markryantamayo@gmail.com',
+        githubOnly: true,
+        message: 'Admin database features are temporarily paused while the site is running on GitHub Pages.'
+      });
+    }
+
+    if (path === '/api/bookings') {
+      return jsonResponse({ success: true, data: [], bookings: [], githubOnly: true });
+    }
+
+    if (path === '/api/notifications') {
+      return jsonResponse({ success: true, data: [], notifications: [], githubOnly: true });
+    }
+
+    if (path === '/api/admin/inbox' || path === '/api/admin/messages') {
+      return jsonResponse({ success: true, data: [], messages: [], githubOnly: true });
+    }
+
+    return jsonResponse({
+      success: false,
+      githubOnly: true,
+      message: 'This admin action is temporarily unavailable while the site is running on GitHub Pages.'
     });
   }
 
   function showGitHubOnlyNotice() {
     if (!GITHUB_ONLY_MODE || document.getElementById('caAdminGithubOnlyNotice')) return;
-    const notice = document.createElement('div');
-    notice.id = 'caAdminGithubOnlyNotice';
-    notice.setAttribute('role', 'status');
-    notice.style.cssText = 'position:fixed;left:12px;right:12px;top:12px;z-index:99999;padding:12px 14px;border:1px solid #d5a62b;border-radius:10px;background:#fff8df;color:#5a4610;font:14px/1.45 Arial,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.12)';
-    notice.innerHTML = '<strong>Temporary GitHub-only mode.</strong> The Admin Dashboard database is paused. No request will be sent to Vercel. Existing live booking records are not modified.';
-    document.body.appendChild(notice);
+
+    const auth = document.getElementById('adminAuth');
+    const shell = document.getElementById('adminShell');
+    if (shell) shell.hidden = true;
+
+    if (auth) {
+      auth.hidden = false;
+      const title = auth.querySelector('h1');
+      const intro = auth.querySelector('p:not(.eyebrow)');
+      const form = document.getElementById('adminLoginForm');
+      if (title) title.textContent = 'Admin Dashboard Temporarily Paused';
+      if (intro) intro.textContent = 'The live admin database is temporarily offline while CA Smart Staycation is running from GitHub Pages.';
+      if (form) form.hidden = true;
+
+      let panel = document.getElementById('caAdminStaticPanel');
+      if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'caAdminStaticPanel';
+        panel.style.cssText = 'margin-top:18px;padding:16px;border:1px solid #d5a62b;border-radius:10px;background:#fff8df;color:#5a4610;font:14px/1.55 Arial,sans-serif';
+        panel.innerHTML = '<strong>Temporary GitHub-only mode</strong><br>No admin login or database request is being sent to Vercel. Existing booking records remain unchanged in the live database. Booking requests received during this temporary period must be handled manually.';
+        auth.appendChild(panel);
+      }
+    }
+  }
+
+  function blockGitHubOnlyAdminSubmit(event) {
+    if (!GITHUB_ONLY_MODE) return;
+    const form = event.target;
+    if (!form || form.id !== 'adminLoginForm') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    showGitHubOnlyNotice();
+  }
+
+  if (GITHUB_ONLY_MODE) {
+    document.addEventListener('submit', blockGitHubOnlyAdminSubmit, true);
   }
 
   window.fetch = function (input, init) {
     if (GITHUB_ONLY_MODE && isApiRequest(input)) {
-      console.warn('[CA Smart Staycation] GitHub-only mode blocked an Admin API request; no Vercel request was sent.');
-      return Promise.resolve(jsonResponse({
-        success: false,
-        githubOnly: true,
-        message: 'Admin database features are temporarily paused while the site is running on GitHub Pages.'
-      }, 503));
+      return Promise.resolve(githubOnlyResponse(requestPath(input)));
     }
-
     return originalFetch(input, init);
   };
 
@@ -90,6 +151,6 @@
     } else {
       showGitHubOnlyNotice();
     }
-    console.info('[CA Smart Staycation] Admin is in GitHub-only static mode. Vercel routing is disabled.');
+    console.info('[CA Smart Staycation] Admin GitHub-only static mode active. Remote admin API calls are disabled.');
   }
 })();
