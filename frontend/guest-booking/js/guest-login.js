@@ -1,6 +1,6 @@
-const API = window.location.hostname.endsWith("github.io")
-    ? "https://www.casmartstaycation.com/api"
-    : "/api";
+const API = window.CA_SMART_API || (window.location.hostname.endsWith("github.io")
+    ? "https://ca-smart-staycation-muqd.onrender.com/api"
+    : "/api");
 
 const form = document.getElementById("guestLoginForm");
 const button = document.getElementById("loginButton");
@@ -27,8 +27,8 @@ form.addEventListener("submit", async (e) => {
         try {
             result = raw ? JSON.parse(raw) : {};
         } catch (_) {
-            console.error("Guest login returned non-JSON response:", raw.slice(0, 300));
-            throw new Error(`Login server returned HTTP ${response.status} instead of JSON.`);
+            console.error("Guest login returned a non-JSON response:", raw.slice(0, 300));
+            throw new Error(`Login server returned an invalid response (HTTP ${response.status}).`);
         }
 
         if (!response.ok) {
@@ -40,18 +40,12 @@ form.addEventListener("submit", async (e) => {
 
         localStorage.setItem("guestAuthToken", result.token || "");
         localStorage.setItem("guestAccount", JSON.stringify(result.account || {}));
-
         if (Array.isArray(result.bookings)) {
-            localStorage.setItem(
-                "guestBookingsCache",
-                JSON.stringify({ savedAt: Date.now(), bookings: result.bookings })
-            );
+            localStorage.setItem("guestBookingsCache", JSON.stringify({ savedAt: Date.now(), bookings: result.bookings }));
         }
 
         const booking = result.bookings?.[0];
-        if (booking) {
-            localStorage.setItem("guestBooking", JSON.stringify(booking));
-        }
+        if (booking) localStorage.setItem("guestBooking", JSON.stringify(booking));
 
         if (result.account?.mustChangePassword) {
             window.location.href = "change-password.html";
@@ -63,7 +57,7 @@ form.addEventListener("submit", async (e) => {
         }
     } catch (err) {
         console.error("Guest login error:", err);
-        alert(err.message || "Unable to connect to the server.");
+        alert(err?.message || "Unable to connect to the server.");
         button.disabled = false;
         button.innerText = "Login";
     }
