@@ -121,6 +121,21 @@
     return null;
   }
 
+  async function describeErrorResponse(response) {
+    try {
+      const clone = response.clone();
+      const type = String(clone.headers.get('content-type') || '');
+      if (type.includes('application/json')) {
+        const payload = await clone.json();
+        return payload && (payload.detail || payload.message || payload.error || JSON.stringify(payload));
+      }
+      const text = (await clone.text()).trim();
+      return text ? text.slice(0, 800) : '';
+    } catch (_) {
+      return '';
+    }
+  }
+
   const originalFetch = window.fetch.bind(window);
 
   window.fetch = async function (input, init) {
@@ -135,8 +150,24 @@
     const requestInit = { ...(init || {}), cache: 'no-store' };
 
     try {
-      return await originalFetch(target, requestInit);
+      const response = await originalFetch(target, requestInit);
+
+      if (!response.ok) {
+        const detail = await describeErrorResponse(response);
+        console.error(`[CA Smart Staycation] API ${response.status} for ${path}${detail ? `: ${detail}` : ''}`);
+
+        if (method === 'GET') {
+          const fallback = fallbackGet(path);
+          if (fallback) {
+            console.warn(`[CA Smart Staycation] Remote API returned HTTP ${response.status} for ${path}; using read-only local fallback.`);
+            return fallback;
+          }
+        }
+      }
+
+      return response;
     } catch (error) {
+      console.error(`[CA Smart Staycation] Network/CORS failure for ${path}:`, error);
       if (method === 'GET') {
         const fallback = fallbackGet(path);
         if (fallback) {
