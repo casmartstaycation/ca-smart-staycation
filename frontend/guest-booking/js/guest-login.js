@@ -1,12 +1,37 @@
-const API = window.CA_SMART_API || (window.location.hostname.endsWith("github.io")
-    ? "https://www.casmartstaycation.com/api"
-    : "/api");
+const isGitHubOnlyMode = window.location.hostname.endsWith("github.io");
+const API = "/api";
 
 const form = document.getElementById("guestLoginForm");
 const button = document.getElementById("loginButton");
 
+function showGitHubOnlyNotice() {
+    if (!form) return;
+
+    button.disabled = true;
+    button.innerText = "Guest Login Temporarily Paused";
+
+    let notice = document.getElementById("githubOnlyGuestNotice");
+    if (!notice) {
+        notice = document.createElement("div");
+        notice.id = "githubOnlyGuestNotice";
+        notice.className = "login-help";
+        notice.style.marginTop = "14px";
+        notice.innerHTML = '<strong>Temporary GitHub-only mode.</strong><br>The live guest account database is currently offline. No request will be sent to Vercel. For booking assistance, email <a href="mailto:booking@casmartstaycation.com">booking@casmartstaycation.com</a>.';
+        button.insertAdjacentElement("afterend", notice);
+    }
+}
+
+if (isGitHubOnlyMode) {
+    showGitHubOnlyNotice();
+}
+
 form.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    if (isGitHubOnlyMode) {
+        showGitHubOnlyNotice();
+        return;
+    }
 
     const email = document.getElementById("email").value.trim().toLowerCase();
     const password = document.getElementById("password").value.trim();
