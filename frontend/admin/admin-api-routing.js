@@ -6,6 +6,16 @@
   const LEGACY_ORIGIN = 'https://ca-smart-staycation-muqd.onrender.com';
   const originalFetch = window.fetch.bind(window);
 
+  // Admin pages historically had no favicon declaration, causing browsers to
+  // probe /favicon.ico. Use the existing SVG asset instead.
+  if (!document.querySelector('link[rel~="icon"]')) {
+    const favicon = document.createElement('link');
+    favicon.rel = 'icon';
+    favicon.type = 'image/svg+xml';
+    favicon.href = '/favicon.svg';
+    document.head.appendChild(favicon);
+  }
+
   function getToken() {
     return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || '';
   }
