@@ -1,5 +1,5 @@
 const API = window.CA_SMART_API || (window.location.hostname.endsWith("github.io")
-    ? "https://ca-smart-staycation-muqd.onrender.com/api"
+    ? "https://www.casmartstaycation.com/api"
     : "/api");
 
 const form = document.getElementById("guestLoginForm");
@@ -15,10 +15,10 @@ form.addEventListener("submit", async (e) => {
     button.innerText = "Logging in...";
 
     try {
+        const body = new URLSearchParams({ email, password });
         const response = await fetch(`${API}/guest-auth/login`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),
+            body,
             cache: "no-store"
         });
 
