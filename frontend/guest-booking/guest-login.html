@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#063b32">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Guest Login | CA Smart Staycation</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
@@ -17,10 +20,9 @@
     </style>
 </head>
 <body>
-<!-- github-only-mode-20260820-8: no Vercel API requests on github.io -->
+<!-- github-only-mode-20260820-9: static login page, no Vercel/API calls -->
 <header class="header"><div class="logo-area"><div class="logo-icon">CA</div><div><h1>CA Smart Staycation</h1><p>Elegant Comfort • Private Stay</p></div></div><a href="../index.html" class="header-button">Back to Booking</a></header>
-<main class="guest-login-page"><section class="guest-login-card" aria-labelledby="loginTitle"><div class="guest-login-brand"><div class="logo-mark">CA</div><p class="eyebrow">GUEST PORTAL</p><h1 id="loginTitle">Welcome Back</h1><p>Log in to view your booking status, reservation details, and guest account.</p></div><form id="guestLoginForm" class="guest-login-form"><div class="form-group"><label for="email">Email Address</label><input type="email" id="email" placeholder="example@email.com" autocomplete="email" required></div><div class="form-group"><label for="password">Password</label><input type="password" id="password" placeholder="Your Booking Reference" autocomplete="current-password" required></div><div class="login-help"><strong>First-time login?</strong><br>Use the same email address you used for your booking and your <strong>Booking Reference</strong> as your default password.</div><button type="submit" class="continue-button guest-login-button" id="loginButton">Login</button></form><div class="forgot-password"><a href="forgot-password.html">Forgot Password?</a></div><div class="back-home"><a href="../index.html">← Return to booking page</a></div></section></main>
-<script src="../js/offline-api.js?v=20260820-8"></script>
-<script src="js/guest-login.js?v=20260820-5"></script>
+<main class="guest-login-page"><section class="guest-login-card" aria-labelledby="loginTitle"><div class="guest-login-brand"><div class="logo-mark">CA</div><p class="eyebrow">GUEST PORTAL</p><h1 id="loginTitle">Guest Login Temporarily Paused</h1><p>We are temporarily operating from GitHub Pages while the live account database is offline.</p></div><form id="guestLoginForm" class="guest-login-form"><div class="form-group"><label for="email">Email Address</label><input type="email" id="email" placeholder="Guest account access temporarily unavailable" autocomplete="email"></div><div class="form-group"><label for="password">Password</label><input type="password" id="password" placeholder="Guest account access temporarily unavailable" autocomplete="current-password"></div><div class="login-help"><strong>GitHub-only temporary mode</strong><br>No login request will be sent to Vercel or any unavailable API. Existing booking records remain in the live database and are not changed by this temporary page.</div><button type="submit" class="continue-button guest-login-button" id="loginButton" disabled>Guest Login Temporarily Paused</button></form><div class="forgot-password"><a href="mailto:booking@casmartstaycation.com">Need booking assistance? Email us</a></div><div class="back-home"><a href="../index.html">← Return to booking page</a></div></section></main>
+<script src="js/guest-login-github-only-20260820.js"></script>
 </body>
 </html>
