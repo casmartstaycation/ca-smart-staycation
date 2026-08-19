@@ -85,7 +85,21 @@ app.use('/api', require('./routes/guestExtraRequestRoutes'));
 app.use('/api', require('./routes/guestCompanionRoutes'));
 app.use('/api', require('./routes/adminRoutes'));
 app.use('/api', require('./routes/adminBookingStatusRoutes'));
-app.use('/api', require('./routes/roomRoutes')); app.use('/api', require('./routes/guestRoutes')); app.use('/api', require('./routes/guestFastRoutes')); app.use('/api', require('./routes/guestAuthRoutes')); app.use('/api', require('./routes/paymentRecoveryRoutes')); app.use('/api', require('./routes/bookingRoutes')); app.use('/api', require('./routes/guestDocumentRoutes')); app.use('/api', require('./routes/parkingRoutes')); app.use('/api', require('./routes/voucherRoutes')); app.use('/api', require('./routes/messagingRoutes')); app.use('/api/settings',settingsRoutes);
+app.use('/api', require('./routes/roomRoutes'));
+app.use('/api', require('./routes/guestRoutes'));
+app.use('/api', require('./routes/guestFastRoutes'));
+app.use('/api', require('./routes/guestAuthRoutes'));
+app.use('/api', require('./routes/paymentRecoveryRoutes'));
+app.use('/api', require('./routes/bookingRoutes'));
+app.use('/api', require('./routes/guestDocumentRoutes'));
+app.use('/api', require('./routes/parkingRoutes'));
+app.use('/api', require('./routes/voucherRoutes'));
+try {
+  app.use('/api', require('./routes/messagingRoutes'));
+} catch (err) {
+  console.error('MESSAGING ROUTES DISABLED — core API will continue running:', err);
+}
+app.use('/api/settings', settingsRoutes);
 app.get('*',(req,res)=>{if(req.path.startsWith('/api/'))return res.status(404).json({status:'error',message:'Route not found'});return res.sendFile(path.join(frontendRoot,'index.html'));});
 if(!process.env.VERCEL){const PORT=process.env.PORT||3000;app.listen(PORT,()=>{console.log(`🚀 CA Smart Staycation API running on port ${PORT}`);setInterval(expireUnpaidBookings,60000);setInterval(cleanupTerminalBookingUploads,60000);setInterval(()=>processBookingStatusNotifications().catch(err=>console.error("BOOKING STATUS NOTIFICATION ERROR:",err)),15000);expireUnpaidBookings();cleanupTerminalBookingUploads();processBookingStatusNotifications().catch(err=>console.error("INITIAL BOOKING STATUS NOTIFICATION ERROR:",err));});}
 module.exports=app;
