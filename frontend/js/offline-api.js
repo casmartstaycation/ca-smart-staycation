@@ -15,6 +15,7 @@
   'use strict';
 
   const STORAGE_KEY = 'caSmartStaycationOfflineBookings';
+  const BOOKING_NOTICE_ID = 'caBookingServiceNotice';
   const REMOTE_API = String(window.CA_SMART_REMOTE_API || 'https://www.casmartstaycation.com/api').replace(/\/+$/, '');
 
   const roomsFallback = [{
@@ -57,6 +58,91 @@
   function getLocalBookings() {
     const value = readJson(STORAGE_KEY, []);
     return Array.isArray(value) ? value : [];
+  }
+
+  function getSafetyBookings() {
+    const local = getLocalBookings();
+    const safetyHold = {
+      _id: 'ca-api-safety-hold',
+      bookingReference: 'SERVICE-HOLD',
+      room: 'unit-719',
+      parking: 'parking-1',
+      checkIn: '2000-01-01',
+      checkOut: '2100-01-01',
+      bookingStatus: 'Reserved',
+      paymentStatus: 'Pending',
+      offlineSafetyHold: true
+    };
+    return [...local, safetyHold];
+  }
+
+  function applyBookingServiceLock(message) {
+    const form = document.getElementById('guestBookingForm');
+    if (!form) return;
+
+    const submit = form.querySelector('button[type="submit"]');
+    if (submit) {
+      if (!submit.dataset.caApiOriginalText) submit.dataset.caApiOriginalText = submit.innerHTML;
+      submit.dataset.caApiLock = '1';
+      submit.disabled = true;
+      submit.innerHTML = 'Booking Temporarily Unavailable';
+      submit.title = 'Live availability cannot be verified right now.';
+    }
+
+    const grid = document.getElementById('calendarGrid');
+    if (grid) {
+      grid.style.pointerEvents = 'none';
+      grid.style.opacity = '0.65';
+    }
+
+    let notice = document.getElementById(BOOKING_NOTICE_ID);
+    if (!notice) {
+      notice = document.createElement('div');
+      notice.id = BOOKING_NOTICE_ID;
+      notice.setAttribute('role', 'status');
+      notice.style.margin = '12px 0';
+      notice.style.padding = '12px 14px';
+      notice.style.border = '1px solid #d5a62b';
+      notice.style.borderRadius = '10px';
+      notice.style.background = '#fff8df';
+      notice.style.color = '#5a4610';
+      notice.style.fontSize = '14px';
+      notice.style.lineHeight = '1.45';
+      const calendar = document.querySelector('.booking-calendar-card');
+      if (calendar && calendar.parentNode) calendar.parentNode.insertBefore(notice, calendar);
+      else form.insertBefore(notice, form.firstChild);
+    }
+    notice.textContent = message || 'Live availability is temporarily unavailable. Online booking is paused to prevent duplicate reservations. Please try again shortly.';
+  }
+
+  function lockBookingService(message) {
+    const apply = () => applyBookingServiceLock(message);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply, { once: true });
+    else apply();
+  }
+
+  function unlockBookingService() {
+    const apply = () => {
+      const form = document.getElementById('guestBookingForm');
+      const submit = form && form.querySelector('button[type="submit"]');
+      if (submit && submit.dataset.caApiLock === '1') {
+        submit.disabled = false;
+        submit.innerHTML = submit.dataset.caApiOriginalText || 'Submit Booking <span>→</span>';
+        submit.title = '';
+        delete submit.dataset.caApiLock;
+      }
+
+      const grid = document.getElementById('calendarGrid');
+      if (grid) {
+        grid.style.pointerEvents = '';
+        grid.style.opacity = '';
+      }
+
+      const notice = document.getElementById(BOOKING_NOTICE_ID);
+      if (notice) notice.remove();
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply, { once: true });
+    else apply();
   }
 
   function normalizePath(input) {
@@ -115,8 +201,9 @@
       return jsonResponse({ status: 'success', offline: true, database: 'offline' });
     }
     if (path === '/api/bookings') {
-      const bookings = getLocalBookings();
-      return jsonResponse({ success: true, bookings, data: bookings, offline: true });
+      lockBookingService('Live availability is temporarily unavailable. Online booking is paused to prevent duplicate reservations. Please try again shortly.');
+      const bookings = getSafetyBookings();
+      return jsonResponse({ success: true, bookings, data: bookings, offline: true, safetyLocked: true });
     }
     return null;
   }
@@ -163,6 +250,8 @@
             return fallback;
           }
         }
+      } else if (method === 'GET' && path === '/api/bookings') {
+        unlockBookingService();
       }
 
       return response;
@@ -187,8 +276,11 @@
     rooms: roomsFallback,
     parking: parkingFallback,
     settings: settingsFallback,
-    getBookings: getLocalBookings
+    getBookings: getLocalBookings,
+    lockBookingService,
+    unlockBookingService
   };
 
+  lockBookingService('Checking live availability…');
   console.info(`[CA Smart Staycation] API bridge enabled: ${window.CA_SMART_API}`);
 })();
