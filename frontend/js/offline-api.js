@@ -1,18 +1,19 @@
 /*
- * CA Smart Staycation - temporary GitHub Pages static mode
+ * CA Smart Staycation - temporary GitHub Pages mode
  *
- * GitHub Pages is a static host and cannot run the Express/MongoDB API.
- * While Vercel is paused, this bridge serves safe read-only fallback data
- * locally and NEVER sends API requests to Vercel from github.io.
+ * GitHub Pages cannot run the Express/MongoDB API. While Vercel is paused,
+ * github.io serves local room/rate data plus a privacy-safe availability
+ * snapshot. No API request is sent to Vercel from GitHub Pages.
  *
- * Booking/payment/account writes are intentionally blocked so a reservation
- * cannot appear successful only in one browser and create double bookings.
+ * Real booking/payment/account writes remain disabled. Guests can select dates
+ * and send a prefilled email booking request for manual confirmation.
  */
 (function () {
   'use strict';
 
   const GITHUB_ONLY_MODE = window.location.hostname.endsWith('github.io');
   const BOOKING_NOTICE_ID = 'caBookingServiceNotice';
+  const SUPPORT_EMAIL = 'booking@casmartstaycation.com';
 
   const roomsFallback = [{
     _id: 'unit-719', id: 'unit-719', name: 'Unit 719', unitName: 'Unit 719',
@@ -28,8 +29,8 @@
   }];
 
   const parkingFallback = [{
-    _id: 'parking-1', id: 'parking-1', slot: 'P1', name: 'Parking Slot 1',
-    label: 'Parking Slot 1', status: 'Available', available: true,
+    _id: 'parking-1', id: 'parking-1', slot: 'P1', parkingNumber: 'SLOT 9',
+    name: 'Parking Slot 1', label: 'Parking Slot 1', status: 'Available', available: true,
     price: 500, nightlyRate: 500, rate: 500
   }];
 
@@ -41,6 +42,23 @@
     maxGuests: 4, MAX_GUESTS: 4,
     maxFreeChildren: 2, MAX_FREE_CHILDREN: 2
   };
+
+  /*
+   * Privacy-safe snapshot taken from the last healthy live database response
+   * on 2026-08-20 around 12:52 AM Asia/Manila. Only fields needed to block
+   * dates are retained. No guest name, email, phone, address, ID or payment
+   * document is published to GitHub Pages.
+   */
+  const bookingsSnapshot = [{
+    _id: 'availability-snapshot-20260824',
+    room: 'unit-719',
+    parking: 'parking-1',
+    checkIn: '2026-08-24',
+    checkOut: '2026-08-25',
+    bookingStatus: 'Pending Payment Verification',
+    paymentStatus: 'Pending',
+    staticSnapshot: true
+  }];
 
   function jsonResponse(data, status) {
     return new Response(JSON.stringify(data), {
@@ -62,20 +80,6 @@
     return path === '/api' || path.startsWith('/api/');
   }
 
-  function serviceHoldBooking() {
-    return {
-      _id: 'ca-github-static-hold',
-      bookingReference: 'GITHUB-STATIC-MODE',
-      room: 'unit-719',
-      parking: 'parking-1',
-      checkIn: '2000-01-01',
-      checkOut: '2100-01-01',
-      bookingStatus: 'Reserved',
-      paymentStatus: 'Pending',
-      offlineSafetyHold: true
-    };
-  }
-
   function fallbackGet(path) {
     if (path === '/api/rooms') {
       return jsonResponse({ success: true, rooms: roomsFallback, data: roomsFallback, offline: true, githubOnly: true });
@@ -90,27 +94,123 @@
       return jsonResponse({ status: 'success', offline: true, githubOnly: true, database: 'not-connected' });
     }
     if (path === '/api/bookings') {
-      return jsonResponse({ success: true, bookings: [serviceHoldBooking()], data: [serviceHoldBooking()], offline: true, githubOnly: true, safetyLocked: true });
+      return jsonResponse({
+        success: true,
+        bookings: bookingsSnapshot,
+        data: bookingsSnapshot,
+        offline: true,
+        githubOnly: true,
+        snapshotAt: '2026-08-20T00:52:00+08:00'
+      });
     }
     return null;
   }
 
-  function applyBookingServiceLock() {
+  function value(id) {
+    const el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+  }
+
+  function text(id) {
+    const el = document.getElementById(id);
+    return el ? String(el.textContent || '').trim() : '';
+  }
+
+  function bookingTypeLabel(type) {
+    if (type === 'parking') return 'Parking Only';
+    if (type === 'both') return 'Accommodation + Parking';
+    return 'Accommodation Only';
+  }
+
+  function sendEmailBookingRequest(event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const checkIn = value('checkIn');
+    const checkOut = value('checkOut');
+    const firstName = value('firstName');
+    const lastName = value('lastName');
+    const email = value('email');
+    const mobile = value('mobile');
+    const type = value('bookingType') || 'unit';
+
+    if (!checkIn || !checkOut || !firstName || !lastName || !email || !mobile) {
+      alert('Please complete your dates and required guest information first.');
+      return;
+    }
+
+    const roomSelect = document.getElementById('room');
+    const roomName = roomSelect && roomSelect.selectedOptions && roomSelect.selectedOptions[0]
+      ? roomSelect.selectedOptions[0].textContent.trim()
+      : '';
+
+    const lines = [
+      'CA Smart Staycation - Booking Request',
+      '',
+      'IMPORTANT: This is a booking request only. The host must manually confirm availability before payment.',
+      '',
+      `Booking Type: ${bookingTypeLabel(type)}`,
+      `Accommodation: ${type === 'parking' ? 'N/A' : (roomName || 'Unit 719')}`,
+      `Check-in: ${checkIn}`,
+      `Check-out: ${checkOut}`,
+      `Guests (3+): ${type === 'parking' ? 'N/A' : (value('guests') || '0')}`,
+      `Children (0-2): ${type === 'parking' ? 'N/A' : (value('children') || '0')}`,
+      `Parking Requested: ${type === 'parking' || type === 'both' ? 'Yes' : 'No'}`,
+      `Displayed Total: ${text('totalAmount') || 'Please confirm'}`,
+      '',
+      `Guest Name: ${firstName} ${lastName}`,
+      `Email: ${email}`,
+      `Mobile: ${mobile}`,
+      `Address: ${value('address') || 'Not provided'}`
+    ];
+
+    if (type === 'parking' || type === 'both') {
+      lines.push(
+        '',
+        'Vehicle Information:',
+        `Brand: ${value('vehicleBrand') || 'Not provided'}`,
+        `Model: ${value('vehicleModel') || 'Not provided'}`,
+        `Color: ${value('vehicleColor') || 'Not provided'}`,
+        `Plate Number: ${value('plateNumber') || 'Not provided'}`
+      );
+    }
+
+    lines.push(
+      '',
+      'Please reply to confirm the dates and provide the next payment/ID instructions.',
+      '',
+      'Sent from the temporary CA Smart Staycation GitHub Pages booking form.'
+    );
+
+    const body = lines.join('\n');
+    const subject = `Booking Request - ${checkIn} to ${checkOut}`;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(body).catch(function () {});
+    }
+
+    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
+
+  function applyGitHubOnlyMode() {
     const form = document.getElementById('guestBookingForm');
     if (!form) return;
 
     const submit = form.querySelector('button[type="submit"]');
     if (submit) {
-      submit.disabled = true;
-      submit.innerHTML = 'Online Booking Temporarily Paused';
-      submit.title = 'The GitHub Pages site is temporarily running without the live booking database.';
+      submit.disabled = false;
+      submit.innerHTML = 'Email Booking Request <span>→</span>';
+      submit.title = 'Send a booking request by email for manual confirmation.';
     }
 
     const grid = document.getElementById('calendarGrid');
     if (grid) {
-      grid.style.pointerEvents = 'none';
-      grid.style.opacity = '0.65';
+      grid.style.pointerEvents = '';
+      grid.style.opacity = '';
     }
+
+    const idSection = document.getElementById('governmentIdSection');
+    if (idSection) idSection.style.display = 'none';
 
     let notice = document.getElementById(BOOKING_NOTICE_ID);
     if (!notice) {
@@ -130,7 +230,12 @@
       else form.insertBefore(notice, form.firstChild);
     }
 
-    notice.innerHTML = '<strong>Temporary GitHub-only mode.</strong> Live availability and online booking are paused while the booking server is offline. Please contact <a href="mailto:booking@casmartstaycation.com">booking@casmartstaycation.com</a> before reserving.';
+    notice.innerHTML = '<strong>Temporary GitHub-only booking mode.</strong> The calendar uses a privacy-safe availability snapshot checked on <strong>August 20, 2026</strong>. Select your preferred dates, then use <strong>Email Booking Request</strong>. The host must manually confirm availability before you make any payment.';
+
+    if (!form.dataset.caGithubSubmitHandler) {
+      form.dataset.caGithubSubmitHandler = '1';
+      form.addEventListener('submit', sendEmailBookingRequest, true);
+    }
   }
 
   const originalFetch = window.fetch.bind(window);
@@ -147,12 +252,11 @@
         if (fallback) return fallback;
       }
 
-      applyBookingServiceLock();
       console.warn(`[CA Smart Staycation] GitHub-only mode blocked ${method} ${path}; no Vercel request was sent.`);
       return jsonResponse({
         success: false,
         githubOnly: true,
-        message: 'Online booking/account service is temporarily paused while CA Smart Staycation is using GitHub Pages only.'
+        message: 'Live booking/account writes are temporarily paused. Please use the email booking request option.'
       }, 503);
     }
 
@@ -168,14 +272,14 @@
     rooms: roomsFallback,
     parking: parkingFallback,
     settings: settingsFallback,
-    getBookings: function () { return []; },
-    lockBookingService: applyBookingServiceLock,
+    getBookings: function () { return bookingsSnapshot.slice(); },
+    lockBookingService: applyGitHubOnlyMode,
     unlockBookingService: function () {}
   };
 
   if (GITHUB_ONLY_MODE) {
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyBookingServiceLock, { once: true });
-    else applyBookingServiceLock();
-    console.info('[CA Smart Staycation] GitHub-only static mode enabled. Vercel API calls are disabled.');
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyGitHubOnlyMode, { once: true });
+    else applyGitHubOnlyMode();
+    console.info('[CA Smart Staycation] GitHub-only mode enabled. Vercel API calls are disabled; email booking requests are active.');
   }
 })();
