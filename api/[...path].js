@@ -2,9 +2,20 @@ const path = require('path');
 const fs = require('fs');
 
 let app;
+let bootstrapError = null;
+
 function getBackendApp() {
-  if (!app) app = require('../backend/server');
-  return app;
+  if (app) return app;
+  if (bootstrapError) throw bootstrapError;
+
+  try {
+    app = require('../backend/server');
+    return app;
+  } catch (error) {
+    bootstrapError = error;
+    console.error('[CA Smart Staycation] Vercel API bootstrap failed:', error);
+    throw error;
+  }
 }
 
 const allowedApiOrigins = new Set([
@@ -24,6 +35,24 @@ function applyApiCors(req, res) {
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,Cache-Control');
+  res.setHeader('Cache-Control', 'no-store');
+}
+
+function sendBootstrapError(res, error) {
+  const message = String(error && error.message ? error.message : error || 'Unknown backend startup error');
+  const code = error && error.code ? String(error.code) : 'API_BOOTSTRAP_FAILED';
+
+  if (!res.headersSent) {
+    return res.status(500).json({
+      success: false,
+      code: 'API_BOOTSTRAP_FAILED',
+      errorCode: code,
+      message: 'The Vercel API function could not start the backend.',
+      detail: message
+    });
+  }
+
+  return res.end();
 }
 
 module.exports = (req, res) => {
@@ -52,7 +81,12 @@ module.exports = (req, res) => {
       ? requestPath
       : `/api${requestPath === '/' ? '' : requestPath}`;
     req.url = apiPath + query;
-    return getBackendApp()(req, res);
+
+    try {
+      return getBackendApp()(req, res);
+    } catch (error) {
+      return sendBootstrapError(res, error);
+    }
   }
 
   const frontendRoot = path.resolve(__dirname, '..', 'frontend');
@@ -60,8 +94,6 @@ module.exports = (req, res) => {
     ? requestPath.replace(/^\/api\/frontend\/?/, '')
     : requestPath.replace(/^\/+/, '');
 
-  // Legacy guest portal asset paths: older guest pages referenced
-  // /guest-booking/css/style.css while the shared stylesheet lives at /css/style.css.
   if (frontendPath.startsWith('guest-booking/css/')) {
     frontendPath = frontendPath.replace(/^guest-booking\/css\//, 'css/');
   }
@@ -77,14 +109,10 @@ module.exports = (req, res) => {
     return res.sendFile(requestedFile);
   }
 
-  // Never return index.html for a missing CSS/JS/image/font/document asset.
-  // Doing so makes the browser report the asset as text/html and blocks it
-  // under strict MIME checking.
   const assetExtensions = /\.(?:css|js|mjs|json|map|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|otf|pdf|mp4|webm|wav|mp3)$/i;
   if (assetExtensions.test(requestPath)) {
     return res.status(404).json({ status: 'error', message: 'Asset not found' });
   }
 
-  // Preserve the existing SPA fallback for normal document navigation.
   return res.sendFile(path.join(frontendRoot, 'index.html'));
 };
