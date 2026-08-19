@@ -7,6 +7,25 @@ function getBackendApp() {
   return app;
 }
 
+const allowedApiOrigins = new Set([
+  'https://casmartstaycation.github.io',
+  'https://www.casmartstaycation.com',
+  'https://casmartstaycation.com',
+  'http://localhost:3000',
+  'http://localhost:5173'
+]);
+
+function applyApiCors(req, res) {
+  const origin = String(req.headers.origin || '');
+  if (origin && allowedApiOrigins.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,Cache-Control');
+}
+
 module.exports = (req, res) => {
   const originalUrl = String(req.url || '/');
   const requestPath = originalUrl.split('?')[0];
@@ -21,6 +40,14 @@ module.exports = (req, res) => {
   );
 
   if (isApiRequest) {
+    applyApiCors(req, res);
+
+    const origin = String(req.headers.origin || '');
+    if (req.method === 'OPTIONS') {
+      if (origin && !allowedApiOrigins.has(origin)) return res.status(403).end();
+      return res.status(204).end();
+    }
+
     const apiPath = requestPath === '/api' || requestPath.startsWith('/api/')
       ? requestPath
       : `/api${requestPath === '/' ? '' : requestPath}`;
