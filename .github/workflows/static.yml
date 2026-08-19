@@ -1,4 +1,5 @@
 # Deploy the CA Smart Staycation frontend to GitHub Pages
+# Force republish: 2026-08-20 01:03 Asia/Manila
 name: Deploy CA Smart Staycation Frontend
 
 on:
