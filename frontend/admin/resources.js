@@ -1,7 +1,7 @@
-const API="https://ca-smart-staycation-muqd.onrender.com/api";
+const API="/api";
 let rooms=[],parking=[],editing=null,selectedImages=[];
 const $=id=>document.getElementById(id);const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));const token=()=>sessionStorage.getItem("caSmartAdminToken")||"";const headers=()=>({"Content-Type":"application/json",Authorization:`Bearer ${token()}`});
-function ensureAdmin(){if(!token()){alert("Please sign in to the admin account first.");window.location.href="bookings.html";return false}return true}
+function ensureAdmin(){if(window.CASmartAdminAuth?.githubOnly){window.location.href="bookings.html";return false}if(!token()){alert("Please sign in to the admin account first.");window.location.href="bookings.html";return false}return true}
 async function get(path){const r=await fetch(API+path,{cache:"no-store",headers:{Authorization:`Bearer ${token()}`}}),j=await r.json();if(r.status===401||r.status===403)throw Error("Your admin session has expired. Please sign in again.");if(!r.ok)throw Error(j.message||"Request failed");return j.data||[]}
 async function send(path,method,body){const r=await fetch(API+path,{method,headers:headers(),body:JSON.stringify(body)}),j=await r.json();if(r.status===401||r.status===403){sessionStorage.removeItem("caSmartAdminToken");throw Error("Your admin session has expired. Please sign in again")}if(!r.ok)throw Error(j.message||"Request failed");return j.data}
 function statusClass(s){return String(s||"").toLowerCase()==="available"?"available":"occupied"}
