@@ -3,7 +3,8 @@
   "version": 2,
   "functions": {
     "api/[...path].js": {
-      "runtime": "nodejs24.x"
+      "runtime": "nodejs24.x",
+      "includeFiles": "frontend/**"
     }
   },
   "redirects": [
