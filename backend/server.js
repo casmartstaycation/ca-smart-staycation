@@ -7,7 +7,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
-const { waitUntil } = require('@vercel/functions');
+const { waitUntil, attachDatabasePool } = require('@vercel/functions');
 
 const app = express();
 const Booking = require("./models/Booking");
@@ -77,8 +77,64 @@ app.use(cors({ origin: (origin, callback) => { if (!origin || allowedOrigins.has
 app.options('*', cors({ origin: (origin, callback) => { if (!origin || allowedOrigins.has(origin)) return callback(null, true); return callback(null, false); }, credentials: true, methods: ['GET','HEAD','POST','PUT','PATCH','DELETE','OPTIONS'], allowedHeaders: ['Origin','X-Requested-With','Content-Type','Accept','Authorization','Cache-Control'], optionsSuccessStatus: 204 }));
 app.use(morgan('dev')); app.use(express.json({ limit: '10mb' })); app.use(express.urlencoded({ extended: true, limit: '10mb' })); app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 const frontendRoot = path.resolve(__dirname, '..', 'frontend'); app.use(express.static(frontendRoot)); app.get('/', (req,res)=>res.sendFile(path.join(frontendRoot,'index.html')));
-const mongoUri = process.env.MONGODB_URI; let mongoConnectionPromise = null;
-function connectMongoDB() { if (!mongoUri) return Promise.reject(new Error('MONGODB_URI environment variable is not configured in Vercel.')); if (mongoose.connection.readyState === 1) return Promise.resolve(mongoose.connection); if (!mongoConnectionPromise) { mongoConnectionPromise = mongoose.connect(mongoUri,{serverSelectionTimeoutMS:10000,connectTimeoutMS:10000,maxPoolSize:5,bufferCommands:false}).then(()=>{console.log('✅ MongoDB Connected');return mongoose.connection;}).catch(err=>{mongoConnectionPromise=null;console.error('MongoDB Error:',err.message);throw err;}); } return mongoConnectionPromise; }
+
+const mongoUri = process.env.MONGODB_URI;
+const mongoState = globalThis.__caSmartStaycationMongo || (globalThis.__caSmartStaycationMongo = {
+  connectPromise: null,
+  attachedClient: null
+});
+
+function attachMongoPoolToVercel() {
+  if (!process.env.VERCEL || typeof attachDatabasePool !== 'function') return;
+  const client = typeof mongoose.connection.getClient === 'function'
+    ? mongoose.connection.getClient()
+    : null;
+  if (!client || mongoState.attachedClient === client) return;
+  try {
+    attachDatabasePool(client);
+    mongoState.attachedClient = client;
+    console.log('✅ MongoDB pool attached to Vercel lifecycle');
+  } catch (err) {
+    console.warn('MongoDB Vercel pool attachment warning:', err.message);
+  }
+}
+
+function connectMongoDB() {
+  if (!mongoUri) {
+    return Promise.reject(new Error('MONGODB_URI environment variable is not configured in Vercel.'));
+  }
+
+  if (mongoose.connection.readyState === 1) {
+    attachMongoPoolToVercel();
+    return Promise.resolve(mongoose.connection);
+  }
+
+  if (mongoState.connectPromise) return mongoState.connectPromise;
+
+  mongoState.connectPromise = mongoose.connect(mongoUri, {
+    serverSelectionTimeoutMS: 10000,
+    connectTimeoutMS: 10000,
+    maxPoolSize: 5,
+    minPoolSize: 0,
+    maxIdleTimeMS: 5000,
+    bufferCommands: false
+  }).then(() => {
+    attachMongoPoolToVercel();
+    console.log('✅ MongoDB Connected');
+    return mongoose.connection;
+  }).catch(err => {
+    console.error('MongoDB Error:', err.message);
+    throw err;
+  }).finally(() => {
+    // Keep only the live Mongoose connection. If it ever disconnects,
+    // a future request can create a fresh connect promise instead of
+    // returning a stale, already-resolved promise.
+    mongoState.connectPromise = null;
+  });
+
+  return mongoState.connectPromise;
+}
+
 app.get('/api/health',async(req,res)=>{try{await connectMongoDB();res.json({status:'success',message:'CA Smart Staycation API is running',database:'connected',timestamp:new Date()});}catch(err){res.status(503).json({status:'error',message:'Database unavailable',error:err.message});}});
 app.use('/api',async(req,res,next)=>{try{await connectMongoDB();const maintenanceTask=cleanupExpiredTransientUploads().catch(err=>console.error("24H UPLOAD CLEANUP TRIGGER ERROR:",err)).then(()=>cleanupTerminalBookingUploads().catch(err=>console.error("UPLOAD CLEANUP TRIGGER ERROR:",err)));if(process.env.VERCEL)waitUntil(maintenanceTask);next();}catch(err){console.error('API DATABASE CONNECTION ERROR:',err.message);res.status(503).json({success:false,message:'Database connection unavailable. Check the MONGODB_URI and MongoDB Atlas network access settings.'});}});
 async function expireUnpaidBookings(){try{const result=await Booking.updateMany({paymentDeadline:{$ne:null,$lte:new Date()},paymentProof:{$in:[null,""]},paymentStatus:{$ne:"Paid"},bookingStatus:{$in:["Reserved","Waiting for Payment","Payment Rejected"]}},{$set:{bookingStatus:"Expired"}});if(result.modifiedCount)console.log(`⏰ Auto-expired ${result.modifiedCount} unpaid booking(s).`);}catch(err){console.error("BOOKING EXPIRATION ERROR:",err);}}
