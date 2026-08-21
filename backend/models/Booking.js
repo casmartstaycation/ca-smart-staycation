@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const GuestAccount = require("./GuestAccount");
 const Setting = require("./Setting");
+const ExternalCalendar = require("./ExternalCalendar");
 
 const bookingSchema = new mongoose.Schema({
   bookingReference: { type: String, required: true, unique: true },
@@ -47,6 +48,15 @@ bookingSchema.pre("validate", async function() {
   if (!(this.isNew || this.isModified("checkIn") || this.isModified("checkOut"))) return;
   const start = new Date(this.checkIn), end = new Date(this.checkOut);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return;
+
+  const startKey = `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, "0")}-${String(start.getUTCDate()).padStart(2, "0")}`;
+  const endKey = `${end.getUTCFullYear()}-${String(end.getUTCMonth() + 1).padStart(2, "0")}-${String(end.getUTCDate()).padStart(2, "0")}`;
+  const externalConflict = await ExternalCalendar.findOne({
+    enabled: true,
+    events: { $elemMatch: { start: { $lt: endKey }, end: { $gt: startKey } } }
+  }).select("name").lean();
+  if (externalConflict) throw new Error(`Selected dates are unavailable because they are reserved on ${externalConflict.name || "another booking site"}.`);
+
   const settings = await Setting.findOne().select("blockedDates").lean();
   const blocked = new Set((settings?.blockedDates || []).map(item => String(item?.date || "").trim()).filter(Boolean));
   if (!blocked.size) return;
