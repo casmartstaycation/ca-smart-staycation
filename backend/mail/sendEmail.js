@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const { getAdminContactContext, appendAdminContactToHtml } = require("../services/adminContact");
 
 // Render Free blocks outbound SMTP connections. Use the HTTP email API when
 // RESEND_API_KEY is configured; SMTP remains available as a local/paid-host
@@ -96,15 +97,30 @@ async function sendViaSmtp(to, subject, html) {
     }
 }
 
+async function prepareEmailHtml(to, html) {
+    const source = String(html ?? "");
+    try {
+        const { contact, adminEmails } = await getAdminContactContext();
+        const recipient = String(to || "").trim().toLowerCase();
+        if (!contact || adminEmails.has(recipient)) return source;
+        return appendAdminContactToHtml(source, contact);
+    } catch (err) {
+        console.error("EMAIL ADMIN CONTACT FOOTER ERROR:", err && err.message ? err.message : err);
+        return source;
+    }
+}
+
 async function sendEmail(to, subject, html) {
     if (!to) throw new Error("Email recipient is missing.");
 
+    const preparedHtml = await prepareEmailHtml(to, html);
+
     // Prefer the HTTP API. This avoids Render's outbound SMTP restrictions.
     if (resendApiKey) {
-        return sendViaResend(to, subject, html);
+        return sendViaResend(to, subject, preparedHtml);
     }
 
-    return sendViaSmtp(to, subject, html);
+    return sendViaSmtp(to, subject, preparedHtml);
 }
 
 module.exports = sendEmail;
