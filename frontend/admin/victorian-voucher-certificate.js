@@ -47,7 +47,7 @@
     x.fillStyle="#8a672d";x.font="bold 19px Arial";x.fillText(`VOUCHER CODE  •  ${v.code}`,800,440);
     x.fillStyle="#555a56";x.font="17px Arial";x.fillText(v.maxNights?`Valid for up to ${v.maxNights} night${v.maxNights===1?"":"s"}`:"No night limit",800,474);
     x.fillText(v.expiresAt?`Valid until ${new Date(v.expiresAt).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}`:"No expiration date",800,502);
-    x.fillStyle="#8a672d";x.font="bold 17px Arial";x.fillText(v.discountPercent===100?"COMPLIMENTARY STAY  •  NON-REFUNDABLE  •  NON-CANCELLABLE":"SPECIAL GUEST PRIVILEGE",800,542);
+    x.fillStyle="#8a672d";x.font="bold 17px Arial";x.fillText(v.discountPercent===100?"COMPLIMENTARY STAY  •  NON-REFUNDABLE  •  NON-CANCELLABLE  •  NON-TRANSFERABLE":"SPECIAL GUEST PRIVILEGE",800,542);
 
     // Website details stay in the bottom-left corner and match the QR destination.
     x.textAlign="left";x.fillStyle="#173f35";x.font="bold 14px Arial";x.fillText("BOOK YOUR STAY",100,570);
