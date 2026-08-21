@@ -6,6 +6,8 @@ const { cleanupExpiredMessageAttachments } = require("./messageAttachmentCleanup
 
 const UPLOAD_TTL_MS = 24 * 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
+const CLEANUP_LOCK_MS = 5 * 60 * 1000;
+const LOCK_ID = "transient-upload-retention";
 let lastCleanupAt = 0;
 let cleanupPromise = null;
 
@@ -17,6 +19,62 @@ function asTime(value) {
 
 function isObjectIdString(value) {
   return /^[a-f0-9]{24}$/i.test(String(value || "").trim());
+}
+
+async function claimCleanupLease(force = false) {
+  if (!mongoose.connection.db) return false;
+  const collection = mongoose.connection.db.collection("maintenance_locks");
+  const now = new Date();
+  const epoch = new Date(0);
+
+  await collection.updateOne(
+    { _id: LOCK_ID },
+    { $setOnInsert: { nextRunAt: epoch, lockedUntil: epoch, createdAt: now } },
+    { upsert: true }
+  );
+
+  const filter = { _id: LOCK_ID, lockedUntil: { $lte: now } };
+  if (!force) filter.nextRunAt = { $lte: now };
+
+  const claimed = await collection.findOneAndUpdate(
+    filter,
+    {
+      $set: {
+        lockedUntil: new Date(now.getTime() + CLEANUP_LOCK_MS),
+        nextRunAt: new Date(now.getTime() + CLEANUP_INTERVAL_MS),
+        startedAt: now
+      }
+    },
+    { returnDocument: "after" }
+  );
+
+  return Boolean(claimed);
+}
+
+async function releaseCleanupLease(result = {}) {
+  if (!mongoose.connection.db) return;
+  try {
+    await mongoose.connection.db.collection("maintenance_locks").updateOne(
+      { _id: LOCK_ID },
+      {
+        $set: {
+          lockedUntil: new Date(0),
+          finishedAt: new Date(),
+          lastResult: {
+            ttlHours: 24,
+            messageAttachmentSetsCleared: Number(result.messageAttachmentSetsCleared || 0),
+            bookingsChanged: Number(result.bookingsChanged || 0),
+            bookingFilesCleared: Number(result.bookingFilesCleared || 0),
+            companionIdsCleared: Number(result.companionIdsCleared || 0),
+            oldGridFsFilesDeleted: Number(result.oldGridFsFilesDeleted || 0),
+            error: String(result.error || "").slice(0, 500)
+          }
+        }
+      }
+    );
+  } catch (err) {
+    console.error("UPLOAD CLEANUP LEASE RELEASE ERROR:", err.message);
+  }
 }
 
 async function storedValueExpired(value, preferredTimestamp, fallbackTimestamp, cutoffMs) {
@@ -46,7 +104,16 @@ async function deleteStoredValue(value) {
 }
 
 async function cleanupBookingUploads(cutoffMs) {
-  const bookings = await Booking.find({}).select(
+  const present = { $nin: [null, ""] };
+  const bookings = await Booking.find({
+    $or: [
+      { paymentProof: present },
+      { governmentId: present },
+      { driversLicense: present },
+      { reschedulePaymentProof: present },
+      { "extraRequests.paymentProof": present }
+    ]
+  }).select(
     "_id createdAt updatedAt paymentProof paymentDate paymentProofSubmittedAt governmentId driversLicense reschedulePaymentProof reschedulePaymentSubmittedAt extraRequests"
   ).lean();
 
@@ -179,12 +246,20 @@ async function cleanupKnownOrphanGridFsFiles(cutoffMs) {
 async function cleanupExpiredTransientUploads(force = false) {
   const now = Date.now();
   if (!force && now - lastCleanupAt < CLEANUP_INTERVAL_MS) {
-    return { skipped: true, ttlHours: 24 };
+    return { skipped: true, reason: "local-throttle", ttlHours: 24 };
   }
   if (cleanupPromise) return cleanupPromise;
 
   cleanupPromise = (async () => {
+    let leaseClaimed = false;
+    let result = { skipped: true, ttlHours: 24 };
     try {
+      leaseClaimed = await claimCleanupLease(force);
+      if (!leaseClaimed) {
+        lastCleanupAt = Date.now();
+        return { skipped: true, reason: "shared-throttle", ttlHours: 24 };
+      }
+
       const cutoffMs = now - UPLOAD_TTL_MS;
       const messageResult = await cleanupExpiredMessageAttachments(force);
       const bookingResult = await cleanupBookingUploads(cutoffMs);
@@ -192,7 +267,7 @@ async function cleanupExpiredTransientUploads(force = false) {
       const oldGridFsFilesDeleted = await cleanupKnownOrphanGridFsFiles(cutoffMs);
 
       lastCleanupAt = Date.now();
-      const result = {
+      result = {
         skipped: false,
         ttlHours: 24,
         messageAttachmentSetsCleared: Number(messageResult?.cleared || 0),
@@ -207,8 +282,10 @@ async function cleanupExpiredTransientUploads(force = false) {
       return result;
     } catch (err) {
       console.error("24-HOUR UPLOAD RETENTION CLEANUP ERROR:", err);
-      return { skipped: false, ttlHours: 24, error: err.message };
+      result = { skipped: false, ttlHours: 24, error: err.message };
+      return result;
     } finally {
+      if (leaseClaimed) await releaseCleanupLease(result);
       cleanupPromise = null;
     }
   })();
