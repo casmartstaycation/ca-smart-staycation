@@ -131,7 +131,7 @@ async function syncCalendar(calendar) {
     return calendar;
   } catch (err) {
     calendar.lastError = String(err.message || 'Calendar sync failed.').slice(0, 300);
-    await calendar.save();
+    if (!calendar.isNew) await calendar.save();
     throw err;
   }
 }
