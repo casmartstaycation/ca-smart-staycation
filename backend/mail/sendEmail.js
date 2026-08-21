@@ -16,6 +16,9 @@ const smtpSecure = String(process.env.SMTP_SECURE || (smtpPort === 465)).toLower
 const emailUser = String(process.env.EMAIL_USER || "").trim();
 const emailPass = String(process.env.EMAIL_PASS || "").trim();
 
+const CANONICAL_PUBLIC_BASE = "https://www.casmartstaycation.com";
+const LEGACY_GITHUB_PUBLIC_BASE_RE = /https:\/\/casmartstaycation\.github\.io\/cassbooking\b/gi;
+
 const transporter = nodemailer.createTransport({
     host: smtpHost,
     port: smtpPort,
@@ -97,8 +100,12 @@ async function sendViaSmtp(to, subject, html) {
     }
 }
 
+function normalizePublicLinks(html) {
+    return String(html ?? "").replace(LEGACY_GITHUB_PUBLIC_BASE_RE, CANONICAL_PUBLIC_BASE);
+}
+
 async function prepareEmailHtml(to, html) {
-    const source = String(html ?? "");
+    const source = normalizePublicLinks(html);
     try {
         const { contact, adminEmails } = await getAdminContactContext();
         const recipient = String(to || "").trim().toLowerCase();
