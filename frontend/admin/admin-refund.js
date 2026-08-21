@@ -11,3 +11,11 @@
   function boot(){installRefundAction();addNotificationBadge();refreshUnread();setInterval(refreshUnread,15000);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
+
+(function loadSecurityDepositRefundControls(){
+  if (document.querySelector('script[data-security-deposit-refund-controls]')) return;
+  const script = document.createElement('script');
+  script.src = 'admin-security-deposit.js?v=20260822-1';
+  script.dataset.securityDepositRefundControls = '1';
+  document.head.appendChild(script);
+})();
