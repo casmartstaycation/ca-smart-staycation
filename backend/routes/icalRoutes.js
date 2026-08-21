@@ -4,7 +4,6 @@ const Booking = require('../models/Booking');
 const Setting = require('../models/Setting');
 
 const router = express.Router();
-
 const NON_BLOCKING_STATUSES = new Set(['Cancelled', 'Expired']);
 
 function toDateOnly(value) {
@@ -43,6 +42,19 @@ function escapeText(value) {
     .replace(/;/g, '\\;');
 }
 
+function foldLine(line) {
+  const chunks = [];
+  let rest = String(line);
+  while (Buffer.byteLength(rest, 'utf8') > 75) {
+    let cut = 75;
+    while (Buffer.byteLength(rest.slice(0, cut), 'utf8') > 75) cut -= 1;
+    chunks.push(rest.slice(0, cut));
+    rest = ` ${rest.slice(cut)}`;
+  }
+  chunks.push(rest);
+  return chunks.join('\r\n');
+}
+
 function eventLines({ uid, start, end, summary, description }) {
   return [
     'BEGIN:VEVENT',
@@ -61,7 +73,7 @@ function eventLines({ uid, start, end, summary, description }) {
 async function buildCalendar() {
   const [bookings, settings] = await Promise.all([
     Booking.find({ bookingStatus: { $nin: Array.from(NON_BLOCKING_STATUSES) } })
-      .select('_id room parkingOnly checkIn checkOut bookingStatus updatedAt')
+      .select('_id room parkingOnly checkIn checkOut')
       .populate({ path: 'room', select: 'unitName unitNumber category' })
       .lean()
       .sort({ checkIn: 1 }),
@@ -93,7 +105,7 @@ async function buildCalendar() {
       start,
       end,
       summary: `Booked - ${unit}`,
-      description: 'CA Smart Staycation occupied dates. Guest information is intentionally excluded from this public calendar feed.'
+      description: 'CA Smart Staycation occupied dates.'
     }));
   }
 
@@ -101,18 +113,17 @@ async function buildCalendar() {
     const start = compactDate(item?.date);
     const end = nextDateOnly(item?.date);
     if (!start || !end) continue;
-
     lines.push(...eventLines({
       uid: uidFor(`blocked:${item.date}`),
       start,
       end,
       summary: 'Blocked - CA Smart Staycation',
-      description: item?.reason ? `Admin blocked date: ${item.reason}` : 'Admin blocked date.'
+      description: 'CA Smart Staycation blocked date.'
     }));
   }
 
   lines.push('END:VCALENDAR');
-  return `${lines.join('\r\n')}\r\n`;
+  return `${lines.map(foldLine).join('\r\n')}\r\n`;
 }
 
 async function sendCalendar(req, res) {
