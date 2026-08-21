@@ -1,6 +1,5 @@
 /* Elegant European hotel-style certificate border override. Loaded for voucher certificate generation. */
 (function () {
-  // Use the production CA Smart Staycation website for the voucher QR code and printed website details.
   const BOOKING_URL = "https://www.casmartstaycation.com/";
   const BOOKING_WEBSITE = "www.casmartstaycation.com";
 
@@ -28,9 +27,12 @@
 
   window.certificateImage = async function(v, guest) {
     const c=document.createElement("canvas"),x=c.getContext("2d"); c.width=1600;c.height=760;const W=c.width,H=c.height;
+    const parkingVoucher=String(v.discountScope||"").toLowerCase()==="parking";
+    const discountPercent=Number(v.discountPercent||0);
+    const offerText=parkingVoucher?(discountPercent===100?"FREE PARKING":`${discountPercent}% PARKING OFF`):`${discountPercent}% OFF`;
+    const privilegeText=parkingVoucher?"PARKING PRIVILEGE  •  NON-TRANSFERABLE":(discountPercent===100?"COMPLIMENTARY STAY  •  NON-REFUNDABLE  •  NON-CANCELLABLE  •  NON-TRANSFERABLE":"SPECIAL GUEST PRIVILEGE");
     const bg=x.createLinearGradient(0,0,W,H);bg.addColorStop(0,"#faf5e9");bg.addColorStop(.5,"#fffdf8");bg.addColorStop(1,"#f1e7d0");x.fillStyle=bg;x.fillRect(0,0,W,H);
 
-    // Elegant layered European hotel frame — restrained gold and emerald.
     x.strokeStyle="#173f35";x.lineWidth=18;x.strokeRect(24,24,W-48,H-48);
     x.strokeStyle="#d8b45b";x.lineWidth=3;x.strokeRect(43,43,W-86,H-86);
     x.strokeStyle="#b08a3c";x.lineWidth=1;x.strokeRect(51,51,W-102,H-102);
@@ -39,17 +41,16 @@
     divider(x,W/2,64,false);divider(x,W/2,H-64,true);
 
     x.textAlign="left";x.fillStyle="#173f35";x.font="bold 23px Georgia";x.fillText("CA SMART STAYCATION",100,112);
-    x.fillStyle="#b08a3c";x.font="13px Georgia";x.fillText("SPECIAL GUEST PRIVILEGE",100,135);
-    x.textAlign="center";x.fillStyle="#173f35";x.font="bold 48px Georgia";x.fillText(v.certificateTitle||"SPECIAL GUEST VOUCHER",800,202);
-    x.fillStyle="#a67c32";x.font="bold 60px Georgia";x.fillText(`${v.discountPercent}% OFF`,800,288);
+    x.fillStyle="#b08a3c";x.font="13px Georgia";x.fillText(parkingVoucher?"PARKING GUEST PRIVILEGE":"SPECIAL GUEST PRIVILEGE",100,135);
+    x.textAlign="center";x.fillStyle="#173f35";x.font="bold 48px Georgia";x.fillText(v.certificateTitle||(parkingVoucher?"PARKING DISCOUNT VOUCHER":"SPECIAL GUEST VOUCHER"),800,202);
+    x.fillStyle="#a67c32";x.font="bold 60px Georgia";x.fillText(offerText,800,288);
     x.fillStyle="#555a56";x.font="21px Georgia";x.fillText("Presented exclusively to",800,334);
     x.fillStyle="#173f35";x.font="bold 40px Georgia";x.fillText(guest||"Special Guest",800,388);
     x.fillStyle="#8a672d";x.font="bold 19px Arial";x.fillText(`VOUCHER CODE  •  ${v.code}`,800,440);
     x.fillStyle="#555a56";x.font="17px Arial";x.fillText(v.maxNights?`Valid for up to ${v.maxNights} night${v.maxNights===1?"":"s"}`:"No night limit",800,474);
     x.fillText(v.expiresAt?`Valid until ${new Date(v.expiresAt).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}`:"No expiration date",800,502);
-    x.fillStyle="#8a672d";x.font="bold 17px Arial";x.fillText(v.discountPercent===100?"COMPLIMENTARY STAY  •  NON-REFUNDABLE  •  NON-CANCELLABLE  •  NON-TRANSFERABLE":"SPECIAL GUEST PRIVILEGE",800,542);
+    x.fillStyle="#8a672d";x.font="bold 17px Arial";x.fillText(privilegeText,800,542);
 
-    // Website details stay in the bottom-left corner and match the QR destination.
     x.textAlign="left";x.fillStyle="#173f35";x.font="bold 14px Arial";x.fillText("BOOK YOUR STAY",100,570);
     x.fillStyle="#8a672d";x.font="bold 15px Arial";x.fillText(`Website: ${BOOKING_WEBSITE}`,100,595);
     x.fillStyle="#555a56";x.font="13px Arial";x.fillText("Scan the QR code or visit the website to book.",100,618);

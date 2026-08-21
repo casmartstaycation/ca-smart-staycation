@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const voucherSchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true, trim: true, uppercase: true },
   discountPercent: { type: Number, required: true, min: 1, max: 100 },
+  discountScope: { type: String, enum: ["booking", "parking"], default: "booking" },
   maxNights: { type: Number, default: null, min: 1 },
   active: { type: Boolean, default: true },
   usageLimit: { type: Number, default: 1 },
