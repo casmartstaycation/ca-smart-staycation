@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const sendEmail = require("../mail/sendEmail");
+const { getAdminContactContext, appendAdminContactToText } = require("../services/adminContact");
 
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || process.env.EMAIL_USER || "casmartstaycation@gmail.com").trim().toLowerCase();
 
@@ -32,6 +33,16 @@ const notificationSchema = new mongoose.Schema({
   type: { type: String, default: "general" },
   read: { type: Boolean, default: false }
 }, { timestamps: true });
+
+notificationSchema.pre("validate", async function addAdminContactToGuestMessage() {
+  if (this.recipientType !== "guest") return;
+  try {
+    const { contact } = await getAdminContactContext();
+    if (contact) this.message = appendAdminContactToText(this.message, contact);
+  } catch (err) {
+    console.error("GUEST NOTIFICATION ADMIN CONTACT ERROR:", err?.message || err);
+  }
+});
 
 notificationSchema.post("save", function sendNotificationEmail(doc) {
   // Status emails are already handled by bookingStatusNotifier.js.
