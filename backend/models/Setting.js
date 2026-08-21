@@ -9,7 +9,12 @@ const settingSchema = new mongoose.Schema({
     securityDeposit: { type: Number, default: 1000 },
     adminNotificationEmail: { type: String, default: "" },
     adminNotificationEmails: { type: [String], default: [] },
-    adminContactNumber: { type: String, default: "" }
+    adminContactNumber: { type: String, default: "" },
+    blockedDates: [{
+        date: { type: String, required: true },
+        reason: { type: String, default: "Maintenance" },
+        createdAt: { type: Date, default: Date.now }
+    }]
 });
 
 module.exports = mongoose.model("Setting", settingSchema);
