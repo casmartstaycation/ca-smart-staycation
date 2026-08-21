@@ -14,6 +14,11 @@ const settingSchema = new mongoose.Schema({
         date: { type: String, required: true },
         reason: { type: String, default: "Maintenance" },
         createdAt: { type: Date, default: Date.now }
+    }],
+    parkingBlockedDates: [{
+        date: { type: String, required: true },
+        reason: { type: String, default: "Maintenance" },
+        createdAt: { type: Date, default: Date.now }
     }]
 });
 
