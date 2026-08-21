@@ -2,7 +2,6 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 
 const DEFAULT_ADMIN_EMAIL = "markryantamayo@gmail.com";
-const ADMIN_SESSION_MIN_IAT = 1787331840; // 2026-08-21T17:04:00Z; invalidates sessions running the old fetch-loop script.
 
 function getAdminJwtSecret() {
   const password = String(process.env.ADMIN_PASSWORD || "");
@@ -25,14 +24,6 @@ function requireAdmin(req, res, next) {
 
   try {
     const payload = jwt.verify(token, secret);
-    const issuedAt = Number(payload.iat || 0);
-    if (!issuedAt || issuedAt < ADMIN_SESSION_MIN_IAT) {
-      return res.status(401).json({
-        success: false,
-        code: "ADMIN_SESSION_REFRESH_REQUIRED",
-        message: "Admin session refreshed. Please sign in again."
-      });
-    }
     if (payload.role !== "admin" || String(payload.email || "").toLowerCase() !== expectedEmail) {
       return res.status(403).json({ success: false, message: "Admin access required." });
     }
