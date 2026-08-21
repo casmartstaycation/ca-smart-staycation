@@ -9,6 +9,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const room = document.getElementById('room');
   const roomGroup = document.getElementById('roomGroup');
 
+  const bookingGrid = type?.closest('.form-grid');
+  if (bookingGrid && type?.parentElement) {
+    type.parentElement.id = type.parentElement.id || 'bookingTypeGroup';
+    bookingGrid.classList.add('booking-details-grid');
+
+    if (!document.getElementById('bookingDetailsRowStyles')) {
+      const style = document.createElement('style');
+      style.id = 'bookingDetailsRowStyles';
+      style.textContent = `
+        @media (min-width: 901px) {
+          .booking-details-grid {
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+          }
+          .booking-details-grid > #bookingTypeGroup,
+          .booking-details-grid > #parkingGroup,
+          .booking-details-grid > #roomGroup {
+            grid-column: span 2;
+          }
+          .booking-details-grid > .full-width {
+            grid-column: 1 / -1;
+          }
+          .booking-details-grid > #guestsGroup,
+          .booking-details-grid > #childrenGroup {
+            grid-column: span 3;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+
   if (type && idSection && idInput && room && roomGroup) {
     function updateDocumentRequirements() {
       const parkingOnly = type.value === 'parking';
