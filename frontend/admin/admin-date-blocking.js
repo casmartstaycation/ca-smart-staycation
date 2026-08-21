@@ -190,5 +190,7 @@
       loadBlockedDates('parking');
     }
   });
-  new MutationObserver(mount).observe(document.documentElement, { childList: true, subtree: true });
+  new MutationObserver(() => {
+    if (!document.getElementById('adminDateBlocking') || !document.getElementById('adminParkingDateBlocking')) mount();
+  }).observe(document.documentElement, { childList: true, subtree: true });
 })();
