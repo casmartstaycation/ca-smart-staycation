@@ -16,7 +16,7 @@ const smtpSecure = String(process.env.SMTP_SECURE || (smtpPort === 465)).toLower
 const emailUser = String(process.env.EMAIL_USER || "").trim();
 const emailPass = String(process.env.EMAIL_PASS || "").trim();
 
-const CANONICAL_PUBLIC_BASE = "https://casmartstaycation.com";
+const CANONICAL_PUBLIC_BASE = "https://www.casmartstaycation.com";
 const LEGACY_GITHUB_PUBLIC_BASE_RE = /https:\/\/casmartstaycation\.github\.io\/cassbooking\b/gi;
 
 const transporter = nodemailer.createTransport({
