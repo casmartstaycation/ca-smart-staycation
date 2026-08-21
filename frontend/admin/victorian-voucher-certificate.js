@@ -1,6 +1,8 @@
-/* Elegant European hotel-style certificate border override. Loaded after voucher-admin.js. */
+/* Elegant European hotel-style certificate border override. Loaded for voucher certificate generation. */
 (function () {
+  // Keep voucher QR/barcode destination on the original GitHub Pages booking website.
   const BOOKING_URL = "https://casmartstaycation.github.io/cassbooking/";
+  const BOOKING_WEBSITE = "casmartstaycation.github.io/cassbooking/";
 
   function loadQr(text) {
     return new Promise((resolve, reject) => {
@@ -47,7 +49,12 @@
     x.fillText(v.expiresAt?`Valid until ${new Date(v.expiresAt).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}`:"No expiration date",800,502);
     x.fillStyle="#8a672d";x.font="bold 17px Arial";x.fillText(v.discountPercent===100?"COMPLIMENTARY STAY  •  NON-REFUNDABLE  •  NON-CANCELLABLE":"SPECIAL GUEST PRIVILEGE",800,542);
 
-    x.textAlign="left";x.fillStyle="#173f35";x.font="bold 14px Arial";x.fillText("BOOK YOUR STAY",100,570);x.fillStyle="#8a672d";x.font="bold 15px Arial";x.fillText(BOOKING_URL.replace(/^https?:\/\//,""),100,595);x.fillStyle="#555a56";x.font="13px Arial";x.fillText("Scan the QR code or visit the website to book.",100,618);x.fillStyle="#a67c32";x.font="italic 15px Georgia";x.fillText("Elegance • Comfort • Exceptional Stay",100,680);
+    // Website details stay in the bottom-left corner and match the QR destination.
+    x.textAlign="left";x.fillStyle="#173f35";x.font="bold 14px Arial";x.fillText("BOOK YOUR STAY",100,570);
+    x.fillStyle="#8a672d";x.font="bold 15px Arial";x.fillText(`Website: ${BOOKING_WEBSITE}`,100,595);
+    x.fillStyle="#555a56";x.font="13px Arial";x.fillText("Scan the QR code or visit the GitHub website to book.",100,618);
+    x.fillStyle="#a67c32";x.font="italic 15px Georgia";x.fillText("Elegance • Comfort • Exceptional Stay",100,680);
+
     try{const qr=await loadQr(BOOKING_URL);x.fillStyle="#fff";x.fillRect(1310,120,200,200);x.strokeStyle="#b08a3c";x.lineWidth=2;x.strokeRect(1310,120,200,200);x.drawImage(qr,1322,132,176,176);x.fillStyle="#173f35";x.textAlign="center";x.font="bold 15px Arial";x.fillText("SCAN TO BOOK",1410,345)}catch(e){x.fillStyle="#555a56";x.textAlign="center";x.font="13px Arial";x.fillText("QR unavailable",1410,220)}
     return c.toDataURL("image/png");
   };
