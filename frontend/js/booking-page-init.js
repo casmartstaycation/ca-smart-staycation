@@ -26,17 +26,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const blockedDateKeys = new Set();
   const parkingBlockedDateKeys = new Set();
   const dateKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const selectedParking = () => document.getElementById('parking')?.value || '';
+  const bookingUsesParking = bookingType => bookingType === 'parking' || (bookingType === 'both' && selectedParking() && selectedParking() !== 'none');
   const isAdminBlockedForType = (date, bookingType) => {
     const key = dateKey(date);
     if (bookingType === 'parking') return parkingBlockedDateKeys.has(key);
-    if (bookingType === 'both') return blockedDateKeys.has(key) || parkingBlockedDateKeys.has(key);
+    if (bookingType === 'both') return blockedDateKeys.has(key) || (bookingUsesParking(bookingType) && parkingBlockedDateKeys.has(key));
     return blockedDateKeys.has(key);
   };
 
   const originalIsDateBooked = typeof window.isDateBooked === 'function' ? window.isDateBooked : null;
   if (originalIsDateBooked) {
     window.isDateBooked = function(date) {
-      const bookingType = document.getElementById('bookingType')?.value || 'unit';
+      const bookingType = document.getElementById('bookingType')?.value || 'both';
       if (isAdminBlockedForType(date, bookingType)) return true;
       return originalIsDateBooked(date);
     };
@@ -46,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (originalRenderCalendar) {
     window.renderCalendar = function() {
       originalRenderCalendar();
-      const bookingType = document.getElementById('bookingType')?.value || 'unit';
+      const bookingType = document.getElementById('bookingType')?.value || 'both';
       document.querySelectorAll('#calendarGrid .calendar-day:not(.empty)').forEach(cell => {
         const day = Number(cell.textContent.trim());
         if (!day) return;
@@ -57,8 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isAdminBlockedForType(date, bookingType)) return;
         cell.classList.add('booked', 'admin-blocked');
         if (bookingType === 'parking') cell.title = 'Parking unavailable';
-        else if (bookingType === 'both' && unitBlocked && parkingBlocked) cell.title = 'Accommodation and parking unavailable';
-        else if (bookingType === 'both' && parkingBlocked) cell.title = 'Parking unavailable';
+        else if (bookingType === 'both' && bookingUsesParking(bookingType) && unitBlocked && parkingBlocked) cell.title = 'Accommodation and parking unavailable';
+        else if (bookingType === 'both' && bookingUsesParking(bookingType) && parkingBlocked) cell.title = 'Parking unavailable';
         else cell.title = 'Accommodation unavailable';
       });
     };
@@ -97,11 +99,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const target = new Date(currentYear, currentMonth, day);
     target.setHours(0, 0, 0, 0);
-    const bookingType = document.getElementById('bookingType')?.value || 'unit';
+    const bookingType = document.getElementById('bookingType')?.value || 'both';
 
     if (isAdminBlockedForType(target, bookingType)) return;
 
     const selectedRoom = document.getElementById('room')?.value || '';
+    const selectedParkingId = selectedParking();
+    const usesParking = bookingUsesParking(bookingType);
     const isTerminal = booking => ['Cancelled', 'Checked Out', 'Expired'].includes(String(booking?.bookingStatus || ''));
 
     const parseDate = value => {
@@ -126,10 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const start = parseDate(booking.checkIn);
       if (!start || start.getTime() !== target.getTime()) return false;
       const roomId = booking.room?._id || booking.room || null;
+      const parkingId = booking.parking?._id || booking.parking || null;
 
-      if (bookingType === 'parking') return hasParking(booking);
+      if (bookingType === 'parking') return usesParking && hasParking(booking) && String(parkingId) === String(selectedParkingId);
       if (bookingType === 'both') {
-        return (hasRoom(booking) && String(roomId) === String(selectedRoom)) || hasParking(booking);
+        return (hasRoom(booking) && String(roomId) === String(selectedRoom)) || (usesParking && hasParking(booking) && String(parkingId) === String(selectedParkingId));
       }
       return hasRoom(booking) && String(roomId) === String(selectedRoom);
     });
