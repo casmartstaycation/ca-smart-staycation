@@ -33,7 +33,7 @@ function render(card){
  <div style="font-size:18px;font-weight:700;color:#0b5d4d;margin-bottom:6px">Request for Extra Guest / Amenities</div>
  <div style="font-size:13px;line-height:1.6;color:#68736e;margin-bottom:13px">If you need additional guests or another set of towels, toiletries, blanket and bedsheet, submit a request with payment proof.</div>
  <div style="font-size:12px;line-height:1.5;margin-bottom:12px;padding:9px;background:#fff8e8;border-left:4px solid #c9a44c"><strong>Guest capacity:</strong> ${b.adults} qualifying guest${b.adults===1?'':'s'} booked · ${remaining} additional guest${remaining===1?'':'s'} available · maximum 4. Children age 0–2 are not counted.</div>
- <label style="display:block;margin:10px 0;font-weight:600"><input data-extra-type type="radio" name="extra-request-${esc(b.id)}" value="extra_guest" ${remaining<1?'disabled':''}> Extra Guest — ₱300 per guest / night</label>
+ <label style="display:block;margin:10px 0;font-weight:600"><input data-extra-type type="radio" name="extra-request-${esc(b.id)}" value="extra_guest" ${remaining<1?'disabled':''}> Extra Guest — ₱300 per guest / night (Extra Set of Amenities included free)</label>
  ${remaining<1?'<div style="font-size:12px;margin:6px 0 10px;padding:8px;background:#fff1f1;border-left:4px solid #b42318">Maximum of 4 qualifying guests has already been reached.</div>':''}
  <label style="display:block;margin:10px 0;font-weight:600"><input data-extra-type type="radio" name="extra-request-${esc(b.id)}" value="extra_set"> Extra Set of Amenities — ₱300 per set</label>
  <label style="display:block;margin:12px 0 4px;font-weight:600">Quantity
