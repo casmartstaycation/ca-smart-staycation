@@ -18,11 +18,11 @@
   const REMOTE_API = 'https://www.casmartstaycation.com/api';
 
   const roomsFallback = [{
-    _id: 'unit-719', id: 'unit-719', name: 'Unit 719', unitName: 'Unit 719',
-    unitNumber: '719', title: 'Studio Unit 719', type: 'Studio',
+    _id: 'unit-719', id: 'unit-719', name: 'BARBADOS 719', unitName: '719',
+    unitNumber: 'BARBADOS', title: 'BARBADOS 719', type: 'Studio',
     category: 'Accommodation', tower: 'Barbados Tower', floor: '7th Floor',
     roomNumber: 'Room 19', location: 'Azure North Pampanga',
-    description: 'Welcome to CA Smart Staycation Unit 719, located on the 7th Floor, Room 19 of Barbados Tower at Azure North Pampanga.',
+    description: 'Welcome to CA Smart Staycation BARBADOS 719, located on the 7th Floor, Room 19 of Barbados Tower at Azure North Pampanga.',
     price: 2800, nightlyRate: 2800, rate: 2800, capacity: 4, maxGuests: 4,
     status: 'Available', available: true,
     amenities: ['Air Conditioning','Private Bathroom','Wi-Fi','Kitchen','Refrigerator','Microwave','Television','Keyless Entry','Hot Water','Bedroom','Dining Area'],
