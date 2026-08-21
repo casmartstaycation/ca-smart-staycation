@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const GuestAccount = require("./GuestAccount");
+const Setting = require("./Setting");
 
 const bookingSchema = new mongoose.Schema({
   bookingReference: { type: String, required: true, unique: true },
@@ -37,6 +38,24 @@ bookingSchema.pre("validate", function(next) {
   if (Number(this.voucherDiscountPercent || 0) === 100) this.complimentaryNonCancellable = true;
   if (this.bookingStatus === "Cancelled" && this.complimentaryNonCancellable) return next(new Error("Bookings using a 100% complimentary voucher cannot be cancelled."));
   next();
+});
+
+bookingSchema.pre("validate", async function() {
+  if (!this.room || this.parkingOnly) return;
+  if (!(this.isNew || this.isModified("checkIn") || this.isModified("checkOut"))) return;
+  const start = new Date(this.checkIn), end = new Date(this.checkOut);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return;
+  const settings = await Setting.findOne().select("blockedDates").lean();
+  const blocked = new Set((settings?.blockedDates || []).map(item => String(item?.date || "").trim()).filter(Boolean));
+  if (!blocked.size) return;
+  let cursor = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
+  const endDay = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+  while (cursor < endDay) {
+    const date = new Date(cursor);
+    const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+    if (blocked.has(key)) throw new Error(`Selected date ${key} is unavailable because the unit is blocked by the admin.`);
+    cursor += 86400000;
+  }
 });
 
 bookingSchema.pre(/^find/, async function(next) {
