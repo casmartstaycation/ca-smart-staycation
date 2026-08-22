@@ -25,6 +25,30 @@ const DEFAULT_PAGE_DESIGN = Object.freeze({
   showGuestLoginLinks: true,
   showAnnouncement: false,
   announcementText: "",
+
+  // Phone-specific layout. These values only apply at 600px and below.
+  mobileHeroMinHeight: 480,
+  mobileHeroContentPaddingX: 16,
+  mobileHeroContentPaddingY: 18,
+  mobileHeroTitleSize: 36,
+  mobileHeroTitleLineHeight: 1.06,
+  mobileHeroEyebrowSize: 10,
+  mobileHeroEyebrowLetterSpacing: 2,
+  mobileHeroEyebrowMarginBottom: 12,
+  mobileHeroDescriptionSize: 13,
+  mobileHeroDescriptionMarginTop: 14,
+  mobileHeroDescriptionMarginBottom: 18,
+  mobileHeroButtonFontSize: 12,
+  mobileHeroLoginFontSize: 12,
+  mobileHeaderTitleSize: 18,
+  mobileHeaderButtonSize: 11,
+  mobileBookingTitleSize: 30,
+  mobileBookingPaddingX: 10,
+  mobileCardPadding: 14,
+  mobileHeroImagePosition: "center",
+  mobileHeroTextAlign: "left",
+  mobileStackHeroActions: false,
+
   logoMark: "CA",
   brandName: "CA Smart Staycation",
   brandTagline: "Elegant Comfort • Private Stay",
@@ -95,17 +119,40 @@ const COLOR_FIELDS = new Set([
   "pageBackgroundColor", "cardBackgroundColor", "textColor", "mutedTextColor",
   "inputBorderColor", "buttonTextColor", "heroOverlayColor"
 ]);
-const BOOLEAN_FIELDS = new Set(["showHero", "showFooter", "showBookingInfo", "showGuestLoginLinks", "showAnnouncement"]);
+const BOOLEAN_FIELDS = new Set([
+  "showHero", "showFooter", "showBookingInfo", "showGuestLoginLinks", "showAnnouncement",
+  "mobileStackHeroActions"
+]);
 const URL_FIELDS = new Set(["heroImageUrl", "pageBackgroundImageUrl"]);
 const NUMBER_LIMITS = {
   heroOverlayOpacity: [0, 0.9],
   cardRadius: [0, 40],
   containerRadius: [0, 50],
-  buttonRadius: [0, 30]
+  buttonRadius: [0, 30],
+  mobileHeroMinHeight: [320, 900],
+  mobileHeroContentPaddingX: [0, 40],
+  mobileHeroContentPaddingY: [0, 60],
+  mobileHeroTitleSize: [22, 60],
+  mobileHeroTitleLineHeight: [0.9, 1.5],
+  mobileHeroEyebrowSize: [8, 18],
+  mobileHeroEyebrowLetterSpacing: [0, 6],
+  mobileHeroEyebrowMarginBottom: [0, 30],
+  mobileHeroDescriptionSize: [10, 22],
+  mobileHeroDescriptionMarginTop: [0, 40],
+  mobileHeroDescriptionMarginBottom: [0, 50],
+  mobileHeroButtonFontSize: [9, 20],
+  mobileHeroLoginFontSize: [9, 20],
+  mobileHeaderTitleSize: [14, 28],
+  mobileHeaderButtonSize: [9, 18],
+  mobileBookingTitleSize: [22, 44],
+  mobileBookingPaddingX: [6, 30],
+  mobileCardPadding: [8, 32]
 };
 const ENUMS = {
   fontPreset: new Set(["classic", "modern", "clean", "luxury"]),
-  cardShadow: new Set(["none", "soft", "strong"])
+  cardShadow: new Set(["none", "soft", "strong"]),
+  mobileHeroImagePosition: new Set(["left", "center", "right"]),
+  mobileHeroTextAlign: new Set(["left", "center"])
 };
 
 function mergedPageDesign(value) {

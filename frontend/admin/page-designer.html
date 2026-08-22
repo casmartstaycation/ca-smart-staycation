@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CA Smart Staycation — Page Designer</title>
 <link rel="stylesheet" href="page-designer.css?v=20260822-1">
+<link rel="stylesheet" href="page-designer-mobile.css?v=20260823-1">
 <link rel="stylesheet" href="admin-mobile-responsive.css?v=20260815-1">
 <script src="admin-api-routing.js?v=20260822-1"></script>
 </head>
@@ -84,6 +85,48 @@
       </details>
 
       <details open>
+        <summary>Mobile View (Phone)</summary>
+        <div class="section-body">
+          <p class="mobile-designer-note">These controls affect only phones at 600px wide and below. Desktop/tablet styling stays unchanged. The new default title size is smaller so the hero does not look oversized on mobile.</p>
+          <div class="mobile-control-grid">
+            <label>Hero Minimum Height (px)<input type="number" min="320" max="900" data-setting="mobileHeroMinHeight"></label>
+            <label>Hero Side Padding (px)<input type="number" min="0" max="40" data-setting="mobileHeroContentPaddingX"></label>
+            <label>Hero Top/Bottom Padding (px)<input type="number" min="0" max="60" data-setting="mobileHeroContentPaddingY"></label>
+            <label>Hero Title Size (px)<input type="number" min="22" max="60" data-setting="mobileHeroTitleSize"></label>
+            <label>Hero Title Line Height<input type="number" min="0.9" max="1.5" step="0.01" data-setting="mobileHeroTitleLineHeight"></label>
+            <label>Eyebrow Size (px)<input type="number" min="8" max="18" data-setting="mobileHeroEyebrowSize"></label>
+            <label>Eyebrow Letter Spacing (px)<input type="number" min="0" max="6" step="0.1" data-setting="mobileHeroEyebrowLetterSpacing"></label>
+            <label>Eyebrow Bottom Space (px)<input type="number" min="0" max="30" data-setting="mobileHeroEyebrowMarginBottom"></label>
+            <label>Description Size (px)<input type="number" min="10" max="22" data-setting="mobileHeroDescriptionSize"></label>
+            <label>Description Top Space (px)<input type="number" min="0" max="40" data-setting="mobileHeroDescriptionMarginTop"></label>
+            <label>Description Bottom Space (px)<input type="number" min="0" max="50" data-setting="mobileHeroDescriptionMarginBottom"></label>
+            <label>Reserve Button Text (px)<input type="number" min="9" max="20" data-setting="mobileHeroButtonFontSize"></label>
+            <label>Guest Login Text (px)<input type="number" min="9" max="20" data-setting="mobileHeroLoginFontSize"></label>
+            <label>Header Business Name (px)<input type="number" min="14" max="28" data-setting="mobileHeaderTitleSize"></label>
+            <label>Header Button Text (px)<input type="number" min="9" max="18" data-setting="mobileHeaderButtonSize"></label>
+            <label>Booking Heading Size (px)<input type="number" min="22" max="44" data-setting="mobileBookingTitleSize"></label>
+            <label>Booking Page Side Padding (px)<input type="number" min="6" max="30" data-setting="mobileBookingPaddingX"></label>
+            <label>Booking Card Padding (px)<input type="number" min="8" max="32" data-setting="mobileCardPadding"></label>
+            <label>Hero Image Position
+              <select data-setting="mobileHeroImagePosition">
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </label>
+            <label>Hero Text Alignment
+              <select data-setting="mobileHeroTextAlign">
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+              </select>
+            </label>
+          </div>
+          <label class="mobile-toggle"><input type="checkbox" data-setting="mobileStackHeroActions"> Stack Reserve and Guest Login actions vertically on phones</label>
+          <button id="openMobilePreview" class="button secondary" type="button">Open Phone Preview</button>
+        </div>
+      </details>
+
+      <details open>
         <summary>Background Images</summary>
         <div class="section-body">
           <div class="image-control">
@@ -149,8 +192,12 @@
 
     <section class="preview-panel" aria-label="Live guest booking page preview">
       <div class="preview-head">
-        <div><strong>Live Preview</strong><span>Changes appear here before you save.</span></div>
-        <button id="refreshPreview" class="button secondary" type="button">Refresh Preview</button>
+        <div><strong>Live Preview</strong><span>Switch between desktop and phone size before saving.</span></div>
+        <div class="preview-actions">
+          <button id="previewDesktop" class="button secondary active" type="button" aria-pressed="true">Desktop</button>
+          <button id="previewMobile" class="button secondary" type="button" aria-pressed="false">Phone</button>
+          <button id="refreshPreview" class="button secondary" type="button">Refresh</button>
+        </div>
       </div>
       <div class="preview-frame-wrap">
         <iframe id="pagePreview" title="Guest booking page preview" src="/?designerPreview=1" sandbox="allow-scripts allow-same-origin"></iframe>
@@ -159,5 +206,6 @@
   </main>
 </div>
 <script src="page-designer.js?v=20260822-1"></script>
+<script src="page-designer-mobile.js?v=20260823-1"></script>
 </body>
 </html>
