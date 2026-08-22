@@ -11,6 +11,7 @@ const settingSchema = new mongoose.Schema({
     adminNotificationEmails: { type: [String], default: [] },
     adminContactNumber: { type: String, default: "" },
     guestBookingPage: { type: mongoose.Schema.Types.Mixed, default: {} },
+    guestAccountPage: { type: mongoose.Schema.Types.Mixed, default: {} },
     blockedDates: [{
         date: { type: String, required: true },
         reason: { type: String, default: "Maintenance" },

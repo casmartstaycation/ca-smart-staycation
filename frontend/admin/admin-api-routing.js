@@ -15,11 +15,18 @@
 
   document.addEventListener('DOMContentLoaded',()=>{
     const nav=document.querySelector('.admin-nav');
-    if(!nav||nav.querySelector('a[href="page-designer.html"]'))return;
-    const link=document.createElement('a');
-    link.href='page-designer.html';
-    link.textContent='Page Designer';
+    if(!nav)return;
     const newBooking=nav.querySelector('.new-booking');
-    nav.insertBefore(link,newBooking||null);
+    const links=[
+      {href:'page-designer.html',text:'Page Designer'},
+      {href:'guest-account-designer.html',text:'Guest Account Designer'}
+    ];
+    links.forEach(item=>{
+      if(nav.querySelector(`a[href="${item.href}"]`))return;
+      const link=document.createElement('a');
+      link.href=item.href;
+      link.textContent=item.text;
+      nav.insertBefore(link,newBooking||null);
+    });
   });
 })();

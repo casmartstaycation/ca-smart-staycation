@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CA Smart Staycation — Guest Account Designer</title>
+<link rel="stylesheet" href="page-designer.css?v=20260822-1">
+<link rel="stylesheet" href="page-designer-mobile.css?v=20260823-1">
+<link rel="stylesheet" href="admin-mobile-responsive.css?v=20260815-1">
+<script src="admin-api-routing.js?v=20260823-2"></script>
+</head>
+<body>
+<div class="designer-page">
+  <header class="designer-topbar">
+    <div>
+      <p class="eyebrow">CA SMART STAYCATION ADMIN</p>
+      <h1>Guest Account Page Designer</h1>
+      <p>Customize the guest dashboard after login without editing guest authentication or booking logic.</p>
+    </div>
+    <div class="top-actions">
+      <a class="button secondary" href="/guest-booking/guest-dashboard.html" target="_blank" rel="noopener">Open Guest Account</a>
+      <button class="button" id="saveDesign" type="button">Save Changes</button>
+    </div>
+  </header>
+
+  <nav class="designer-nav" aria-label="Admin navigation">
+    <a href="bookings.html">Bookings</a>
+    <a href="notifications.html">Notifications</a>
+    <a href="messages.html">Messages</a>
+    <a href="resources.html">Units & Parking</a>
+    <a href="page-designer.html">Booking Page Designer</a>
+    <a class="active" href="guest-account-designer.html">Guest Account Designer</a>
+  </nav>
+
+  <div id="designerStatus" class="status" aria-live="polite">Loading guest account settings…</div>
+
+  <main class="designer-layout">
+    <section class="editor-panel" aria-label="Guest account design controls">
+      <details open>
+        <summary>Theme & Layout</summary>
+        <div class="section-body">
+          <label>Quick Theme
+            <select id="themePreset">
+              <option value="current">Emerald & Gold — Current</option>
+              <option value="navy">Navy & Gold</option>
+              <option value="burgundy">Burgundy & Gold</option>
+              <option value="charcoal">Charcoal & Gold</option>
+              <option value="light">Clean Light</option>
+            </select>
+          </label>
+          <div class="color-grid">
+            <label>Primary <input type="color" data-setting="primaryColor"></label>
+            <label>Accent <input type="color" data-setting="accentColor"></label>
+            <label>Page Background <input type="color" data-setting="pageBackgroundColor"></label>
+            <label>Account Container <input type="color" data-setting="containerBackgroundColor"></label>
+            <label>Panel Background <input type="color" data-setting="panelBackgroundColor"></label>
+            <label>Booking Card <input type="color" data-setting="cardBackgroundColor"></label>
+            <label>Main Text <input type="color" data-setting="textColor"></label>
+            <label>Muted Text <input type="color" data-setting="mutedTextColor"></label>
+            <label>Borders <input type="color" data-setting="borderColor"></label>
+            <label>Notification Background <input type="color" data-setting="notificationBackgroundColor"></label>
+            <label>Guest Message Background <input type="color" data-setting="guestMessageBackgroundColor"></label>
+            <label>Admin Message Background <input type="color" data-setting="adminMessageBackgroundColor"></label>
+            <label>Info Note Background <input type="color" data-setting="noteBackgroundColor"></label>
+            <label>Danger / Badge <input type="color" data-setting="dangerColor"></label>
+            <label>Logout Button <input type="color" data-setting="logoutColor"></label>
+            <label>Button Text <input type="color" data-setting="buttonTextColor"></label>
+          </div>
+          <div class="two-col">
+            <label>Font Style
+              <select data-setting="fontPreset">
+                <option value="clean">Clean Sans Serif</option>
+                <option value="modern">Modern</option>
+                <option value="classic">Classic Serif</option>
+                <option value="luxury">Luxury Serif</option>
+              </select>
+            </label>
+            <label>Container Shadow
+              <select data-setting="shadow">
+                <option value="none">None</option>
+                <option value="soft">Soft</option>
+                <option value="strong">Strong</option>
+              </select>
+            </label>
+            <label>Account Max Width (px)<input type="number" min="600" max="1600" data-setting="containerMaxWidth"></label>
+            <label>Account Padding (px)<input type="number" min="0" max="70" data-setting="containerPadding"></label>
+            <label>Account Radius (px)<input type="number" min="0" max="50" data-setting="containerRadius"></label>
+            <label>Card Radius (px)<input type="number" min="0" max="40" data-setting="cardRadius"></label>
+            <label>Button Radius (px)<input type="number" min="0" max="30" data-setting="buttonRadius"></label>
+          </div>
+        </div>
+      </details>
+
+      <details open>
+        <summary>Page Background Image</summary>
+        <div class="section-body">
+          <label>Background Image URL
+            <input type="text" data-setting="backgroundImageUrl" placeholder="Leave blank to use the page background color">
+          </label>
+          <div class="upload-row">
+            <input type="file" id="backgroundImageFile" accept="image/jpeg,image/png,image/webp">
+            <button type="button" class="button secondary upload-image" data-file="backgroundImageFile" data-target="backgroundImageUrl">Upload Background Image</button>
+          </div>
+          <p class="help">JPG, PNG, or WEBP up to 8 MB. The guest account data remains separate from this image.</p>
+        </div>
+      </details>
+
+      <details open>
+        <summary>Mobile View (Phone)</summary>
+        <div class="section-body">
+          <p class="mobile-designer-note">These settings affect the guest account on phones. Desktop layout stays unchanged.</p>
+          <div class="mobile-control-grid">
+            <label>Page Margin (px)<input type="number" min="0" max="30" data-setting="mobileContainerMargin"></label>
+            <label>Account Padding (px)<input type="number" min="6" max="40" data-setting="mobileContainerPadding"></label>
+            <label>Page Title Size (px)<input type="number" min="20" max="44" data-setting="mobileTitleSize"></label>
+            <label>Toolbar Columns<input type="number" min="1" max="3" data-setting="mobileToolbarColumns"></label>
+            <label>Toolbar Button Text (px)<input type="number" min="10" max="20" data-setting="mobileButtonFontSize"></label>
+            <label>Card Side Padding (px)<input type="number" min="8" max="30" data-setting="mobileCardPadding"></label>
+          </div>
+        </div>
+      </details>
+
+      <details open>
+        <summary>Show / Hide & Welcome Banner</summary>
+        <div class="section-body toggles">
+          <label><input type="checkbox" data-setting="showSubtitle"> Show Guest Account Subtitle</label>
+          <label><input type="checkbox" data-setting="showUpdatedStatus"> Show Last Updated / Status Line</label>
+          <label><input type="checkbox" data-setting="showBookingNote"> Show Booking Information Note</label>
+          <label><input type="checkbox" data-setting="showWelcomeBanner"> Show Welcome / Announcement Banner</label>
+          <label>Welcome / Announcement Text<textarea rows="3" data-setting="welcomeBannerText" placeholder="Example: Welcome! Your stay details and messages are available here."></textarea></label>
+        </div>
+      </details>
+
+      <details open>
+        <summary>Headings & Navigation Text</summary>
+        <div class="section-body generated-fields">
+          <label>Page Title<input type="text" data-setting="titleText"></label>
+          <label>Subtitle<input type="text" data-setting="subtitleText"></label>
+          <label>Bookings Button<input type="text" data-setting="bookingsButtonText"></label>
+          <label>Notifications Button<input type="text" data-setting="notificationsButtonText"></label>
+          <label>Message Inbox Button<input type="text" data-setting="inboxButtonText"></label>
+          <label>Make Another Booking Button<input type="text" data-setting="newBookingButtonText"></label>
+          <label>Account Settings Button<input type="text" data-setting="settingsButtonText"></label>
+          <label>Logout Button<input type="text" data-setting="logoutButtonText"></label>
+          <label>Notifications Section Title<input type="text" data-setting="notificationsTitleText"></label>
+          <label>Messages Section Title<input type="text" data-setting="messagesTitleText"></label>
+          <label>Reservations Section Title<input type="text" data-setting="reservationsTitleText"></label>
+        </div>
+      </details>
+
+      <details>
+        <summary>Messages, Search & Booking Text</summary>
+        <div class="section-body generated-fields">
+          <label>Send Message Button<input type="text" data-setting="sendMessageButtonText"></label>
+          <label>Message Placeholder<textarea rows="2" data-setting="messagePlaceholder"></textarea></label>
+          <label>Booking Search Placeholder<input type="text" data-setting="bookingSearchPlaceholder"></label>
+          <label>Booking Note<textarea rows="3" data-setting="bookingNoteText"></textarea></label>
+          <label>Load More Button<input type="text" data-setting="loadMoreText"></label>
+          <label>Filter: All<input type="text" data-setting="filterAllText"></label>
+          <label>Filter: Active<input type="text" data-setting="filterActiveText"></label>
+          <label>Filter: Pending Payment<input type="text" data-setting="filterPendingText"></label>
+          <label>Filter: Confirmed<input type="text" data-setting="filterConfirmedText"></label>
+          <label>Filter: Cancelled<input type="text" data-setting="filterCancelledText"></label>
+          <label>Filter: Completed<input type="text" data-setting="filterCompletedText"></label>
+        </div>
+      </details>
+
+      <details>
+        <summary>Advanced Custom CSS</summary>
+        <div class="section-body">
+          <p class="help">Optional visual overrides for the guest account only. Guest authentication, booking data, payments, messages, and JavaScript actions are not editable here.</p>
+          <textarea class="code" rows="12" data-setting="customCss" placeholder="/* Example */\n.booking-card { border-width: 2px; }"></textarea>
+        </div>
+      </details>
+
+      <div class="danger-zone">
+        <div>
+          <strong>Restore current guest account design</strong>
+          <p>Restores the guest dashboard appearance that existed before this designer was added. Guest accounts, bookings, messages, and payments are not affected.</p>
+        </div>
+        <button id="resetDesign" type="button" class="button danger">Restore Guest Account Design</button>
+      </div>
+    </section>
+
+    <section class="preview-panel" aria-label="Guest account live preview">
+      <div class="preview-head">
+        <div><strong>Live Preview</strong><span>Preview with safe sample data — no real guest account is opened.</span></div>
+        <div class="preview-actions">
+          <button id="previewDesktop" class="button secondary active" type="button" aria-pressed="true">Desktop</button>
+          <button id="previewMobile" class="button secondary" type="button" aria-pressed="false">Phone</button>
+          <button id="refreshPreview" class="button secondary" type="button">Refresh</button>
+        </div>
+      </div>
+      <div class="preview-frame-wrap">
+        <iframe id="pagePreview" title="Guest account page preview" src="guest-account-preview.html?designerPreview=1" sandbox="allow-scripts allow-same-origin"></iframe>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="guest-account-designer.js?v=20260823-1"></script>
+</body>
+</html>
