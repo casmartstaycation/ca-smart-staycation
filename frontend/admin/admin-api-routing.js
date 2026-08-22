@@ -1,32 +1,9 @@
 /* CA Smart Staycation admin API routing/auth bridge. */
 (function () {
-  const TOKEN_KEY = 'caSmartAdminToken';
-  const LEGACY_ORIGIN = 'https://ca-smart-staycation-muqd.onrender.com';
-  const originalFetch = window.fetch.bind(window);
-  function getToken(){return sessionStorage.getItem(TOKEN_KEY)||localStorage.getItem(TOKEN_KEY)||'';}
-  function isApiUrl(url){try{const u=new URL(url,window.location.origin);return u.origin===window.location.origin&&u.pathname.startsWith('/api/');}catch(_){return false;}}
-  function validateToken(token){if(!token)return false;try{const p=token.split('.');if(p.length!==3)return false;const x=JSON.parse(atob(p[1].replace(/-/g,'+').replace(/_/g,'/')));return !!(x&&x.role==='admin'&&x.email&&(!x.exp||x.exp*1000>Date.now()));}catch(_){return false;}}
-  function clear(){sessionStorage.removeItem(TOKEN_KEY);localStorage.removeItem(TOKEN_KEY);}
-  function clearInvalidToken(token){if(token&&!validateToken(token)){clear();return '';}return token;}
-  function rewrite(input){const r=input instanceof Request?input:null;const raw=r?r.url:String(input||'');if(!raw)return null;try{const u=new URL(raw,window.location.origin);if(u.origin!==LEGACY_ORIGIN)return null;return new URL(u.pathname+u.search,window.location.origin).href;}catch(_){return null;}}
-  function withAuth(input,init,url){let request;try{request=input instanceof Request?new Request(url||input.url,input):new Request(url||String(input),init||{});}catch(_){return null;}const token=clearInvalidToken(getToken());if(!token)return request;const h=new Headers(request.headers);if(!h.has('Authorization'))h.set('Authorization',`Bearer ${token}`);return new Request(request,{headers:h});}
-  window.fetch=function(input,init){const rewritten=rewrite(input);const rawUrl=rewritten||(input instanceof Request?input.url:String(input||''));if(!isApiUrl(rawUrl))return originalFetch(input,init);const request=withAuth(input,init,rewritten||rawUrl);const promise=request?originalFetch(request):originalFetch(input,init);return promise.then(response=>{if(response.status===401&&isApiUrl(rawUrl)){clear();if(!location.pathname.endsWith('/admin/index.html')&&!location.pathname.endsWith('/admin/')){location.replace('/admin/index.html?session=expired');}}return response;});};
+  const TOKEN_KEY='caSmartAdminToken',LEGACY_ORIGIN='https://ca-smart-staycation-muqd.onrender.com',originalFetch=window.fetch.bind(window);
+  function getToken(){return sessionStorage.getItem(TOKEN_KEY)||localStorage.getItem(TOKEN_KEY)||''}function isApiUrl(url){try{const u=new URL(url,location.origin);return u.origin===location.origin&&u.pathname.startsWith('/api/')}catch(_){return false}}function validateToken(token){if(!token)return false;try{const p=token.split('.');if(p.length!==3)return false;const x=JSON.parse(atob(p[1].replace(/-/g,'+').replace(/_/g,'/')));return !!(x&&x.role==='admin'&&x.email&&(!x.exp||x.exp*1000>Date.now()))}catch(_){return false}}function clear(){sessionStorage.removeItem(TOKEN_KEY);localStorage.removeItem(TOKEN_KEY)}function clearInvalidToken(token){if(token&&!validateToken(token)){clear();return''}return token}function rewrite(input){const r=input instanceof Request?input:null,raw=r?r.url:String(input||'');if(!raw)return null;try{const u=new URL(raw,location.origin);if(u.origin!==LEGACY_ORIGIN)return null;return new URL(u.pathname+u.search,location.origin).href}catch(_){return null}}function withAuth(input,init,url){let request;try{request=input instanceof Request?new Request(url||input.url,input):new Request(url||String(input),init||{})}catch(_){return null}const token=clearInvalidToken(getToken());if(!token)return request;const h=new Headers(request.headers);if(!h.has('Authorization'))h.set('Authorization',`Bearer ${token}`);return new Request(request,{headers:h})}
+  window.fetch=function(input,init){const rewritten=rewrite(input),rawUrl=rewritten||(input instanceof Request?input.url:String(input||''));if(!isApiUrl(rawUrl))return originalFetch(input,init);const request=withAuth(input,init,rewritten||rawUrl),promise=request?originalFetch(request):originalFetch(input,init);return promise.then(response=>{if(response.status===401&&isApiUrl(rawUrl)&&getToken()){clear();if(!location.pathname.endsWith('/admin/index.html')&&!location.pathname.endsWith('/admin/'))location.replace('/admin/index.html?session=expired')}return response})};
   window.CASmartAdminAuth={token:getToken,hasValidToken:()=>validateToken(getToken()),clear};
-
-  document.addEventListener('DOMContentLoaded',()=>{
-    const nav=document.querySelector('.admin-nav');
-    if(!nav)return;
-    const newBooking=nav.querySelector('.new-booking');
-    const links=[
-      {href:'page-designer.html',text:'Page Designer'},
-      {href:'guest-account-designer.html',text:'Guest Account Designer'}
-    ];
-    links.forEach(item=>{
-      if(nav.querySelector(`a[href="${item.href}"]`))return;
-      const link=document.createElement('a');
-      link.href=item.href;
-      link.textContent=item.text;
-      nav.insertBefore(link,newBooking||null);
-    });
-  });
+  function addScript(id,src){if(document.getElementById(id))return;const s=document.createElement('script');s.id=id;s.src=src;s.defer=true;document.head.appendChild(s)}function addLink(nav,item,before){if(nav.querySelector(`a[href="${item.href}"]`))return;const a=document.createElement('a');a.href=item.href;a.textContent=item.text;nav.insertBefore(a,before||null)}
+  document.addEventListener('DOMContentLoaded',()=>{const nav=document.querySelector('.admin-nav,.designer-nav,.nav');if(nav){const before=nav.querySelector('.new-booking'),isDesigner=nav.classList.contains('designer-nav'),isBookingNav=nav.classList.contains('admin-nav')&&!isDesigner;if(isDesigner){[{href:'page-designer.html',text:'Booking Page Designer'},{href:'guest-account-designer.html',text:'Guest Account Designer'},{href:'admin-page-designer.html',text:'Admin Page Designer'},{href:'advanced-visual-editor.html',text:'Advanced Visual Editor'},{href:'email-notification-designer.html',text:'Email Designer'}].forEach(x=>addLink(nav,x,before))}else if(isBookingNav){[{href:'page-designer.html',text:'Page Designer'},{href:'guest-account-designer.html',text:'Guest Account Designer'},{href:'advanced-visual-editor.html',text:'Design Studio'}].forEach(x=>addLink(nav,x,before))}else addLink(nav,{href:'advanced-visual-editor.html',text:'Design Studio'},before)}const designerPage=/designer\.html$/i.test(location.pathname);if(!designerPage){document.documentElement.dataset.caVisualTarget='admin';addScript('ca-admin-page-customizer','/admin/admin-page-customizer.js?v=20260823-1');addScript('ca-admin-visual-layout','/js/visual-layout-runtime.js?v=20260823-1')}});
 })();
