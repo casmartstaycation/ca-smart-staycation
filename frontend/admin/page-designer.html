@@ -86,6 +86,32 @@
       </details>
 
       <details open>
+        <summary>Desktop Hero Size & Position</summary>
+        <div class="section-body">
+          <p class="mobile-designer-note">These controls affect the large hero text panel on desktop/tablet only. Use them to keep the translucent panel from overlapping the booking section below.</p>
+          <div class="mobile-control-grid">
+            <label>Panel Maximum Width (px)<input type="number" min="420" max="1200" data-setting="desktopHeroContentMaxWidth"></label>
+            <label>Panel Side Padding (px)<input type="number" min="0" max="90" data-setting="desktopHeroContentPaddingX"></label>
+            <label>Panel Top/Bottom Padding (px)<input type="number" min="0" max="80" data-setting="desktopHeroContentPaddingY"></label>
+            <label>Hero Title Size (px)<input type="number" min="30" max="90" data-setting="desktopHeroTitleSize"></label>
+            <label>Hero Title Line Height<input type="number" min="0.85" max="1.5" step="0.01" data-setting="desktopHeroTitleLineHeight"></label>
+            <label>Eyebrow Size (px)<input type="number" min="8" max="20" data-setting="desktopHeroEyebrowSize"></label>
+            <label>Eyebrow Letter Spacing (px)<input type="number" min="0" max="8" step="0.1" data-setting="desktopHeroEyebrowLetterSpacing"></label>
+            <label>Eyebrow Bottom Space (px)<input type="number" min="0" max="40" data-setting="desktopHeroEyebrowMarginBottom"></label>
+            <label>Description Size (px)<input type="number" min="11" max="28" data-setting="desktopHeroDescriptionSize"></label>
+            <label>Description Top Space (px)<input type="number" min="0" max="50" data-setting="desktopHeroDescriptionMarginTop"></label>
+            <label>Description Bottom Space (px)<input type="number" min="0" max="60" data-setting="desktopHeroDescriptionMarginBottom"></label>
+            <label>Reserve Button Text (px)<input type="number" min="10" max="22" data-setting="desktopHeroButtonFontSize"></label>
+            <label>Guest Login Text (px)<input type="number" min="10" max="22" data-setting="desktopHeroLoginFontSize"></label>
+            <label>Panel Vertical Position (px)<input type="number" min="-180" max="140" data-setting="desktopHeroVerticalOffset"></label>
+            <label>Panel Background Opacity<input type="number" min="0" max="0.9" step="0.05" data-setting="desktopHeroPanelOpacity"></label>
+            <label>Panel Corner Radius (px)<input type="number" min="0" max="50" data-setting="desktopHeroPanelRadius"></label>
+          </div>
+          <p class="help">Tip: smaller Title Size and Top/Bottom Padding make the panel shorter. A more negative Vertical Position moves it upward away from the booking section.</p>
+        </div>
+      </details>
+
+      <details open>
         <summary>Mobile View (Phone)</summary>
         <div class="section-body">
           <p class="mobile-designer-note">These controls affect only phones at 600px wide and below. Desktop/tablet styling stays unchanged. The new default title size is smaller so the hero does not look oversized on mobile.</p>
