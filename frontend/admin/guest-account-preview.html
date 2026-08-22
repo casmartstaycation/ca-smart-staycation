@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guest Account Preview</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#333}.container{max-width:950px;margin:26px auto;background:#fff;padding:30px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,.12)}h1{color:#0b5d4d;text-align:center;margin:0}.subtitle,.updated{text-align:center;color:#666}.updated{font-size:13px;margin-bottom:20px}.toolbar{display:flex;gap:10px;margin:20px 0;flex-wrap:wrap}.toolbar button{width:auto;margin:0;flex:1 1 120px}.badge{display:inline-block;min-width:18px;padding:2px 6px;border-radius:999px;background:#b42318;color:#fff;font-size:11px}.panel{display:block;border:1px solid #ddd;border-radius:10px;padding:18px;margin-bottom:20px;background:#fafcfb}.section-title{font-size:18px;font-weight:bold;color:#0b5d4d;margin:0 0 12px;border-bottom:1px solid #ddd;padding-bottom:8px}.notification,.message{border:1px solid #e1e6e3;border-radius:8px;padding:11px 13px;margin:8px 0;line-height:1.5}.notification{background:#fff8e8;border-left:4px solid #c9a44c}.message.guest{margin-left:15%;background:#e9f3ee}.message.admin{margin-right:15%;background:#eef2f5}.message small{display:block;color:#78827e;font-size:11px;margin-bottom:5px}.compose textarea{width:100%;min-height:70px;padding:10px;border:1px solid #d5ddd9;border-radius:7px;font:inherit;resize:vertical}.booking-tools{display:grid;grid-template-columns:1fr 180px;gap:10px;margin:18px 0 12px}.booking-tools input,.booking-tools select{width:100%;height:42px;padding:9px 11px;border:1px solid #d5ddd9;border-radius:7px;font:inherit;background:#fff}.booking-count{font-size:13px;color:#68736e;margin-bottom:10px}.booking-card{border:1px solid #ddd;border-radius:10px;margin:10px 0;background:#fff;overflow:hidden}.booking-summary{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:15px 17px}.reference{font-size:18px;font-weight:bold;color:#c9a44c}.summary-meta{font-size:13px;color:#68736e;margin-top:5px}.summary-right{text-align:right}.status-pill{display:inline-block;margin-top:5px;padding:4px 8px;border-radius:999px;background:#fff8e8;border:1px solid #ead8a9;font-size:11px;font-weight:bold}.details{padding:12px 17px 17px;border-top:1px solid #edf0ee}.details .row{display:flex;justify-content:space-between;gap:20px;margin:9px 0}.label{font-weight:bold}.note{background:#f7faf9;padding:15px;border-left:5px solid #0b5d4d;line-height:1.6;margin-top:14px}button{padding:12px;border:0;background:#0b5d4d;color:#fff;border-radius:8px;cursor:pointer;font-size:15px}.secondary{background:#c9a44c}.logout{background:#777}.tab-button.active{background:#c9a44c}@media(max-width:700px){.container{margin:12px;padding:16px}.toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.toolbar button{width:100%;font-size:13px;padding:10px 6px}.booking-tools{grid-template-columns:1fr}.booking-summary{align-items:flex-start;flex-direction:column}.summary-right{text-align:left}.message.guest,.message.admin{margin-left:0;margin-right:0}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>My Bookings</h1>
+  <p class="subtitle">CA Smart Staycation Guest Account</p>
+  <div id="updated" class="updated">Updated just now</div>
+  <div class="toolbar">
+    <button id="bookingsBtn" class="tab-button active" type="button">Bookings</button>
+    <button id="notificationBtn" class="tab-button" type="button">Notifications <span class="badge">2</span></button>
+    <button id="inboxBtn" class="tab-button" type="button">Message Inbox <span class="badge">1</span></button>
+    <button id="newBookingBtn" class="tab-button" type="button">Make Another Booking</button>
+    <button id="settingsBtn" class="tab-button" type="button">Account Settings</button>
+    <button class="logout" id="logout" type="button">Logout</button>
+  </div>
+
+  <section id="notificationPanel" class="panel open">
+    <div class="section-title">Notifications</div>
+    <div class="notification unread">Your payment has been verified and your booking is confirmed.</div>
+  </section>
+
+  <section id="messagePanel" class="panel open">
+    <div class="section-title">Messages</div>
+    <div class="message admin"><small>CA Smart Staycation Admin</small>Your booking is ready. Please check your reservation details below.</div>
+    <div class="message guest"><small>You</small>Thank you! I received the confirmation.</div>
+    <div class="compose">
+      <textarea id="messageText" placeholder="Send a message to CA Smart Staycation admin..."></textarea>
+      <button id="sendMessage" type="button">Send Message</button>
+    </div>
+  </section>
+
+  <section id="bookingsPanel">
+    <div class="section-title">Reservations</div>
+    <div class="booking-tools">
+      <input id="bookingSearch" type="search" placeholder="Search booking reference...">
+      <select id="bookingFilter">
+        <option value="all">All Bookings</option>
+        <option value="active">Active</option>
+        <option value="pending">Pending Payment</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="cancelled">Cancelled</option>
+        <option value="completed">Completed</option>
+      </select>
+    </div>
+    <div class="booking-count">1 booking shown</div>
+    <div class="booking-card open">
+      <div class="booking-summary">
+        <div><div class="reference">CAS-2026-00123</div><div class="summary-meta">BARBADOS 719 • Aug 28–30, 2026 • 2 nights</div></div>
+        <div class="summary-right"><strong>₱6,600</strong><span class="status-pill">Confirmed</span></div>
+      </div>
+      <div class="details">
+        <div class="row"><span class="label">Guests</span><span>2 Guests</span></div>
+        <div class="row"><span class="label">Parking</span><span>SLOT 9 - Bay 4</span></div>
+        <div class="row"><span class="label">Payment</span><span>Paid</span></div>
+      </div>
+    </div>
+    <button id="loadMore" class="secondary" type="button">Load More</button>
+    <div class="note">All bookings made using your registered email address are shown here.</div>
+  </section>
+</div>
+<script src="../guest-booking/guest-account-customizer.js?v=20260823-1"></script>
+</body>
+</html>
