@@ -12,4 +12,14 @@
   function withAuth(input,init,url){let request;try{request=input instanceof Request?new Request(url||input.url,input):new Request(url||String(input),init||{});}catch(_){return null;}const token=clearInvalidToken(getToken());if(!token)return request;const h=new Headers(request.headers);if(!h.has('Authorization'))h.set('Authorization',`Bearer ${token}`);return new Request(request,{headers:h});}
   window.fetch=function(input,init){const rewritten=rewrite(input);const rawUrl=rewritten||(input instanceof Request?input.url:String(input||''));if(!isApiUrl(rawUrl))return originalFetch(input,init);const request=withAuth(input,init,rewritten||rawUrl);const promise=request?originalFetch(request):originalFetch(input,init);return promise.then(response=>{if(response.status===401&&isApiUrl(rawUrl)){clear();if(!location.pathname.endsWith('/admin/index.html')&&!location.pathname.endsWith('/admin/')){location.replace('/admin/index.html?session=expired');}}return response;});};
   window.CASmartAdminAuth={token:getToken,hasValidToken:()=>validateToken(getToken()),clear};
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    const nav=document.querySelector('.admin-nav');
+    if(!nav||nav.querySelector('a[href="page-designer.html"]'))return;
+    const link=document.createElement('a');
+    link.href='page-designer.html';
+    link.textContent='Page Designer';
+    const newBooking=nav.querySelector('.new-booking');
+    nav.insertBefore(link,newBooking||null);
+  });
 })();
