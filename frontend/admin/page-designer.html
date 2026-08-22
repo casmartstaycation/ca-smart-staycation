@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CA Smart Staycation — Page Designer</title>
+<link rel="stylesheet" href="page-designer.css?v=20260822-1">
+<link rel="stylesheet" href="admin-mobile-responsive.css?v=20260815-1">
+<script src="admin-api-routing.js?v=20260822-1"></script>
+</head>
+<body>
+<div class="designer-page">
+  <header class="designer-topbar">
+    <div>
+      <p class="eyebrow">CA SMART STAYCATION ADMIN</p>
+      <h1>Guest Booking Page Designer</h1>
+      <p>Customize the public booking page without editing source code.</p>
+    </div>
+    <div class="top-actions">
+      <a class="button secondary" href="/" target="_blank" rel="noopener">Open Live Page</a>
+      <button class="button" id="saveDesign" type="button">Save Changes</button>
+    </div>
+  </header>
+
+  <nav class="designer-nav" aria-label="Admin navigation">
+    <a href="bookings.html">Bookings</a>
+    <a href="notifications.html">Notifications</a>
+    <a href="messages.html">Messages</a>
+    <a href="resources.html">Units & Parking</a>
+    <a class="active" href="page-designer.html">Page Designer</a>
+  </nav>
+
+  <div id="designerStatus" class="status" aria-live="polite">Loading page settings…</div>
+
+  <main class="designer-layout">
+    <section class="editor-panel" aria-label="Page design controls">
+      <details open>
+        <summary>Theme & Layout</summary>
+        <div class="section-body">
+          <label>Quick Theme
+            <select id="themePreset">
+              <option value="current">Emerald & Gold — Current</option>
+              <option value="navy">Navy & Gold</option>
+              <option value="burgundy">Burgundy & Gold</option>
+              <option value="charcoal">Charcoal & Gold</option>
+              <option value="light">Clean Light</option>
+            </select>
+          </label>
+          <div class="color-grid">
+            <label>Primary <input type="color" data-setting="primaryColor"></label>
+            <label>Secondary <input type="color" data-setting="secondaryColor"></label>
+            <label>Accent <input type="color" data-setting="accentColor"></label>
+            <label>Accent Light <input type="color" data-setting="accentLightColor"></label>
+            <label>Page Background <input type="color" data-setting="pageBackgroundColor"></label>
+            <label>Card Background <input type="color" data-setting="cardBackgroundColor"></label>
+            <label>Text <input type="color" data-setting="textColor"></label>
+            <label>Muted Text <input type="color" data-setting="mutedTextColor"></label>
+            <label>Input Border <input type="color" data-setting="inputBorderColor"></label>
+            <label>Button Text <input type="color" data-setting="buttonTextColor"></label>
+          </div>
+          <div class="two-col">
+            <label>Font Style
+              <select data-setting="fontPreset">
+                <option value="classic">Classic</option>
+                <option value="modern">Modern</option>
+                <option value="clean">Clean Sans Serif</option>
+                <option value="luxury">Luxury Serif</option>
+              </select>
+            </label>
+            <label>Card Shadow
+              <select data-setting="cardShadow">
+                <option value="none">None</option>
+                <option value="soft">Soft</option>
+                <option value="strong">Strong</option>
+              </select>
+            </label>
+            <label>Card Radius <input type="number" min="0" max="40" data-setting="cardRadius"></label>
+            <label>Page Radius <input type="number" min="0" max="50" data-setting="containerRadius"></label>
+            <label>Button Radius <input type="number" min="0" max="30" data-setting="buttonRadius"></label>
+            <label>Hero Overlay Opacity <input type="number" min="0" max="0.9" step="0.05" data-setting="heroOverlayOpacity"></label>
+          </div>
+          <label>Hero Overlay Color <input type="color" data-setting="heroOverlayColor"></label>
+        </div>
+      </details>
+
+      <details open>
+        <summary>Background Images</summary>
+        <div class="section-body">
+          <div class="image-control">
+            <label>Hero Image URL <input type="text" data-setting="heroImageUrl" placeholder="/images/luxury-room-4.png"></label>
+            <div class="upload-row"><input type="file" id="heroImageFile" accept="image/jpeg,image/png,image/webp"><button type="button" class="button secondary upload-image" data-file="heroImageFile" data-target="heroImageUrl">Upload Hero Image</button></div>
+          </div>
+          <div class="image-control">
+            <label>Whole Page Background Image URL <input type="text" data-setting="pageBackgroundImageUrl" placeholder="Leave blank for color background"></label>
+            <div class="upload-row"><input type="file" id="pageBackgroundFile" accept="image/jpeg,image/png,image/webp"><button type="button" class="button secondary upload-image" data-file="pageBackgroundFile" data-target="pageBackgroundImageUrl">Upload Page Background</button></div>
+          </div>
+          <p class="help">JPG, PNG, or WEBP up to 8 MB. Uploaded images are stored in your existing MongoDB file storage.</p>
+        </div>
+      </details>
+
+      <details open>
+        <summary>Show / Hide & Announcement</summary>
+        <div class="section-body toggles">
+          <label><input type="checkbox" data-setting="showHero"> Show Hero Section</label>
+          <label><input type="checkbox" data-setting="showFooter"> Show Footer</label>
+          <label><input type="checkbox" data-setting="showBookingInfo"> Show Booking Information Cards</label>
+          <label><input type="checkbox" data-setting="showGuestLoginLinks"> Show Guest Login Links</label>
+          <label><input type="checkbox" data-setting="showAnnouncement"> Show Announcement Banner</label>
+          <label>Announcement Text <textarea rows="3" data-setting="announcementText" placeholder="Example: Holiday rates apply on selected dates."></textarea></label>
+        </div>
+      </details>
+
+      <details open>
+        <summary>Brand, Header & Hero Text</summary>
+        <div class="section-body generated-fields" id="brandFields"></div>
+      </details>
+
+      <details>
+        <summary>Booking Section & Form Labels</summary>
+        <div class="section-body generated-fields" id="bookingFields"></div>
+      </details>
+
+      <details>
+        <summary>Booking Information & Vehicle Text</summary>
+        <div class="section-body generated-fields" id="informationFields"></div>
+      </details>
+
+      <details>
+        <summary>Submit Button & Footer</summary>
+        <div class="section-body generated-fields" id="footerFields"></div>
+      </details>
+
+      <details>
+        <summary>Advanced Custom CSS</summary>
+        <div class="section-body">
+          <p class="help">Optional. Use this only when you want a design adjustment not covered by the controls above. Booking JavaScript is not editable here.</p>
+          <textarea class="code" rows="12" data-setting="customCss" placeholder="/* Example */\n.hero-content { max-width: 780px; }"></textarea>
+        </div>
+      </details>
+
+      <div class="danger-zone">
+        <div>
+          <strong>Restore working design</strong>
+          <p>Returns the guest booking page to the saved August 22, 2026 working appearance. Booking data and rates are not affected.</p>
+        </div>
+        <button id="resetDesign" type="button" class="button danger">Restore August 22 Design</button>
+      </div>
+    </section>
+
+    <section class="preview-panel" aria-label="Live guest booking page preview">
+      <div class="preview-head">
+        <div><strong>Live Preview</strong><span>Changes appear here before you save.</span></div>
+        <button id="refreshPreview" class="button secondary" type="button">Refresh Preview</button>
+      </div>
+      <div class="preview-frame-wrap">
+        <iframe id="pagePreview" title="Guest booking page preview" src="/?designerPreview=1" sandbox="allow-scripts allow-same-origin"></iframe>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="page-designer.js?v=20260822-1"></script>
+</body>
+</html>
