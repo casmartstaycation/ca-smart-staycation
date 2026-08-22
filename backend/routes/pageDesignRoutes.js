@@ -52,10 +52,13 @@ router.put("/", requireAdmin, async (req, res) => {
 router.post("/reset", requireAdmin, async (req, res) => {
   try {
     const settings = await getSettings();
-    settings.guestBookingPage = {};
+    const preserved = {};
+    if (settings.guestBookingPage?.adminPageDesign) preserved.adminPageDesign = settings.guestBookingPage.adminPageDesign;
+    if (settings.guestBookingPage?.emailNotificationDesign) preserved.emailNotificationDesign = settings.guestBookingPage.emailNotificationDesign;
+    settings.guestBookingPage = preserved;
     settings.markModified("guestBookingPage");
     await settings.save();
-    res.json({ success: true, message: "Guest booking page restored to the August 22 working design.", data: mergedPageDesign({}) });
+    res.json({ success: true, message: "Guest booking page restored to the August 22 working design.", data: mergedPageDesign(settings.guestBookingPage) });
   } catch (err) {
     console.error("PAGE DESIGN RESET ERROR:", err);
     res.status(500).json({ success: false, message: "Unable to reset guest page design." });
@@ -93,5 +96,12 @@ router.get("/assets/:id", async (req, res) => {
     res.status(404).send("Image not found.");
   }
 });
+
+// Advanced design studio sub-routes. They are stored inside the protected
+// guestBookingPage / guestAccountPage settings so the legacy settings PUT
+// endpoint cannot overwrite them.
+router.use("/admin-page", require("./adminPageDesignRoutes"));
+router.use("/email-notifications", require("./emailNotificationDesignRoutes"));
+router.use("/visual-layout", require("./visualLayoutRoutes"));
 
 module.exports = router;
